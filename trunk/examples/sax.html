@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+	<head>
+
+		<script type="text/javascript" src="sax_xml.js"></script>
+		<script type="text/javascript" src="../jssaxparser/sax.js"></script>
+		<script type="text/javascript">
+		
+		var xml = loadXml();
+		
+		/*	
+		void   characters(char[] ch, int start, int length)
+		          Receive notification of character data.
+		void 	endDocument()
+		          Receive notification of the end of a document.
+		void 	endElement(java.lang.String namespaceURI, java.lang.String localName, java.lang.String qName)
+		          Receive notification of the end of an element.
+		void 	endPrefixMapping(java.lang.String prefix)
+		          End the scope of a prefix-URI mapping.
+		void 	ignorableWhitespace(char[] ch, int start, int length)
+		          Receive notification of ignorable whitespace in element content.
+		void 	processingInstruction(java.lang.String target, java.lang.String data)
+		          Receive notification of a processing instruction.
+		void 	setDocumentLocator(Locator locator)
+		          Receive an object for locating the origin of SAX document events.
+		void 	skippedEntity(java.lang.String name)
+		          Receive notification of a skipped entity.
+		void 	startDocument()
+		          Receive notification of the beginning of a document.
+		void 	startElement(java.lang.String namespaceURI, java.lang.String localName, java.lang.String qName, Attributes atts)
+		          Receive notification of the beginning of an element.
+		void 	startPrefixMapping(java.lang.String prefix, java.lang.String uri) 
+			Begin the scope of a prefix-URI Namespace mapping.
+		*/
+		function EventHandler(div) {
+			
+			this.div = div;
+			
+			this.startDocument = function() {
+				div.innerHTML += "startDocument";
+			};
+			
+			this.startElement = function(namespaceURI,localName,qName,atts) {
+				div.innerHTML += "startElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
+				this.displayAtts(atts);
+			};
+			
+			this.endElement = function(namespaceURI,localName,qName) {
+				div.innerHTML += "endElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
+			};
+			
+			this.startPrefixMapping = function(prefix,uri) {
+				div.innerHTML += "startPrefixMapping [" + prefix + "] [" + uri + "]<br/>";
+			};
+			
+			this.endPrefixMapping = function(prefix) {
+				div.innerHTML += "endPrefixMapping [" + prefix + "]<br/>";
+			};
+			
+			this.processingInstruction = function(target,data) {
+				div.innerHTML += "processingInstruction [" + target + "] [" + data + "]<br/>";
+			};
+			
+			this.ignorableWhitespace = function(ch,start,length) {
+				div.innerHTML += "ignorableWhitespace [" + ch + "] [" + start + "] [" + length + "]<br/>";
+			};
+			
+			this.characters = function(ch,start,length) {
+				div.innerHTML += "characters [" + ch + "] [" + start + "] [" + length + "]<br/>";
+			};
+			
+			this.skippedEntity = function(name) {
+				div.innerHTML += "skippedEntity [" + name + "]<br/>";
+			};
+			
+			this.endDocument = function() {
+				div.innerHTML += "endDocument";
+			};
+			
+			this.setDocumentLocator = function(locator) {
+				div.innerHTML += "setDocumentLocator [" + locator + "]<br/>";
+			};
+			
+			this.displayAtts = function(atts) {
+				for (i in atts) {
+					div.innerHTML += "[" + i + "] [" + atts[i] + "]<br/>";
+				}
+			};
+			
+			this.error = function(char,index,message) {
+				div.innerHTML += "invalid char : [" + char + "] at index : " + index + "<br/>";
+				div.innerHTML += "message is : [" + message + "]<br/>";
+			};
+			
+		}
+		
+		function start() {
+			div = document.getElementById("msg");
+			var eventHandler = new EventHandler(div);
+			var saxParser = new SAXParser(eventHandler);
+			saxParser.parse(xml);
+		}
+		
+		</script>
+		
+	</head>
+	
+	<body>
+		<div id="msg"></div>
+		<input type="button" onclick="start()"/>
+	
+	</body>
+</html>
