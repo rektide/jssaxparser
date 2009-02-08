@@ -344,7 +344,7 @@ function SAXParser(contentHandler) {
     this.scanAttributes = function(namespacesDeclared) {
         var atts = new Array();
         this.scanAttribute(atts, namespacesDeclared);
-        return atts;
+        return new Attributes(atts);
     };
     
     this.scanAttribute = function(atts, namespacesDeclared) {
@@ -362,7 +362,10 @@ function SAXParser(contentHandler) {
                     namespacesDeclared[""] = this.scanAttValue();
                     this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
                 } else {
-                    atts[attQName.qName] = this.scanAttValue();
+                    var namespaceURI = this.getNamespaceURI(attQName.prefix);
+                    var value = this.scanAttValue();
+                    var att = new Attribute(attQName, namespaceURI, value);
+                    atts.push(att);
                 }
                 this.scanAttribute(atts, namespacesDeclared);
             } else {
@@ -569,6 +572,116 @@ function qName(prefix, localName) {
     } else {
         this.qName = localName;
     }
+    
+    this.equals = function(qName) {
+        return this.qName == qName.qName;
+    }
+}
+
+
+/*
+ int 	getIndex(java.lang.String qName)
+          Look up the index of an attribute by XML qualified (prefixed) name.
+ int 	getIndex(java.lang.String uri, java.lang.String localName)
+          Look up the index of an attribute by Namespace name.
+ int 	getLength()
+          Return the number of attributes in the list.
+ java.lang.String 	getLocalName(int index)
+          Look up an attribute's local name by index.
+ java.lang.String 	getQName(int index)
+          Look up an attribute's XML qualified (prefixed) name by index.
+ java.lang.String 	getType(int index)
+          Look up an attribute's type by index.
+ java.lang.String 	getType(java.lang.String qName)
+          Look up an attribute's type by XML qualified (prefixed) name.
+ java.lang.String 	getType(java.lang.String uri, java.lang.String localName)
+          Look up an attribute's type by Namespace name.
+ java.lang.String 	getURI(int index)
+          Look up an attribute's Namespace URI by index.
+ java.lang.String 	getValue(int index)
+          Look up an attribute's value by index.
+ java.lang.String 	getValue(java.lang.String qName)
+          Look up an attribute's value by XML qualified (prefixed) name.
+ java.lang.String 	getValue(java.lang.String uri, java.lang.String localName)
+          Look up an attribute's value by Namespace name.
+ */
+function Attributes(attsArray) {
+    this.attsArray = attsArray;
+    
+    this.getIndex = function(arg1, arg2) {
+        if (arg2 == undefined) {
+            return this.getIndexByQname(arg1);
+        } else {
+            return this.getIndexByUri(arg1, arg2);
+        }
+    }
+    this.getIndexByQname = function(qName) {
+        for (var i in attsArray) {
+            if (attsArray[i].qName.equals(qName)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    this.getIndexByUri = function(uri, localName) {
+        for (var i in attsArray) {
+            if (attsArray[i].namespaceURI == uri && attsArray[i].qName.localName == localName) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    this.getLength = function() {
+        return attsArray.length;
+    }
+    this.getLocalName = function(index) {
+        return attsArray[index].qName.localName;
+    }
+    this.getQName = function(index) {
+        return attsArray[index].qName.qName;
+    }
+    //not supported
+    this.getType = function(arg1, arg2) {
+        return "CDATA";
+    }
+    this.getURI = function(index) {
+        return attsArray[index].namespaceURI;
+    }
+    this.getValue = function(arg1, arg2) {
+        if (arg2 == undefined) {
+            if (typeof arg1 == "string") {
+                return this.getValueByQName(arg1);
+            } else {
+                return this.getValueByIndex(arg1);
+            }
+        } else {
+            return this.getValueByUri(arg1, arg2);
+        }
+    }
+    this.getValueByIndex = function(index) {
+        return attsArray[index].value;
+    }
+    this.getValueByQName = function(qName) {
+        for (var i in attsArray) {
+            if (attsArray[i].qName.equals(qName)) {
+                return attsArray[i].value;
+            }
+        }
+    }
+    this.getValueByUri = function(uri, localName) {
+        for (var i in attsArray) {
+            if (attsArray[i].namespaceURI == uri && attsArray[i].qName.localName == localName) {
+                return attsArray[i].value;
+            }
+        }
+    }
+    
+}
+
+function Attribute(qName, namespaceURI, value) {
+    this.qName = qName;
+    this.namespaceURI = namespaceURI;
+    this.value = value;
 }
 
 function SAXException(message, char, index, exception) {

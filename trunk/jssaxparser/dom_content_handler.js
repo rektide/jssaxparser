@@ -35,73 +35,90 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
-function DummyContentHandler(div) {
-    
-    this.div = div;
-    
+function DomContentHandler() {
+    this.saxExceptions = new Array();
+
     this.startDocument = function() {
-        div.innerHTML += "startDocument<br/>";
+        this.document = createDocument();
     };
     
     this.startElement = function(namespaceURI, localName, qName, atts) {
-        div.innerHTML += "startElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
-        this.displayAtts(atts);
+        var element;
+        if (namespaceURI == '') {
+            element = this.document.createElement(localName);
+        } else {
+            element = this.document.createElementNS(namespaceURI, qName);
+        }
+        if (!this.currentElement) {
+            this.document.appendChild(element);
+        } else {
+            this.currentElement.appendChild(element);
+        }
+        this.currentElement = element;
+        this.addAtts(atts);
     };
     
     this.endElement = function(namespaceURI, localName, qName) {
-        div.innerHTML += "endElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
+        this.currentElement = this.currentElement.parentNode;
     };
     
     this.startPrefixMapping = function(prefix, uri) {
-        div.innerHTML += "startPrefixMapping [" + prefix + "] [" + uri + "]<br/>";
     };
     
     this.endPrefixMapping = function(prefix) {
-        div.innerHTML += "endPrefixMapping [" + prefix + "]<br/>";
     };
     
     this.processingInstruction = function(target, data) {
-        div.innerHTML += "processingInstruction [" + target + "] [" + data + "]<br/>";
     };
     
     this.ignorableWhitespace = function(ch, start, length) {
-        div.innerHTML += "ignorableWhitespace [" + ch + "] [" + start + "] [" + length + "]<br/>";
     };
     
     this.characters = function(ch, start, length) {
-        div.innerHTML += "characters [" + ch + "] [" + start + "] [" + length + "]<br/>";
+        var textNode = this.document.createTextNode(ch);
+        this.currentElement.appendChild(textNode);
     };
     
     this.skippedEntity = function(name) {
-        div.innerHTML += "skippedEntity [" + name + "]<br/>";
     };
     
     this.endDocument = function() {
-        div.innerHTML += "endDocument";
     };
     
-    this.displayAtts = function(atts) {
+    this.addAtts = function(atts) {
         for (var i = 0 ; i < atts.getLength() ; i++) {
-            div.innerHTML += "attribute [" + atts.getURI(i) + "] [" + atts.getLocalName(i) + "] [" + atts.getValue(i) + "]<br/>";
+            var namespaceURI = atts.getURI(i);
+            var value = atts.getValue(i);
+            if (namespaceURI == '') {
+                var localName = atts.getLocalName(i);
+                this.currentElement.setAttribute(localName, value);
+            } else {
+                var qName = atts.getQName(i);
+                this.currentElement.setAttributeNS(namespaceURI, qName, value);
+            }
         }
     };
     
     this.warning = function(saxException) {
-        this.serializeSaxException(saxException);
+        this.saxExceptions.push(saxException);
     };
     this.error = function(saxException) {
-        this.serializeSaxException(saxException);
+        this.saxExceptions.push(saxException);
     };
     this.fatalError = function(saxException) {
-        this.serializeSaxException(saxException);
-    };
-    
-    this.serializeSaxException = function(saxException) {
-        div.innerHTML += "invalid char : [" + saxException.char + "] at index : " + saxException.index + "<br/>";
-        div.innerHTML += "message is : [" + saxException.message + "]<br/>";
-        if (saxException.exception) {
-            div.innerHTML += "wrapped exception is : [" + this.serializeSaxException(saxException.exception) + "]<br/>";
-        }
+        throw saxException;
+    };    
+}
+
+function createDocument() {
+    // code for IE
+    if (window.ActiveXObject) {
+        var doc = new ActiveXObject("Microsoft.XMLDOM");
+        doc.async = "false";
     }
-    
+    // code for Mozilla, Firefox
+    else {
+        var doc = document.implementation.createDocument("", "", null);
+    }
+    return doc;
 }
