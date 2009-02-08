@@ -63,6 +63,11 @@ function DomContentHandler() {
     };
     
     this.startPrefixMapping = function(prefix, uri) {
+        /*
+        if (this.currentElement.setAttributeNS) {
+            this.currentElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, uri);
+        }
+        */
     };
     
     this.endPrefixMapping = function(prefix) {

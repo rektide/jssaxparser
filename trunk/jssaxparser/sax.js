@@ -60,10 +60,10 @@ function SAXParser(contentHandler) {
     
     
     this.parse = function(xml) {
-        this.index = -1;
-        this.char = '';
         this.xml = xml;
         this.length = xml.length;
+        this.index = 0;
+        this.char = this.xml.charAt(this.index);
         this.doctypeDeclared = false;
         this.state = this.STATE_XML_DECL;
         this.elementsStack = new Array();
@@ -88,8 +88,10 @@ function SAXParser(contentHandler) {
     };
     
     this.next = function() {
-        this.nextChar();
-        if (this.char == '<') {
+        this.skipWhiteSpaces();
+        if (this.char == '>') {
+            this.nextChar();
+        } else if (this.char == '<') {
             this.nextChar();
             this.scanLT();
         } else if (this.elementsStack.length > 0) {
@@ -208,7 +210,7 @@ function SAXParser(contentHandler) {
             }
         } else {
             var start = this.index;
-            var ch = this.nextRegExp(/[^<&][<&]/);
+            var ch = this.nextRegExp(/[<&]/);
             var length = this.index - start;
             this.contentHandler.characters(ch, start, length);
         }
@@ -226,6 +228,7 @@ function SAXParser(contentHandler) {
                 this.nextChar(true);
                 //must be '>'
                 if (this.char == '>') {
+                    this.nextChar(true);
                     return true;
                 } else {
                     this.fireError("end of comment not valid, must be --&gt;", this.FATAL);
@@ -401,8 +404,8 @@ function SAXParser(contentHandler) {
         if (this.xml.substr(this.index, 7) == '[CDATA[') {
             this.index += 7;
             this.nextRegExp(/]]>/);
-            //goes to final '>'
-            this.index += 2;
+            //goes after final '>'
+            this.index += 3;
             this.char = this.xml.charAt(this.index);
             return true;
         } else {
@@ -458,6 +461,7 @@ function SAXParser(contentHandler) {
             this.skipWhiteSpaces();
             if (this.char == '>') {
                 this.endMarkup(namespaceURI, qName);
+                this.nextChar(true);
                 return true;
             } else {
                 this.fireError("invalid ending markup, does not finish with &gt;", this.FATAL);
@@ -483,9 +487,8 @@ function SAXParser(contentHandler) {
     */
     this.nextChar = function(dontSkipWhiteSpace) {
         this.index++;
-        if (dontSkipWhiteSpace) {
-            this.char = this.xml.charAt(this.index);
-        } else {
+        this.char = this.xml.charAt(this.index);
+        if (!dontSkipWhiteSpace) {
             this.skipWhiteSpaces();
         }
         if (this.index >= this.length) {
@@ -494,13 +497,13 @@ function SAXParser(contentHandler) {
     };
     
     this.skipWhiteSpaces = function() {
-        var inc = this.xml.substr(this.index).search(/\S/);
-        if (inc == -1) {
-            throw new EndOfInputException();
-        } else {
-            this.index += inc;
+        while (/[\t\n\r ]/.test(this.char)) {
+            this.index++;
+            if (this.index >= this.length) {
+                throw new EndOfInputException();
+            }
+            this.char = this.xml.charAt(this.index);
         }
-        this.char = this.xml.charAt(this.index);
     };
     
     
@@ -530,7 +533,10 @@ function SAXParser(contentHandler) {
     
     
     this.nextGT = function() {
-        return this.nextRegExp(/>/);
+        var content = this.nextRegExp(/>/);
+        this.index++;
+        this.char = this.xml.charAt(this.index);
+        return content;
     };
     
     /*
@@ -544,12 +550,6 @@ function SAXParser(contentHandler) {
         this.char = this.xml.charAt(this.index);
         return content;
     };
-    
-    
-    this.isWhiteSpace = function() {
-        return (/[\t\n\r ]/.test(this.char));
-    };
-
 
     this.fireError = function(message, gravity) {
         var saxException = new SAXException(message, this.char, this.index);

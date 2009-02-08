@@ -1,0 +1,110 @@
+<html>
+  <head>
+    <script language="JavaScript" src="../jsunit/app/jsUnitCore.js"></script>
+    <script language="JavaScript" src="../jssaxparser/sax.js"></script>
+    <script language="JavaScript" src="../jssaxparser/dom_content_handler.js"></script>
+    <script language="JavaScript" src="../examples/xml_samples.js"></script>
+    <script language="JavaScript">
+    
+    var contentHandler;
+    var saxParser;
+    
+    function setUp() {
+        contentHandler = new DomContentHandler();
+		saxParser = new SAXParser(contentHandler);
+    }
+    
+    function testParse_xml1() {
+        var xml = loadXml();
+        parse(xml);
+    }
+    
+    function testParse_xml2() {
+        var xml = loadXml2();
+        parse(xml);
+    }
+    
+    function testParse_xml3() {
+        var xml = loadXml3();
+        parse(xml);
+    }
+    
+    function testParse_relaxng() {
+        var xml = loadRelaxng();
+        parse(xml);
+    }
+    
+    function testParse_relaxng2() {
+        var xml = loadRelaxng2();
+        parse(xml);
+    }
+    
+    function testParse_relaxng3() {
+        var xml = loadRelaxng3();
+        parse(xml);
+    }
+    
+    function parse(xml) {
+        saxParser.parse(xml);
+        compareXML(xml, contentHandler.document);
+    }
+    
+    function compareXML(stringExpected, domResult) {
+        stringExpected = innerXML(createDocumentFromText(stringExpected));
+        var stringResult = innerXML(domResult);
+        stringExpected = stringExpected.replace(/<\?xml version="1.0" encoding="UTF-8"\?>\n/, "");
+        stringResult = normalizeWhitespaces(stringResult);
+        stringExpected = normalizeWhitespaces(stringExpected);
+        assertEquals(stringExpected, stringResult);
+    }
+    
+    function innerXML(node) {
+        if (node.innerXML) {
+            return node.innerXML;
+        } else {
+            if (node.xml) {
+                return node.xml;
+            } else {
+                if (typeof XMLSerializer != "undefined") {
+                    var serializer = new XMLSerializer();
+                    return serializer.serializeToString(node);
+                }
+            }
+        }
+    }
+    /*
+            comes from http://www.w3schools.com/dom/tryit.asp?filename=note_parsertest2
+           */
+    function createDocumentFromText(text) {
+        // code for IE
+        if (window.ActiveXObject) {
+            var doc=new ActiveXObject("Microsoft.XMLDOM");
+            doc.async="false";
+            doc.loadXML(text);
+        }
+        // code for Mozilla, Firefox, Opera, etc.
+        else {
+            var parser=new DOMParser();
+            var doc=parser.parseFromString(text,"text/xml");
+        }
+        return doc;
+    }
+    
+    function normalizeWhitespaces(txt) {
+        // Use ECMA-262 Edition 3 String and RegExp features
+        txt = txt.replace(/[\t\n\r]/g, "");
+        txt = txt.replace(/> +</g, "><");
+        txt = txt.replace(/ +/g, " ");
+        if (txt.charAt(0) == " ")
+            txt = txt.substring(1, txt.length);
+        if (txt.charAt(txt.length - 1) == " ")
+            txt = txt.substring(0, txt.length - 1);
+        return txt;
+    }
+    
+    </script>
+  </head>
+  <body>
+    This is a Test Page for sax.js
+  </body>
+</html>
