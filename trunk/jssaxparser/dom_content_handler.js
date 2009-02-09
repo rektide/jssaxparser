@@ -1,5 +1,4 @@
 /*
-
 Copyright or © or Copr. Nicolas Debeissat
 
 nicolas.debeissat@gmail.com (http://debeissat.nicolas.free.fr/)
