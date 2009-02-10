@@ -46,32 +46,38 @@
     
     function parse(xml) {
         saxParser.parse(xml);
-        compareXML(xml, contentHandler.document);
+        assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
+    }
+	
+	function assertXmlEquals(expected, result) {
+		assertEquals("different node names", expected.nodeName, result.nodeName);
+		var attsExpected = expected.attributes;
+		var attsResult = result.attributes;
+		assertEquals("different number of attributes on node " + result.nodeName, attsExpected.length, attsResult.length);
+		assertAttributesEquals(attsExpected, attsResult)
+		var childNodesExpected = expected.childNodes;
+		var childNodesResult = result.childNodes;
+		assertEquals("different number of child nodes on node " + result.nodeName, attsExpected.length, attsResult.length);
+		for (var i = 0 ; i < childNodesExpected.length ; i++) {
+			assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
+		}
     }
     
-    function compareXML(stringExpected, domResult) {
-        stringExpected = innerXML(createDocumentFromText(stringExpected));
-        var stringResult = innerXML(domResult);
-        stringExpected = stringExpected.replace(/<\?xml version="1.0" encoding="UTF-8"\?>\n/, "");
-        stringResult = normalizeWhitespaces(stringResult);
-        stringExpected = normalizeWhitespaces(stringExpected);
-        assertEquals(stringExpected, stringResult);
-    }
-    
-    function innerXML(node) {
-        if (node.innerXML) {
-            return node.innerXML;
-        } else {
-            if (node.xml) {
-                return node.xml;
-            } else {
-                if (typeof XMLSerializer != "undefined") {
-                    var serializer = new XMLSerializer();
-                    return serializer.serializeToString(node);
-                }
-            }
-        }
-    }
+	function assertAttributesEquals(attsExpected, attsResult) {
+		for (var i = 0 ; i < attsExpected.length ; i++) {
+			var attExpected = attsExpected.item(i);
+			var attFound = false;
+			for (var i = 0 ; i < attsResult.length && !attFound; i++) {
+				var attResult = attsResult.item(i);
+				if (attResult.nodeName == attExpected.nodeName) {
+					attFound = true;
+					assertEquals("invalid value of attribute " + attResult.nodeName, attExpected.value, attResult.value);
+				}
+			}
+			assertTrue("missing attribute " + attExpected.nodeName, attFound);
+		}
+	}
+	
     /*
             comes from http://www.w3schools.com/dom/tryit.asp?filename=note_parsertest2
            */
@@ -88,18 +94,6 @@
             var doc=parser.parseFromString(text,"text/xml");
         }
         return doc;
-    }
-    
-    function normalizeWhitespaces(txt) {
-        // Use ECMA-262 Edition 3 String and RegExp features
-        txt = txt.replace(/[\t\n\r]/g, "");
-        txt = txt.replace(/> +</g, "><");
-        txt = txt.replace(/ +/g, " ");
-        if (txt.charAt(0) == " ")
-            txt = txt.substring(1, txt.length);
-        if (txt.charAt(txt.length - 1) == " ")
-            txt = txt.substring(0, txt.length - 1);
-        return txt;
     }
     
     </script>
