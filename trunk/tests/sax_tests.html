@@ -4,6 +4,7 @@
     <script language="JavaScript" src="../jssaxparser/sax.js"></script>
     <script language="JavaScript" src="../jssaxparser/dom_content_handler.js"></script>
     <script language="JavaScript" src="../examples/xml_samples.js"></script>
+	<script language="JavaScript" src="manageWhiteSpace.js"></script>
     <script language="JavaScript">
     
     var contentHandler;
@@ -46,20 +47,56 @@
     
     function parse(xml) {
         saxParser.parse(xml);
-        assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
+        assertXmlEquals(createDocumentFromText(xml).documentElement, contentHandler.document.documentElement);
     }
 	
 	function assertXmlEquals(expected, result) {
-		assertEquals("different node names", expected.nodeName, result.nodeName);
-		var attsExpected = expected.attributes;
-		var attsResult = result.attributes;
-		assertEquals("different number of attributes on node " + result.nodeName, attsExpected.length, attsResult.length);
-		assertAttributesEquals(attsExpected, attsResult)
-		var childNodesExpected = expected.childNodes;
-		var childNodesResult = result.childNodes;
-		assertEquals("different number of child nodes on node " + result.nodeName, attsExpected.length, attsResult.length);
-		for (var i = 0 ; i < childNodesExpected.length ; i++) {
-			assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
+		assertEquals("different nodes types", expected.nodeType, result.nodeType);
+		//text nodes
+		if (expected.nodeType == 3) {
+			assertEquals("different text content", data_of(expected), data_of(result));
+		} else if (expected.nodeType == 1) {
+			assertEquals("different node names", expected.nodeName, result.nodeName);
+			var attsExpected = expected.attributes;
+			var attsResult = result.attributes;
+			//remove namespaces declaration from attributes, not supported
+			for (var i = 0 ; i < attsExpected.length ; i++) {
+				var attExpected = attsExpected.item(i);
+				if (/^xmlns/.test(attExpected.nodeName)) {
+					expected.removeAttributeNode(attExpected);
+					i--;
+				}
+			}
+			for (var i = 0 ; i < attsResult.length ; i++) {
+				var attResult = attsResult.item(i);
+				if (/^xmlns/.test(attResult.nodeName)) {
+					result.removeAttributeNode(attResult);
+					i--;
+				}
+			}
+			assertEquals("different number of attributes on node " + result.nodeName, attsExpected.length, attsResult.length);
+			assertAttributesEquals(attsExpected, attsResult);
+			var childNodesExpected = expected.childNodes;
+			var childNodesResult = result.childNodes;
+			//remove ignorables child nodes
+			for (var i = 0 ; i < childNodesExpected.length ; i++) {
+				var childNodeExpected = childNodesExpected.item(i);
+				if (is_ignorable(childNodeExpected)) {
+					expected.removeChild(childNodeExpected);
+					i--;
+				}
+			}
+			for (var i = 0 ; i < childNodesResult.length ; i++) {
+				var childNodeResult = childNodesResult.item(i);
+				if (is_ignorable(childNodeResult)) {
+					result.removeChild(childNodeResult);
+					i--;
+				}
+			}
+			assertEquals("different number of children nodes under " + result.nodeName, childNodesExpected.length, childNodesResult.length);
+			for (var i = 0 ; i < childNodesExpected.length ; i++) {
+				assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
+			}
 		}
     }
     
