@@ -62,7 +62,7 @@ function SAXParser(contentHandler) {
         this.xml = xml;
         this.length = xml.length;
         this.index = 0;
-        this.char = this.xml.charAt(this.index);
+        this.ch = this.xml.charAt(this.index);
         this.doctypeDeclared = false;
         this.state = this.STATE_XML_DECL;
         this.elementsStack = new Array();
@@ -90,9 +90,9 @@ function SAXParser(contentHandler) {
     
     this.next = function() {
         this.skipWhiteSpaces();
-        if (this.char == '>') {
+        if (this.ch == '>') {
             this.nextChar();
-        } else if (this.char == '<') {
+        } else if (this.ch == '<') {
             this.nextChar();
             this.scanLT();
         } else if (this.elementsStack.length > 0) {
@@ -134,7 +134,7 @@ function SAXParser(contentHandler) {
                 this.state = this.STATE_PROLOG;
             }
         } else if (this.state == this.STATE_PROLOG) {
-            if (this.char == '!') {
+            if (this.ch == '!') {
                 this.nextChar(true);
                 if (!this.scanComment()) {
                     if (this.doctypeDeclared) {
@@ -146,7 +146,7 @@ function SAXParser(contentHandler) {
                         this.fireError("neither comment nor doctype declaration after &lt;!", this.FATAL);
                     }
                 }
-            } else if (this.char == '?') {
+            } else if (this.ch == '?') {
                 this.nextChar(true);
                 this.scanPI();
             } else {
@@ -161,17 +161,17 @@ function SAXParser(contentHandler) {
                 this.state = this.STATE_TRAILING_MISC;
             }
         } else if (this.state == this.STATE_CONTENT) {
-            if (this.char == '!') {
+            if (this.ch == '!') {
                 this.nextChar();
                 if (!this.scanComment()) {
                     if (!this.scanCData()) {
                         this.fireError("neither comment nor CDATA after &lt;!", this.FATAL);
                     }
                 }
-            } else if (this.char == '?') {
+            } else if (this.ch == '?') {
                 this.nextChar();
                 this.scanPI();
-            } else if (this.char == '/') {
+            } else if (this.ch == '/') {
                 this.nextChar();
                 if (this.scanEndingTag()) {
                     if (this.elementsStack.length == 0) {
@@ -184,12 +184,12 @@ function SAXParser(contentHandler) {
                 }
             }
         } else if (this.state == this.STATE_TRAILING_MISC) {
-            if (this.char == '!') {
+            if (this.ch == '!') {
                 this.nextChar();
                 if (!this.scanComment()) {
                     this.fireError("end of document, only comment or processing instruction are allowed", this.FATAL);
                 }
-            } else if (this.char == '?') {
+            } else if (this.ch == '?') {
                 this.nextChar();
                 if (!this.scanPI()) {
                     this.fireError("end of document, only comment or processing instruction are allowed", this.FATAL);
@@ -201,9 +201,9 @@ function SAXParser(contentHandler) {
     
     // 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
     this.scanText = function() {
-        if (this.char == '&') {
+        if (this.ch == '&') {
             this.nextChar();
-            if (this.char == '#') {
+            if (this.ch == '#') {
                 this.nextChar();
                 this.scanCharRef();
             } else {
@@ -220,15 +220,15 @@ function SAXParser(contentHandler) {
     
     // [15] Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
     this.scanComment = function() {
-        if (this.char == '-') {
+        if (this.ch == '-') {
             this.nextChar();
-            if (this.char == '-') {
+            if (this.ch == '-') {
                 this.nextRegExp(/--/);
                 //goes to second '-'
                 this.nextChar(true);
                 this.nextChar(true);
                 //must be '>'
-                if (this.char == '>') {
+                if (this.ch == '>') {
                     this.nextChar(true);
                     return true;
                 } else {
@@ -321,9 +321,9 @@ function SAXParser(contentHandler) {
         var namespaceURI = this.getNamespaceURI(qName.prefix);
         this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
         this.skipWhiteSpaces();
-        if (this.char == '/') {
+        if (this.ch == '/') {
             this.nextChar(true);
-            if (this.char == '>') {
+            if (this.ch == '>') {
                 this.elementsStack.pop();
                 this.endMarkup(namespaceURI, qName);
             } else {
@@ -353,10 +353,10 @@ function SAXParser(contentHandler) {
     
     this.scanAttribute = function(atts, namespacesDeclared) {
         this.skipWhiteSpaces();
-        if (this.char != '>' && this.char != '/') {
+        if (this.ch != '>' && this.ch != '/') {
             var attQName = this.getQName();
             this.skipWhiteSpaces();
-            if (this.char == '=') {
+            if (this.ch == '=') {
                 this.nextChar();
                 // xmlns:bch="http://benchmark"
                 if (attQName.prefix == 'xmlns') {
@@ -380,7 +380,7 @@ function SAXParser(contentHandler) {
     
     // [10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
     this.scanAttValue = function() {
-        if (this.char == '"' || this.char == "'") {
+        if (this.ch == '"' || this.ch == "'") {
             try {
                 var attValue = this.quoteContent();
             //adding a message in that case
@@ -407,7 +407,7 @@ function SAXParser(contentHandler) {
             this.nextRegExp(/]]>/);
             //goes after final '>'
             this.index += 3;
-            this.char = this.xml.charAt(this.index);
+            this.ch = this.xml.charAt(this.index);
             return true;
         } else {
             return false;
@@ -417,18 +417,18 @@ function SAXParser(contentHandler) {
     // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
     this.scanCharRef = function() {
         var oldIndex = this.index;
-        if (this.char == 'x') {
+        if (this.ch == 'x') {
             this.nextChar(true);
-            while (this.char != ';') {
-                if (!/[0-9a-fA-F]/.test(this.char)) {
+            while (this.ch != ';') {
+                if (!/[0-9a-fA-F]/.test(this.ch)) {
                     this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", this.ERROR);
                 }
                 this.nextChar(true);
             }
         } else {
             this.nextChar(true);
-            while (this.char != ';') {
-                if (!/\d/.test(this.char)) {
+            while (this.ch != ';') {
+                if (!/\d/.test(this.ch)) {
                     this.fireError("invalid char reference, must contain numeric characters only", this.ERROR);
                 }
                 this.nextChar(true);
@@ -460,7 +460,7 @@ function SAXParser(contentHandler) {
         var namespaceURI = this.getNamespaceURI(qName.prefix);
         if (qName.qName == this.elementsStack.pop()) {
             this.skipWhiteSpaces();
-            if (this.char == '>') {
+            if (this.ch == '>') {
                 this.endMarkup(namespaceURI, qName);
                 this.nextChar(true);
                 return true;
@@ -488,7 +488,7 @@ function SAXParser(contentHandler) {
     */
     this.nextChar = function(dontSkipWhiteSpace) {
         this.index++;
-        this.char = this.xml.charAt(this.index);
+        this.ch = this.xml.charAt(this.index);
         if (!dontSkipWhiteSpace) {
             this.skipWhiteSpaces();
         }
@@ -498,12 +498,12 @@ function SAXParser(contentHandler) {
     };
     
     this.skipWhiteSpaces = function() {
-        while (/[\t\n\r ]/.test(this.char)) {
+        while (/[\t\n\r ]/.test(this.ch)) {
             this.index++;
             if (this.index >= this.length) {
                 throw new EndOfInputException();
             }
-            this.char = this.xml.charAt(this.index);
+            this.ch = this.xml.charAt(this.index);
         }
     };
     
@@ -519,7 +519,7 @@ function SAXParser(contentHandler) {
             throw new EndOfInputException();
         } else {
             this.index += inc;
-            this.char = this.xml.charAt(this.index);
+            this.ch = this.xml.charAt(this.index);
             return this.xml.substring(oldIndex, this.index);
         }
     };
@@ -536,7 +536,7 @@ function SAXParser(contentHandler) {
     this.nextGT = function() {
         var content = this.nextRegExp(/>/);
         this.index++;
-        this.char = this.xml.charAt(this.index);
+        this.ch = this.xml.charAt(this.index);
         return content;
     };
     
@@ -548,12 +548,12 @@ function SAXParser(contentHandler) {
         this.index++;
         var content = this.nextRegExp(/["']/);
         this.index++;
-        this.char = this.xml.charAt(this.index);
+        this.ch = this.xml.charAt(this.index);
         return content;
     };
 
     this.fireError = function(message, gravity) {
-        var saxException = new SAXException(message, this.char, this.index);
+        var saxException = new SAXException(message, this.ch, this.index);
         if (gravity == this.WARNING) {
             this.contentHandler.warning(saxException);
         } else if (gravity == this.ERROR) {
@@ -617,36 +617,36 @@ function sax_Attributes(attsArray) {
         }
     }
     this.getIndexByQname = function(qName) {
-        for (var i in attsArray) {
-            if (attsArray[i].qName.equals(qName)) {
+        for (var i in this.attsArray) {
+            if (this.attsArray[i].qName.equals(qName)) {
                 return i;
             }
         }
         return -1;
     }
     this.getIndexByUri = function(uri, localName) {
-        for (var i in attsArray) {
-            if (attsArray[i].namespaceURI == uri && attsArray[i].qName.localName == localName) {
+        for (var i in this.attsArray) {
+            if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
                 return i;
             }
         }
         return -1;
     }
     this.getLength = function() {
-        return attsArray.length;
+        return this.attsArray.length;
     }
     this.getLocalName = function(index) {
-        return attsArray[index].qName.localName;
+        return this.attsArray[index].qName.localName;
     }
     this.getQName = function(index) {
-        return attsArray[index].qName.qName;
+        return this.attsArray[index].qName.qName;
     }
     //not supported
     this.getType = function(arg1, arg2) {
         return "CDATA";
     }
     this.getURI = function(index) {
-        return attsArray[index].namespaceURI;
+        return this.attsArray[index].namespaceURI;
     }
     this.getValue = function(arg1, arg2) {
         if (arg2 == undefined) {
@@ -660,19 +660,19 @@ function sax_Attributes(attsArray) {
         }
     }
     this.getValueByIndex = function(index) {
-        return attsArray[index].value;
+        return this.attsArray[index].value;
     }
     this.getValueByQName = function(qName) {
-        for (var i in attsArray) {
-            if (attsArray[i].qName.equals(qName)) {
-                return attsArray[i].value;
+        for (var i in this.attsArray) {
+            if (this.attsArray[i].qName.equals(qName)) {
+                return this.attsArray[i].value;
             }
         }
     }
     this.getValueByUri = function(uri, localName) {
-        for (var i in attsArray) {
-            if (attsArray[i].namespaceURI == uri && attsArray[i].qName.localName == localName) {
-                return attsArray[i].value;
+        for (var i in this.attsArray) {
+            if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
+                return this.attsArray[i].value;
             }
         }
     }
@@ -685,9 +685,9 @@ function sax_Attribute(qName, namespaceURI, value) {
     this.value = value;
 }
 
-function SAXException(message, char, index, exception) {
+function SAXException(message, ch, index, exception) {
     this.message = message;
-    this.char = char;
+    this.ch = ch;
     this.index = index;
     this.exception = exception;
 }

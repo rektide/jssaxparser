@@ -96,7 +96,7 @@ function DummyContentHandler(div) {
     };
     
     this.serializeSaxException = function(saxException) {
-        div.innerHTML += "invalid char : [" + saxException.char + "] at index : " + saxException.index + "<br/>";
+        div.innerHTML += "invalid char : [" + saxException.ch + "] at index : " + saxException.index + "<br/>";
         div.innerHTML += "message is : [" + saxException.message + "]<br/>";
         if (saxException.exception) {
             div.innerHTML += "wrapped exception is : [" + this.serializeSaxException(saxException.exception) + "]<br/>";
