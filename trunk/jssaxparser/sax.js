@@ -39,6 +39,9 @@ function SAXParser(contentHandler) {
     this.index = -1;
     this.doctypeDeclared = false;
 
+    this.nameStartChar = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff";
+// The last two ranges are for surrogates that comprise #x10000-#xEFFFF
+    this.nameEndChar = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 
     /** Scanner states  */
     this.STATE_XML_DECL                  =  0;
@@ -90,9 +93,9 @@ function SAXParser(contentHandler) {
     
     this.next = function() {
         this.skipWhiteSpaces();
-        if (this.ch == '>') {
+        if (this.ch == ">") {
             this.nextChar();
-        } else if (this.ch == '<') {
+        } else if (this.ch == "<") {
             this.nextChar();
             this.scanLT();
         } else if (this.elementsStack.length > 0) {
@@ -134,7 +137,7 @@ function SAXParser(contentHandler) {
                 this.state = this.STATE_PROLOG;
             }
         } else if (this.state == this.STATE_PROLOG) {
-            if (this.ch == '!') {
+            if (this.ch == "!") {
                 this.nextChar(true);
                 if (!this.scanComment()) {
                     if (this.doctypeDeclared) {
@@ -146,7 +149,7 @@ function SAXParser(contentHandler) {
                         this.fireError("neither comment nor doctype declaration after &lt;!", this.FATAL);
                     }
                 }
-            } else if (this.ch == '?') {
+            } else if (this.ch == "?") {
                 this.nextChar(true);
                 this.scanPI();
             } else {
@@ -161,17 +164,17 @@ function SAXParser(contentHandler) {
                 this.state = this.STATE_TRAILING_MISC;
             }
         } else if (this.state == this.STATE_CONTENT) {
-            if (this.ch == '!') {
+            if (this.ch == "!") {
                 this.nextChar();
                 if (!this.scanComment()) {
                     if (!this.scanCData()) {
                         this.fireError("neither comment nor CDATA after &lt;!", this.FATAL);
                     }
                 }
-            } else if (this.ch == '?') {
+            } else if (this.ch == "?") {
                 this.nextChar();
                 this.scanPI();
-            } else if (this.ch == '/') {
+            } else if (this.ch == "/") {
                 this.nextChar();
                 if (this.scanEndingTag()) {
                     if (this.elementsStack.length == 0) {
@@ -184,12 +187,12 @@ function SAXParser(contentHandler) {
                 }
             }
         } else if (this.state == this.STATE_TRAILING_MISC) {
-            if (this.ch == '!') {
+            if (this.ch == "!") {
                 this.nextChar();
                 if (!this.scanComment()) {
                     this.fireError("end of document, only comment or processing instruction are allowed", this.FATAL);
                 }
-            } else if (this.ch == '?') {
+            } else if (this.ch == "?") {
                 this.nextChar();
                 if (!this.scanPI()) {
                     this.fireError("end of document, only comment or processing instruction are allowed", this.FATAL);
@@ -201,9 +204,9 @@ function SAXParser(contentHandler) {
     
     // 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
     this.scanText = function() {
-        if (this.ch == '&') {
+        if (this.ch == "&") {
             this.nextChar();
-            if (this.ch == '#') {
+            if (this.ch == "#") {
                 this.nextChar();
                 this.scanCharRef();
             } else {
@@ -220,15 +223,15 @@ function SAXParser(contentHandler) {
     
     // [15] Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
     this.scanComment = function() {
-        if (this.ch == '-') {
+        if (this.ch == "-") {
             this.nextChar();
-            if (this.ch == '-') {
+            if (this.ch == "-") {
                 this.nextRegExp(/--/);
                 //goes to second '-'
                 this.nextChar(true);
                 this.nextChar(true);
                 //must be '>'
-                if (this.ch == '>') {
+                if (this.ch == ">") {
                     this.nextChar(true);
                     return true;
                 } else {
@@ -253,7 +256,7 @@ function SAXParser(contentHandler) {
     //
     // [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
     this.scanXMLDeclOrTextDecl = function() {
-        if (this.xml.substr(this.index, 5) == '?xml ') {
+        if (this.xml.substr(this.index, 5) == "?xml ") {
             this.nextGT();
             return true;
         } else {
@@ -274,7 +277,7 @@ function SAXParser(contentHandler) {
     // [28] doctypedecl ::= '<!DOCTYPE' S Name (S ExternalID)? S?
     //                      ('[' (markupdecl | PEReference | S)* ']' S?)? '>'
     this.scanDoctypeDecl = function() {
-        if (this.xml.substr(this.index, 7) == 'DOCTYPE') {
+        if (this.xml.substr(this.index, 7) == "DOCTYPE") {
             this.nextGT();
             return true;
         } else {
@@ -306,8 +309,8 @@ function SAXParser(contentHandler) {
         var name = this.nextName();
         var prefix = "";
         var localName = name;
-        if (name.indexOf(':') != -1) {
-            var splitResult = name.split(':');
+        if (name.indexOf(":") != -1) {
+            var splitResult = name.split(":");
             prefix = splitResult[0];
             localName = splitResult[1];
         }
@@ -321,9 +324,9 @@ function SAXParser(contentHandler) {
         var namespaceURI = this.getNamespaceURI(qName.prefix);
         this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
         this.skipWhiteSpaces();
-        if (this.ch == '/') {
+        if (this.ch == "/") {
             this.nextChar(true);
-            if (this.ch == '>') {
+            if (this.ch == ">") {
                 this.elementsStack.pop();
                 this.endMarkup(namespaceURI, qName);
             } else {
@@ -339,7 +342,7 @@ function SAXParser(contentHandler) {
                 return namespaceURI;
             }
         }
-        if (prefix == '') {
+        if (prefix == "") {
             return "";
         }
         this.fireError("prefix " + prefix + " not known in namespaces map", this.FATAL);
@@ -353,16 +356,16 @@ function SAXParser(contentHandler) {
     
     this.scanAttribute = function(atts, namespacesDeclared) {
         this.skipWhiteSpaces();
-        if (this.ch != '>' && this.ch != '/') {
+        if (this.ch != ">" && this.ch != "/") {
             var attQName = this.getQName();
             this.skipWhiteSpaces();
-            if (this.ch == '=') {
+            if (this.ch == "=") {
                 this.nextChar();
                 // xmlns:bch="http://benchmark"
-                if (attQName.prefix == 'xmlns') {
+                if (attQName.prefix == "xmlns") {
                     namespacesDeclared[attQName.localName] = this.scanAttValue();
                     this.contentHandler.startPrefixMapping(attQName.localName, namespacesDeclared[attQName.localName]);
-                } else if (attQName.qName == 'xmlns') {
+                } else if (attQName.qName == "xmlns") {
                     namespacesDeclared[""] = this.scanAttValue();
                     this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
                 } else {
@@ -402,7 +405,7 @@ function SAXParser(contentHandler) {
     // [20]   	CData	   ::=   	(Char* - (Char* ']]>' Char*))
     // [21]   	CDEnd	   ::=   	']]>'
     this.scanCData = function() {
-        if (this.xml.substr(this.index, 7) == '[CDATA[') {
+        if (this.xml.substr(this.index, 7) == "[CDATA[") {
             this.index += 7;
             this.nextRegExp(/]]>/);
             //goes after final '>'
@@ -417,9 +420,9 @@ function SAXParser(contentHandler) {
     // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
     this.scanCharRef = function() {
         var oldIndex = this.index;
-        if (this.ch == 'x') {
+        if (this.ch == "x") {
             this.nextChar(true);
-            while (this.ch != ';') {
+            while (this.ch != ";") {
                 if (!/[0-9a-fA-F]/.test(this.ch)) {
                     this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", this.ERROR);
                 }
@@ -427,7 +430,7 @@ function SAXParser(contentHandler) {
             }
         } else {
             this.nextChar(true);
-            while (this.ch != ';') {
+            while (this.ch != ";") {
                 if (!/\d/.test(this.ch)) {
                     this.fireError("invalid char reference, must contain numeric characters only", this.ERROR);
                 }
@@ -460,7 +463,7 @@ function SAXParser(contentHandler) {
         var namespaceURI = this.getNamespaceURI(qName.prefix);
         if (qName.qName == this.elementsStack.pop()) {
             this.skipWhiteSpaces();
-            if (this.ch == '>') {
+            if (this.ch == ">") {
                 this.endMarkup(namespaceURI, qName);
                 this.nextChar(true);
                 return true;
@@ -529,7 +532,7 @@ function SAXParser(contentHandler) {
     [5]   	Name	   ::=   	(Letter | '_' | ':') (NameChar)*
     */
     this.nextName = function() {
-        return this.nextRegExp(/[^\w\.\-_:]/);
+        return this.nextRegExp(new RegExp("[^" + nameStartChar + nameEndChar + "]"));
     };
     
     
@@ -568,7 +571,7 @@ function SAXParser(contentHandler) {
 function sax_QName(prefix, localName) {
     this.prefix = prefix;
     this.localName = localName;
-    if (prefix != '') {
+    if (prefix != "") {
         this.qName = prefix + ":" + localName;
     } else {
         this.qName = localName;
