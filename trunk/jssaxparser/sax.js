@@ -532,7 +532,8 @@ function SAXParser(contentHandler) {
     [5]   	Name	   ::=   	(Letter | '_' | ':') (NameChar)*
     */
     this.nextName = function() {
-        return this.nextRegExp(new RegExp("[^" + nameStartChar + nameEndChar + "]"));
+        var reg = new RegExp("[^" + this.nameStartChar + this.nameEndChar + "]");
+        return this.nextRegExp(reg);
     };
     
     
