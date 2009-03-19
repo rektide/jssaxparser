@@ -69,8 +69,8 @@ SAXParser.prototype.parse = function(xml) {
     this.ch = this.xml.charAt(this.index);
     this.doctypeDeclared = false;
     this.state = this.STATE_XML_DECL;
-    this.elementsStack = new Array();
-    this.namespaces = new Array();
+    this.elementsStack = [];
+    this.namespaces = [];
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
