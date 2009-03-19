@@ -35,84 +35,73 @@ knowledge of the CeCILL license and that you accept its terms.
 */
 
 function DomContentHandler() {
-    this.saxExceptions = new Array();
-
-    this.startDocument = function() {
-        this.document = createDocument();
-    };
-    
-    this.startElement = function(namespaceURI, localName, qName, atts) {
-        var element;
-        if (namespaceURI == '') {
-            element = this.document.createElement(localName);
-        } else {
-            element = this.document.createElementNS(namespaceURI, qName);
-        }
-        if (!this.currentElement) {
-            this.document.appendChild(element);
-        } else {
-            this.currentElement.appendChild(element);
-        }
-        this.currentElement = element;
-        this.addAtts(atts);
-    };
-    
-    this.endElement = function(namespaceURI, localName, qName) {
-        this.currentElement = this.currentElement.parentNode;
-    };
-    
-    this.startPrefixMapping = function(prefix, uri) {
-        /*
-        if (this.currentElement.setAttributeNS) {
-            this.currentElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, uri);
-        }
-        */
-    };
-    
-    this.endPrefixMapping = function(prefix) {
-    };
-    
-    this.processingInstruction = function(target, data) {
-    };
-    
-    this.ignorableWhitespace = function(ch, start, length) {
-    };
-    
-    this.characters = function(ch, start, length) {
-        var textNode = this.document.createTextNode(ch);
-        this.currentElement.appendChild(textNode);
-    };
-    
-    this.skippedEntity = function(name) {
-    };
-    
-    this.endDocument = function() {
-    };
-    
-    this.addAtts = function(atts) {
-        for (var i = 0 ; i < atts.getLength() ; i++) {
-            var namespaceURI = atts.getURI(i);
-            var value = atts.getValue(i);
-            if (namespaceURI == '') {
-                var localName = atts.getLocalName(i);
-                this.currentElement.setAttribute(localName, value);
-            } else {
-                var qName = atts.getQName(i);
-                this.currentElement.setAttributeNS(namespaceURI, qName, value);
-            }
-        }
-    };
-    
-    this.warning = function(saxException) {
-        this.saxExceptions.push(saxException);
-    };
-    this.error = function(saxException) {
-        this.saxExceptions.push(saxException);
-    };
-    this.fatalError = function(saxException) {
-        throw saxException;
-    };    
+    this.saxExceptions = [];
 }
+DomContentHandler.prototype.startDocument = function() {
+    this.document = createDocument();
+};
+DomContentHandler.prototype.startElement = function(namespaceURI, localName, qName, atts) {
+    var element;
+    if (namespaceURI == '') {
+        element = this.document.createElement(localName);
+    } else {
+        element = this.document.createElementNS(namespaceURI, qName);
+    }
+    if (!this.currentElement) {
+        this.document.appendChild(element);
+    } else {
+        this.currentElement.appendChild(element);
+    }
+    this.currentElement = element;
+    this.addAtts(atts);
+};
+DomContentHandler.prototype.endElement = function(namespaceURI, localName, qName) {
+    this.currentElement = this.currentElement.parentNode;
+};
+DomContentHandler.prototype.startPrefixMapping = function(prefix, uri) {
+    /*
+    if (this.currentElement.setAttributeNS) {
+        this.currentElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, uri);
+    }
+    */
+};
+DomContentHandler.prototype.endPrefixMapping = function(prefix) {
+};
+DomContentHandler.prototype.processingInstruction = function(target, data) {
+};
+DomContentHandler.prototype.ignorableWhitespace = function(ch, start, length) {
+};
+DomContentHandler.prototype.characters = function(ch, start, length) {
+    var textNode = this.document.createTextNode(ch);
+    this.currentElement.appendChild(textNode);
+};
+DomContentHandler.prototype.skippedEntity = function(name) {
+};
+DomContentHandler.prototype.endDocument = function() {
+};
+DomContentHandler.prototype.addAtts = function(atts) {
+    for (var i = 0 ; i < atts.getLength() ; i++) {
+        var namespaceURI = atts.getURI(i);
+        var value = atts.getValue(i);
+        if (namespaceURI == '') {
+            var localName = atts.getLocalName(i);
+            this.currentElement.setAttribute(localName, value);
+        } else {
+            var qName = atts.getQName(i);
+            this.currentElement.setAttributeNS(namespaceURI, qName, value);
+        }
+    }
+};
+DomContentHandler.prototype.warning = function(saxException) {
+    this.saxExceptions.push(saxException);
+};
+DomContentHandler.prototype.error = function(saxException) {
+    this.saxExceptions.push(saxException);
+};
+DomContentHandler.prototype.fatalError = function(saxException) {
+    throw saxException;
+};
+
 
 function createDocument() {
     // code for IE

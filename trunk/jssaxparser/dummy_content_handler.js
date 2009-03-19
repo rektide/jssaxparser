@@ -38,69 +38,68 @@ function DummyContentHandler(div) {
     
     this.div = div;
     
-    this.startDocument = function() {
-        div.innerHTML += "startDocument<br/>";
-    };
-    
-    this.startElement = function(namespaceURI, localName, qName, atts) {
-        div.innerHTML += "startElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
-        this.displayAtts(atts);
-    };
-    
-    this.endElement = function(namespaceURI, localName, qName) {
-        div.innerHTML += "endElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
-    };
-    
-    this.startPrefixMapping = function(prefix, uri) {
-        div.innerHTML += "startPrefixMapping [" + prefix + "] [" + uri + "]<br/>";
-    };
-    
-    this.endPrefixMapping = function(prefix) {
-        div.innerHTML += "endPrefixMapping [" + prefix + "]<br/>";
-    };
-    
-    this.processingInstruction = function(target, data) {
-        div.innerHTML += "processingInstruction [" + target + "] [" + data + "]<br/>";
-    };
-    
-    this.ignorableWhitespace = function(ch, start, length) {
-        div.innerHTML += "ignorableWhitespace [" + ch + "] [" + start + "] [" + length + "]<br/>";
-    };
-    
-    this.characters = function(ch, start, length) {
-        div.innerHTML += "characters [" + ch + "] [" + start + "] [" + length + "]<br/>";
-    };
-    
-    this.skippedEntity = function(name) {
-        div.innerHTML += "skippedEntity [" + name + "]<br/>";
-    };
-    
-    this.endDocument = function() {
-        div.innerHTML += "endDocument";
-    };
-    
-    this.displayAtts = function(atts) {
-        for (var i = 0 ; i < atts.getLength() ; i++) {
-            div.innerHTML += "attribute [" + atts.getURI(i) + "] [" + atts.getLocalName(i) + "] [" + atts.getValue(i) + "]<br/>";
-        }
-    };
-    
-    this.warning = function(saxException) {
-        this.serializeSaxException(saxException);
-    };
-    this.error = function(saxException) {
-        this.serializeSaxException(saxException);
-    };
-    this.fatalError = function(saxException) {
-        this.serializeSaxException(saxException);
-    };
-    
-    this.serializeSaxException = function(saxException) {
-        div.innerHTML += "invalid char : [" + saxException.ch + "] at index : " + saxException.index + "<br/>";
-        div.innerHTML += "message is : [" + saxException.message + "]<br/>";
-        if (saxException.exception) {
-            div.innerHTML += "wrapped exception is : [" + this.serializeSaxException(saxException.exception) + "]<br/>";
-        }
+}
+DummyContentHandler.prototype.startDocument = function() {
+    this.div.innerHTML += "startDocument<br/>";
+};
+
+DummyContentHandler.prototype.startElement = function(namespaceURI, localName, qName, atts) {
+    this.div.innerHTML += "startElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
+    this.displayAtts(atts);
+};
+
+DummyContentHandler.prototype.endElement = function(namespaceURI, localName, qName) {
+    this.div.innerHTML += "endElement [" + namespaceURI + "] [" + localName + "] [" + qName + "]<br/>";
+};
+
+DummyContentHandler.prototype.startPrefixMapping = function(prefix, uri) {
+    this.div.innerHTML += "startPrefixMapping [" + prefix + "] [" + uri + "]<br/>";
+};
+
+DummyContentHandler.prototype.endPrefixMapping = function(prefix) {
+    this.div.innerHTML += "endPrefixMapping [" + prefix + "]<br/>";
+};
+
+DummyContentHandler.prototype.processingInstruction = function(target, data) {
+    this.div.innerHTML += "processingInstruction [" + target + "] [" + data + "]<br/>";
+};
+
+DummyContentHandler.prototype.ignorableWhitespace = function(ch, start, length) {
+    this.div.innerHTML += "ignorableWhitespace [" + ch + "] [" + start + "] [" + length + "]<br/>";
+};
+
+DummyContentHandler.prototype.characters = function(ch, start, length) {
+    this.div.innerHTML += "characters [" + ch + "] [" + start + "] [" + length + "]<br/>";
+};
+
+DummyContentHandler.prototype.skippedEntity = function(name) {
+    this.div.innerHTML += "skippedEntity [" + name + "]<br/>";
+};
+
+DummyContentHandler.prototype.endDocument = function() {
+    this.div.innerHTML += "endDocument";
+};
+
+DummyContentHandler.prototype.displayAtts = function(atts) {
+    for (var i = 0 ; i < atts.getLength() ; i++) {
+        this.div.innerHTML += "attribute [" + atts.getURI(i) + "] [" + atts.getLocalName(i) + "] [" + atts.getValue(i) + "]<br/>";
     }
-    
+};
+
+DummyContentHandler.prototype.warning = function(saxException) {
+    this.serializeSaxException(saxException);
+};
+DummyContentHandler.prototype.error = function(saxException) {
+    this.serializeSaxException(saxException);
+};
+DummyContentHandler.prototype.fatalError = function(saxException) {
+    this.serializeSaxException(saxException);
+};
+
+DummyContentHandler.prototype.serializeSaxException = function(saxException) {
+    this.div.innerHTML += "invalid char : [" + saxException.ch + "] at index : " + saxException.index + "<br/>";
+    this.div.innerHTML += "message is : [" + saxException.message + "]<br/>";
+    if (saxException.exception) {
+        this.div.innerHTML += "wrapped exception is : [" + this.serializeSaxException(saxException.exception) + "]<br/>";
+    }
 }
