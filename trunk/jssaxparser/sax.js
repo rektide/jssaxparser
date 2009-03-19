@@ -34,27 +34,34 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
+(function () { // Begin namespace
+
+/* Private static variables (constant) */
+
+/* XML Name regular expressions */
+var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF
+var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
+var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
+
+/* Scanner states  */
+var STATE_XML_DECL                  =  0;
+var STATE_PROLOG                    =  1;
+var STATE_ROOT_ELEMENT              =  2;
+var STATE_CONTENT                   =  3;
+var STATE_TRAILING_MISC             =  4;
+
+/* Error values */
+var WARNING = "W";
+var ERROR = "E";
+var FATAL = "F";
+
+
 function SAXParser(contentHandler) {
     this.contentHandler = contentHandler;
     this.index = -1;
     this.doctypeDeclared = false;
 
-    this.nameStartChar = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff";
-// The last two ranges are for surrogates that comprise #x10000-#xEFFFF
-    this.nameEndChar = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
-
-    /** Scanner states  */
-    this.STATE_XML_DECL                  =  0;
-    this.STATE_PROLOG                    =  1;
-    this.STATE_ROOT_ELEMENT              =  2;
-    this.STATE_CONTENT                   =  3;
-    this.STATE_TRAILING_MISC             =  4;
-
-    this.state = this.STATE_XML_DECL;
-    
-    this.WARNING = "W";
-    this.ERROR = "E";
-    this.FATAL = "F";
+    this.state = STATE_XML_DECL;
     
     this.elementsStack;
     /* for each depth, a map of namespaces */
@@ -68,7 +75,7 @@ SAXParser.prototype.parse = function(xml) {
     this.index = 0;
     this.ch = this.xml.charAt(this.index);
     this.doctypeDeclared = false;
-    this.state = this.STATE_XML_DECL;
+    this.state = STATE_XML_DECL;
     this.elementsStack = [];
     this.namespaces = [];
     this.contentHandler.startDocument();
@@ -82,7 +89,7 @@ SAXParser.prototype.parse = function(xml) {
             this.contentHandler.fatalError(e);
         } else if (e instanceof EndOfInputException) {
             if (this.elementsStack.length > 0) {
-                this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", this.FATAL);
+                this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
             } else {
                 try {
                     this.contentHandler.endDocument();
@@ -103,7 +110,7 @@ SAXParser.prototype.next = function() {
         this.scanText();
     //if elementsStack is empty it is text misplaced
     } else {
-        this.fireError("can not have text at root level of the XML", this.FATAL);
+        this.fireError("can not have text at root level of the XML", FATAL);
     }
 };
 
@@ -129,47 +136,47 @@ SAXParser.prototype.next = function() {
 //White Space
 // [3] S ::=(#x20 | #x9 | #xD | #xA)+
 SAXParser.prototype.scanLT = function() {
-    if (this.state == this.STATE_XML_DECL) {
+    if (this.state == STATE_XML_DECL) {
         if (!this.scanXMLDeclOrTextDecl()) {
-            this.state = this.STATE_PROLOG;
+            this.state = STATE_PROLOG;
             this.scanLT();
         } else {
             //if it was a XMLDecl (only one XMLDecl is permitted)
-            this.state = this.STATE_PROLOG;
+            this.state = STATE_PROLOG;
         }
-    } else if (this.state == this.STATE_PROLOG) {
+    } else if (this.state == STATE_PROLOG) {
         if (this.ch == "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 if (this.doctypeDeclared) {
-                    this.fireError("can not have two doctype declaration", this.FATAL);
+                    this.fireError("can not have two doctype declaration", FATAL);
                 } else if (this.scanDoctypeDecl()) {
                     // only one doctype declaration is allowed
                     this.doctypeDeclared = true;
                 } else {
-                    this.fireError("neither comment nor doctype declaration after &lt;!", this.FATAL);
+                    this.fireError("neither comment nor doctype declaration after &lt;!", FATAL);
                 }
             }
         } else if (this.ch == "?") {
             this.nextChar(true);
             this.scanPI();
         } else {
-            this.state = this.STATE_ROOT_ELEMENT;
+            this.state = STATE_ROOT_ELEMENT;
             //does not go to next char exiting the method
             this.scanLT();
         }
-    } else if (this.state == this.STATE_ROOT_ELEMENT) {
+    } else if (this.state == STATE_ROOT_ELEMENT) {
         if (this.scanMarkup()) {
-            this.state = this.STATE_CONTENT;
+            this.state = STATE_CONTENT;
         } else {
-            this.state = this.STATE_TRAILING_MISC;
+            this.state = STATE_TRAILING_MISC;
         }
-    } else if (this.state == this.STATE_CONTENT) {
+    } else if (this.state == STATE_CONTENT) {
         if (this.ch == "!") {
             this.nextChar();
             if (!this.scanComment()) {
                 if (!this.scanCData()) {
-                    this.fireError("neither comment nor CDATA after &lt;!", this.FATAL);
+                    this.fireError("neither comment nor CDATA after &lt;!", FATAL);
                 }
             }
         } else if (this.ch == "?") {
@@ -179,24 +186,24 @@ SAXParser.prototype.scanLT = function() {
             this.nextChar();
             if (this.scanEndingTag()) {
                 if (this.elementsStack.length == 0) {
-                    this.state = this.STATE_TRAILING_MISC;
+                    this.state = STATE_TRAILING_MISC;
                 }
             }
         } else {
             if (!this.scanMarkup()) {
-                this.fireError("not a valid markup", this.FATAL);
+                this.fireError("not a valid markup", FATAL);
             }
         }
-    } else if (this.state == this.STATE_TRAILING_MISC) {
+    } else if (this.state == STATE_TRAILING_MISC) {
         if (this.ch == "!") {
             this.nextChar();
             if (!this.scanComment()) {
-                this.fireError("end of document, only comment or processing instruction are allowed", this.FATAL);
+                this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
             }
         } else if (this.ch == "?") {
             this.nextChar();
             if (!this.scanPI()) {
-                this.fireError("end of document, only comment or processing instruction are allowed", this.FATAL);
+                this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
             }
         }
     }
@@ -236,10 +243,10 @@ SAXParser.prototype.scanComment = function() {
                 this.nextChar(true);
                 return true;
             } else {
-                this.fireError("end of comment not valid, must be --&gt;", this.FATAL);
+                this.fireError("end of comment not valid, must be --&gt;", FATAL);
             }
         } else {
-            this.fireError("beginning comment markup is invalid, must be &lt;!--", this.FATAL);
+            this.fireError("beginning comment markup is invalid, must be &lt;!--", FATAL);
         }
     } else {
         // can be a doctype
@@ -282,7 +289,7 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         this.nextGT();
         return true;
     } else {
-        this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", this.FATAL);
+        this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
     }
 };
 
@@ -331,7 +338,7 @@ SAXParser.prototype.scanElement = function(qName) {
             this.elementsStack.pop();
             this.endMarkup(namespaceURI, qName);
         } else {
-            this.fireError("invalid empty markup, must finish with /&gt;", this.FATAL);
+            this.fireError("invalid empty markup, must finish with /&gt;", FATAL);
         }
     }
 };
@@ -346,7 +353,7 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
     if (prefix == "") {
         return "";
     }
-    this.fireError("prefix " + prefix + " not known in namespaces map", this.FATAL);
+    this.fireError("prefix " + prefix + " not known in namespaces map", FATAL);
 };
 
 SAXParser.prototype.scanAttributes = function(namespacesDeclared) {
@@ -377,7 +384,7 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
             }
             this.scanAttribute(atts, namespacesDeclared);
         } else {
-            this.fireError("invalid attribute, must contain = between name and value", this.FATAL);
+            this.fireError("invalid attribute, must contain = between name and value", FATAL);
         }
     }
 };
@@ -390,14 +397,14 @@ SAXParser.prototype.scanAttValue = function() {
         //adding a message in that case
         } catch(e) {
             if (e instanceof EndOfInputException) {
-                this.fireError("document incomplete, attribute value declaration must end with a quote", this.FATAL);
+                this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
             } else {
                 throw e;
             }
         }
         return attValue;
     } else {
-        this.fireError("invalid attribute value declaration, must begin with a quote", this.FATAL);
+        this.fireError("invalid attribute value declaration, must begin with a quote", FATAL);
     }
 };
 
@@ -425,7 +432,7 @@ SAXParser.prototype.scanCharRef = function() {
         this.nextChar(true);
         while (this.ch != ";") {
             if (!/[0-9a-fA-F]/.test(this.ch)) {
-                this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", this.ERROR);
+                this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", ERROR);
             }
             this.nextChar(true);
         }
@@ -433,7 +440,7 @@ SAXParser.prototype.scanCharRef = function() {
         this.nextChar(true);
         while (this.ch != ";") {
             if (!/\d/.test(this.ch)) {
-                this.fireError("invalid char reference, must contain numeric characters only", this.ERROR);
+                this.fireError("invalid char reference, must contain numeric characters only", ERROR);
             }
             this.nextChar(true);
         }
@@ -450,7 +457,7 @@ SAXParser.prototype.scanEntityRef = function() {
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
-            this.fireError("document incomplete, entity reference must end with ;", this.FATAL);
+            this.fireError("document incomplete, entity reference must end with ;", FATAL);
         } else {
             throw e;
         }
@@ -469,10 +476,10 @@ SAXParser.prototype.scanEndingTag = function() {
             this.nextChar(true);
             return true;
         } else {
-            this.fireError("invalid ending markup, does not finish with &gt;", this.FATAL);
+            this.fireError("invalid ending markup, does not finish with &gt;", FATAL);
         }
     } else {
-        this.fireError("invalid ending markup, markup name does not match current one", this.FATAL);
+        this.fireError("invalid ending markup, markup name does not match current one", FATAL);
     }
 };
 
@@ -533,8 +540,7 @@ SAXParser.prototype.nextRegExp = function(regExp) {
 [5]   	Name	   ::=   	(Letter | '_' | ':') (NameChar)*
 */
 SAXParser.prototype.nextName = function() {
-    var reg = new RegExp("[^" + this.nameStartChar + this.nameEndChar + "]");
-    return this.nextRegExp(reg);
+    return this.nextRegExp(NOT_START_OR_END_CHAR);
 };
 
 
@@ -561,11 +567,11 @@ SAXParser.prototype.fireError = function(message, gravity) {
     var saxException = new SAXException(message);
     saxException.ch = this.ch;
     saxException.index = this.index;
-    if (gravity == this.WARNING) {
+    if (gravity == WARNING) {
         this.contentHandler.warning(saxException);
-    } else if (gravity == this.ERROR) {
+    } else if (gravity == ERROR) {
         this.contentHandler.error(saxException);
-    } else if (gravity == this.FATAL) {
+    } else if (gravity == FATAL) {
         throw(saxException);
     }
 };
@@ -694,3 +700,10 @@ function SAXException(message, exception) {
 }
 
 function EndOfInputException() {}
+
+
+// Add public API to global namespace
+window.SAXParser = SAXParser;
+window.SAXException = SAXException;
+
+})(); // end namespace
