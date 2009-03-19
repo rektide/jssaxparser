@@ -102,4 +102,4 @@ DummyContentHandler.prototype.serializeSaxException = function(saxException) {
     if (saxException.exception) {
         this.div.innerHTML += "wrapped exception is : [" + this.serializeSaxException(saxException.exception) + "]<br/>";
     }
-}
+};

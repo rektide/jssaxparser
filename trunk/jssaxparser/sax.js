@@ -576,8 +576,8 @@ function sax_QName(prefix, localName) {
     } else {
         this.qName = localName;
     }
-
 }
+
 sax_QName.prototype.equals = function(qName) {
     return this.qName == qName.qName;
 };
