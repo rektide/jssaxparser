@@ -558,7 +558,9 @@ SAXParser.prototype.quoteContent = function() {
 };
 
 SAXParser.prototype.fireError = function(message, gravity) {
-    var saxException = new SAXException(message, this.ch, this.index);
+    var saxException = new SAXException(message);
+    saxException.ch = this.ch;
+    saxException.index = this.index;
     if (gravity == this.WARNING) {
         this.contentHandler.warning(saxException);
     } else if (gravity == this.ERROR) {
@@ -686,10 +688,8 @@ function Sax_Attribute(qName, namespaceURI, value) {
     this.value = value;
 }
 
-function SAXException(message, ch, index, exception) {
+function SAXException(message, exception) {
     this.message = message;
-    this.ch = ch;
-    this.index = index;
     this.exception = exception;
 }
 
