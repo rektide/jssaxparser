@@ -621,12 +621,12 @@ function Sax_Attributes(attsArray) {
 }
 Sax_Attributes.prototype.getIndex = function(arg1, arg2) {
     if (arg2 == undefined) {
-        return this.getIndexByQname(arg1);
+        return this.getIndexByQName(arg1);
     } else {
-        return this.getIndexByUri(arg1, arg2);
+        return this.getIndexByURI(arg1, arg2);
     }
 };
-Sax_Attributes.prototype.getIndexByQname = function(qName) {
+Sax_Attributes.prototype.getIndexByQName = function(qName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].qName.equals(qName)) {
             return i;
@@ -634,7 +634,7 @@ Sax_Attributes.prototype.getIndexByQname = function(qName) {
     }
     return -1;
 };
-Sax_Attributes.prototype.getIndexByUri = function(uri, localName) {
+Sax_Attributes.prototype.getIndexByURI = function(uri, localName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
             return i;
@@ -666,7 +666,7 @@ Sax_Attributes.prototype.getValue = function(arg1, arg2) {
             return this.getValueByIndex(arg1);
         }
     } else {
-        return this.getValueByUri(arg1, arg2);
+        return this.getValueByURI(arg1, arg2);
     }
 };
 Sax_Attributes.prototype.getValueByIndex = function(index) {
@@ -679,7 +679,7 @@ Sax_Attributes.prototype.getValueByQName = function(qName) {
         }
     }
 };
-Sax_Attributes.prototype.getValueByUri = function(uri, localName) {
+Sax_Attributes.prototype.getValueByURI = function(uri, localName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
             return this.attsArray[i].value;
