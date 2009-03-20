@@ -369,20 +369,31 @@ SAXParser.prototype.scanLT = function() {
 
 
 // 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
+//  what I understand from there : http://www.w3.org/TR/REC-xml/#dt-chardata is that & is allowed
+// in character data only if it is an entity reference
 SAXParser.prototype.scanText = function() {
-    if (this.ch == "&") {
+    var start = this.index;
+    var content = this.nextRegExp(/[<&]/);
+    
+    //if found a "&"
+    while (this.ch == "&") {
         this.nextChar();
-        if (this.ch == "#") {
-            this.nextChar();
-            this.scanCharRef();
-        } else {
-            this.scanEntityRef();
-        }
+        var ref = this.scanRef();
+        content += ref;
+        content += this.nextRegExp(/[<&]/);
+    }
+    var length = this.index - start;
+    this.contentHandler.characters(content, start, length);
+};
+
+
+//current char is after '&'
+SAXParser.prototype.scanRef = function() {
+    if (this.ch == "#") {
+        this.nextChar(true);
+        return this.scanCharRef();
     } else {
-        var start = this.index;
-        var ch = this.nextRegExp(/[<&]/);
-        var length = this.index - start;
-        this.contentHandler.characters(ch, start, length);
+        return this.scanEntityRef();
     }
 };
 
@@ -584,6 +595,7 @@ SAXParser.prototype.scanCData = function() {
 };
 
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
+// current ch is char after &#
 SAXParser.prototype.scanCharRef = function() {
     var oldIndex = this.index;
     if (this.ch == "x") {
@@ -603,15 +615,13 @@ SAXParser.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
     }
-    this.contentHandler.characters(this.xml.substring(oldIndex, this.index), oldIndex, this.index - oldIndex);
-    return true;
+    return this.xml.substring(oldIndex, this.index);
 };
 
 //[68]  EntityRef ::= '&' Name ';'
 SAXParser.prototype.scanEntityRef = function() {
-    var ref = this.nextRegExp(/;/);
     try {
-        var attValue = this.quoteContent();
+        return this.nextRegExp(/;/);
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
@@ -620,7 +630,6 @@ SAXParser.prototype.scanEntityRef = function() {
             throw e;
         }
     }
-    return true;
 };
 
 // [42] ETag ::= '</' Name S? '>'
@@ -715,7 +724,7 @@ current char is opening ' or "
 */
 SAXParser.prototype.quoteContent = function() {
     this.index++;
-    var content = this.nextRegExp(/["']/);
+    var content = this.nextRegExp(this.ch);
     this.index++;
     this.ch = this.xml.charAt(this.index);
     return content;
