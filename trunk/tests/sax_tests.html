@@ -46,7 +46,7 @@
     }
     
     function parse(xml) {
-        saxParser.parse(xml);
+        saxParser.parseString(xml);
         assertXmlEquals(createDocumentFromText(xml).documentElement, contentHandler.document.documentElement);
     }
 	

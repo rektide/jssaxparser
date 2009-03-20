@@ -17,7 +17,7 @@
 		function start() {
 			var contentHandler = new DomContentHandler();
 			var saxParser = new SAXParser(contentHandler);
-            saxParser.parse(xml);
+            saxParser.parseString(xml);
             var textarea = document.getElementById("msg");
             textarea.value = innerXML(contentHandler.document);
 		}

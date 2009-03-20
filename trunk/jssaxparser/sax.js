@@ -56,20 +56,178 @@ var ERROR = "E";
 var FATAL = "F";
 
 
-function SAXParser(contentHandler) {
+// The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
+//    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
+// The feature/property defaults are incomplete, as they really depend on the implementation and how far we
+//   implement them; however, I've added some of the defaults, two of which (on namespaces) are required to be
+//   supported (though they don't need to support both true and false options).
+// So,
+// 1) the only meaningful methods at the moment are getContentHandler(), setContentHandler(), and our own parseString().
+// 2) No property should be retrieved or set publicly.
+// 3) The SAXParser constructor currently only works with the first argument
+
+function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
+    // Implements SAX2 XMLReader interface;
+    // Since SAX2 doesn't specify constructors, this class is able to define its own behavior to accept a contentHandler, etc.
+
     this.contentHandler = contentHandler;
+    this.dtdHandler = dtdHandler;
+    this.errorHandler = errorHandler;
+    this.entityResolver = null;
+
+    this.disallowedGetProperty = [];
+    this.disallowedGetFeature = [];
+    this.disallowedSetProperty = [];
+    this.disallowedSetFeature = [];
+
+    this.disallowedSetPropertyValues = {};
+    this.disallowedSetFeatureValues = {};
+
+    // For official features and properties, see http://www.saxproject.org/apidoc/org/xml/sax/package-summary.html#package_description
+    // We can define our own as well
+    this.features = {}; // Boolean values
+    this.features['http://xml.org/sax/features/external-general-entities'];
+    this.features['http://xml.org/sax/features/external-parameter-entities'];
+    this.features['http://xml.org/sax/features/is-standalone'] = undefined; // Can only be set during parsing
+    this.features['http://xml.org/sax/features/lexical-handler/parameter-entities'];
+    this.features['http://xml.org/sax/features/namespaces'] = true; // must support true
+    this.features['http://xml.org/sax/features/namespace-prefixes'] = false; // must support false
+    this.features['http://xml.org/sax/features/resolve-dtd-uris'] = true;
+    this.features['http://xml.org/sax/features/string-interning'] = true; // Make safe to treat string literals as identical to String()
+    this.features['http://xml.org/sax/features/unicode-normalization-checking'] = false;
+    this.features['http://xml.org/sax/features/use-attributes2'];
+    this.features['http://xml.org/sax/features/use-locator2'];
+    this.features['http://xml.org/sax/features/use-entity-resolver2'] = true;
+    this.features['http://xml.org/sax/features/validation'];
+    this.features['http://xml.org/sax/features/xmlns-uris'] = false;
+    this.features['http://xml.org/sax/features/xml-1.1'];
+
+    this.properties = {}; // objects
+    this.properties['http://xml.org/sax/properties/declaration-handler'] = declarationHandler || (this.declarationHandler = {
+        attributeDecl : function (eName, aName, type, mode, value) { // java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String
+            // Report an attribute type declaration (void).
+        },
+        elementDecl : function (name, model) { // java.lang.String, java.lang.String
+            // Report an element type declaration (void).
+        },
+        externalEntityDecl : function (name, publicId, systemId) { // java.lang.String, java.lang.String, java.lang.String
+            // Report a parsed external entity declaration.
+        },
+        internalEntityDecl : function (name, value) { // java.lang.String, java.lang.String
+            // Report an internal entity declaration (void).
+        }
+    });
+    this.properties['http://xml.org/sax/properties/document-xml-version'] = this.documentXmlVersion = null;
+    this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode;
+    this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
+    this.properties['http://xml.org/sax/properties/xml-string'] = this.xmlString = null;
+
+
+    // IMPLEMENTATION-DEPENDENT PROPERTIES TO SUPPORT PARSING
     this.index = -1;
     this.doctypeDeclared = false;
 
     this.state = STATE_XML_DECL;
-    
+
     this.elementsStack;
     /* for each depth, a map of namespaces */
     this.namespaces;
-    
+
 }
 
-SAXParser.prototype.parse = function(xml) {
+// BEGIN SAX2 INTERFACE
+SAXParser.prototype.getContentHandler = function () {
+    // Return the current content handler (ContentHandler).
+    return this.contentHandler;
+};
+SAXParser.prototype.getDTDHandler = function () {
+    // Return the current DTD handler (DTDHandler).
+    return this.dtdHandler;
+};
+SAXParser.prototype.getEntityResolver = function () {
+    // Return the current entity resolver (EntityResolver).
+    return this.entityResolver;
+};
+SAXParser.prototype.getErrorHandler = function () {
+    // Return the current error handler (ErrorHandler).
+    return this.errorHandler;
+};
+SAXParser.prototype.getFeature = function (name) { // (java.lang.String)
+    // Look up the value of a feature flag (boolean).
+    if (this.features[name] === undefined) {
+      throw new SAXNotRecognizedException();
+    }
+    else if (this.disallowedGetFeature.indexOf(name) !== -1) {
+      throw new SAXNotSupportedException();
+    }
+    return this.features[name];
+};
+SAXParser.prototype.getProperty = function (name) { // (java.lang.String)
+    // Look up the value of a property (java.lang.Object).
+    // It is possible for an XMLReader to recognize a property name but temporarily be unable to return its value. Some property values may be available only in specific contexts, such as before, during, or after a parse.
+    if (this.properties[name] === undefined) {
+      throw new SAXNotRecognizedException();
+    }
+    else if (this.disallowedGetProperty.indexOf(name) !== -1) {
+      throw new SAXNotSupportedException();
+    }
+    return this.properties[name];
+};
+SAXParser.prototype.parse = function () { // (InputSource input OR java.lang.String systemId)
+    // Parse an XML document (void). OR
+    // Parse an XML document from a system identifier (URI) (void).
+    // may throw java.io.IOException or SAXException
+};
+SAXParser.prototype.setContentHandler = function (handler) { // (ContentHandler)
+    // Allow an application to register a content event handler (void).
+    this.contentHandler = handler;
+};
+SAXParser.prototype.setDTDHandler = function (handler) { // (DTDHandler)
+    // Allow an application to register a DTD event handler (void).
+    this.dtdHandler = handler;
+};
+SAXParser.prototype.setEntityResolver = function (resolver) { // (EntityResolver)
+    // Allow an application to register an entity resolver (void).
+    this.entityResolver = resolver;
+};
+SAXParser.prototype.setErrorHandler = function (handler) { // (ErrorHandler)
+    // Allow an application to register an error event handler (void).
+    this.errorHandler = handler;
+};
+SAXParser.prototype.setFeature = function (name, value) { // (java.lang.String, boolean)
+    // Set the value of a feature flag (void).
+    if (this.features[name] === undefined) { // Should be defined already in some manner
+        throw new SAXNotRecognizedException();
+    }
+    else if (
+            (this.disallowedSetFeatureValues[name] !== undefined &&
+                    this.disallowedSetFeatureValues[name] === value) ||
+                (this.disallowedSetFeature.indexOf(name) !== -1)
+            ){
+        throw new SAXNotSupportedException();
+    }
+    this.features[name] = value;
+};
+SAXParser.prototype.setProperty = function (name, value) { // (java.lang.String, java.lang.Object)
+    // Set the value of a property (void).
+    // It is possible for an XMLReader to recognize a property name but to be unable to change the current value. Some property values may be immutable or mutable only in specific contexts, such as before, during, or after a parse.
+    if (this.properties[name] === undefined) { // Should be defined already in some manner
+        throw new SAXNotRecognizedException();
+    }
+    else if (
+                (this.disallowedSetPropertyValues[name] !== undefined &&
+                    this.disallowedSetPropertyValues[name] === value) ||
+                (this.disallowedSetProperty.indexOf(name) !== -1)
+            ){
+        throw new SAXNotSupportedException();
+    }
+    this.properties[name] = value;
+};
+// END SAX2 INTERFACE
+
+
+// BEGIN CUSTOM API
+SAXParser.prototype.parseString = function(xml) { // We implement our own for now, but should probably call the standard parse() which requires an InputSource object (or systemId string)
     this.xml = xml;
     this.length = xml.length;
     this.index = 0;
@@ -322,7 +480,7 @@ SAXParser.prototype.getQName = function() {
         prefix = splitResult[0];
         localName = splitResult[1];
     }
-    return new sax_QName(prefix, localName);
+    return new Sax_QName(prefix, localName);
 };
 
 SAXParser.prototype.scanElement = function(qName) {
@@ -576,7 +734,7 @@ SAXParser.prototype.fireError = function(message, gravity) {
     }
 };
 
-function sax_QName(prefix, localName) {
+function Sax_QName(prefix, localName) {
     this.prefix = prefix;
     this.localName = localName;
     if (prefix != "") {
@@ -586,7 +744,7 @@ function sax_QName(prefix, localName) {
     }
 }
 
-sax_QName.prototype.equals = function(qName) {
+Sax_QName.prototype.equals = function(qName) {
     return this.qName == qName.qName;
 };
 
@@ -616,6 +774,7 @@ sax_QName.prototype.equals = function(qName) {
  java.lang.String 	getValue(java.lang.String uri, java.lang.String localName)
           Look up an attribute's value by Namespace name.
  */
+// Change to Attributes2Impl class instead?
 function Sax_Attributes(attsArray) {
     this.attsArray = attsArray;    
 }
@@ -699,11 +858,29 @@ function SAXException(message, exception) {
     this.exception = exception;
 }
 
+// Not fully implemented
+function SAXNotSupportedException (msg) { // java.lang.Exception
+    return new Error(msg || '');
+}
+function SAXNotRecognizedException (msg) { // java.lang.Exception
+    return new Error(msg || '');
+}
+
+//This constructor is more complex and not presently implemented;
+//  see Java API to implement additional arguments correctly
+function SAXParseException (msg) { // java.lang.Exception //
+    return new Error(msg || '');
+}
+
+// Should this perhaps extend SAXParseException?
 function EndOfInputException() {}
 
 
-// Add public API to global namespace
-window.SAXParser = SAXParser;
-window.SAXException = SAXException;
+// Add public API to global namespace (or other one, if we are in another)
+this.SAXParser = SAXParser;
+this.SAXException = SAXException;
+this.SAXNotSupportedException = SAXNotSupportedException;
+this.SAXNotRecognizedException = SAXNotRecognizedException;
+this.SAXParseException = SAXParseException;
 
 })(); // end namespace
