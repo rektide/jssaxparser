@@ -5,6 +5,9 @@
     <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
     <script type="text/javascript" src="../examples/xml_samples.js"></script>
 	<script type="text/javascript" src="manageWhiteSpace.js"></script>
+    <script type="text/javascript" src="dom_utils.js"></script>
+    <script type="text/javascript" src="jsxmlunit.js"></script>
+    <script type="text/javascript" src="applyXslt.js"></script>
     <script type="text/javascript">
     
     var contentHandler;
@@ -45,93 +48,36 @@
         parse(xml);
     }
     
-    function parse(xml) {
-        saxParser.parseString(xml);
-        assertXmlEquals(createDocumentFromText(xml).documentElement, contentHandler.document.documentElement);
-    }
-	
-	function assertXmlEquals(expected, result) {
-		assertEquals("different nodes types", expected.nodeType, result.nodeType);
-		//text nodes
-		if (expected.nodeType == 3) {
-			assertEquals("different text content", data_of(expected), data_of(result));
-		} else if (expected.nodeType == 1) {
-			assertEquals("different node names", expected.nodeName, result.nodeName);
-			var attsExpected = expected.attributes;
-			var attsResult = result.attributes;
-			//remove namespaces declaration from attributes, not supported
-			for (var i = 0 ; i < attsExpected.length ; i++) {
-				var attExpected = attsExpected.item(i);
-				if (/^xmlns/.test(attExpected.nodeName)) {
-					expected.removeAttributeNode(attExpected);
-					i--;
-				}
-			}
-			for (var i = 0 ; i < attsResult.length ; i++) {
-				var attResult = attsResult.item(i);
-				if (/^xmlns/.test(attResult.nodeName)) {
-					result.removeAttributeNode(attResult);
-					i--;
-				}
-			}
-			assertEquals("different number of attributes on node " + result.nodeName, attsExpected.length, attsResult.length);
-			assertAttributesEquals(attsExpected, attsResult);
-			var childNodesExpected = expected.childNodes;
-			var childNodesResult = result.childNodes;
-			//remove ignorables child nodes
-			for (var i = 0 ; i < childNodesExpected.length ; i++) {
-				var childNodeExpected = childNodesExpected.item(i);
-				if (is_ignorable(childNodeExpected)) {
-					expected.removeChild(childNodeExpected);
-					i--;
-				}
-			}
-			for (var i = 0 ; i < childNodesResult.length ; i++) {
-				var childNodeResult = childNodesResult.item(i);
-				if (is_ignorable(childNodeResult)) {
-					result.removeChild(childNodeResult);
-					i--;
-				}
-			}
-			assertEquals("different number of children nodes under " + result.nodeName, childNodesExpected.length, childNodesResult.length);
-			for (var i = 0 ; i < childNodesExpected.length ; i++) {
-				assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
-			}
-		}
+    function testParse_test_files_6nbn() {
+        var fileAsText = loadFile("test_files/6nbn.xml");
+        parse(fileAsText);
     }
     
-	function assertAttributesEquals(attsExpected, attsResult) {
-		for (var i = 0 ; i < attsExpected.length ; i++) {
-			var attExpected = attsExpected.item(i);
-			var attFound = false;
-			for (var i = 0 ; i < attsResult.length && !attFound; i++) {
-				var attResult = attsResult.item(i);
-				if (attResult.nodeName == attExpected.nodeName) {
-					attFound = true;
-					assertEquals("invalid value of attribute " + attResult.nodeName, attExpected.value, attResult.value);
-				}
-			}
-			assertTrue("missing attribute " + attExpected.nodeName, attFound);
-		}
-	}
-	
-    /*
-            comes from http://www.w3schools.com/dom/tryit.asp?filename=note_parsertest2
-           */
-    function createDocumentFromText(text) {
-        // code for IE
-        if (window.ActiveXObject) {
-            var doc=new ActiveXObject("Microsoft.XMLDOM");
-            doc.async="false";
-            doc.loadXML(text);
-        }
-        // code for Mozilla, Firefox, Opera, etc.
-        else {
-            var parser=new DOMParser();
-            var doc=parser.parseFromString(text,"text/xml");
-        }
-        return doc;
+    function testParse_test_files_benchmark() {
+        var fileAsText = loadFile("test_files/benchmark.xml");
+        parse(fileAsText);
     }
+    
+    function testParse_test_files_comment_cdata() {
+        var fileAsText = loadFile("test_files/comment_cdata.xml");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_svg() {
+        var fileAsText = loadFile("test_files/Water_molecule_3D.svg");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_svg_with_entities() {
+        var fileAsText = loadFile("test_files/chem1.svg");
+        parse(fileAsText);
+    }
+    
+    function parse(xml) {
+        saxParser.parseString(xml);
+        assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
+    }
+	
     
     </script>
   </head>
