@@ -18,7 +18,7 @@
 			div = document.getElementById("msg");
             div.innerHTML = "";
 			var contentHandler = new DummyContentHandler(div);
-			var saxParser = new SAXParser(contentHandler);
+			var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
             saxParser.parseString(xml);
 		}
 		

@@ -15,7 +15,7 @@
     
     function setUp() {
         contentHandler = new DomContentHandler();
-		saxParser = new SAXParser(contentHandler);
+		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
     }
     
     function testParse_xml1() {

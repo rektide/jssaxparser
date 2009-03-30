@@ -401,14 +401,21 @@ SAXParser.prototype.scanRef = function() {
 // [15] Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
 SAXParser.prototype.scanComment = function() {
     if (this.ch == "-") {
-        this.nextChar();
+        this.nextChar(true);
         if (this.ch == "-") {
-            this.nextRegExp(/--/);
+            //do not skip white space at beginning of comment
+            this.nextChar(true);
+            var start = this.index;
+            var comment = this.nextRegExp(/--/);
+            var length = this.index - start;
             //goes to second '-'
             this.nextChar(true);
             this.nextChar(true);
             //must be '>'
             if (this.ch == ">") {
+                if (this.lexicalHandler) {
+                    this.lexicalHandler.comment(comment, start, length);// Brett (test for support and change start/length?)
+                }
                 this.nextChar(true);
                 return true;
             } else {
@@ -584,10 +591,21 @@ SAXParser.prototype.scanAttValue = function() {
 SAXParser.prototype.scanCData = function() {
     if (this.xml.substr(this.index, 7) == "[CDATA[") {
         this.index += 7;
-        this.nextRegExp(/]]>/);
+        this.ch = this.xml.charAt(this.index);
+        if (this.lexicalHandler) {
+            this.lexicalHandler.startCDATA();
+        }
+        // Reports the same as for text
+        var start = this.index;
+        var cdata = this.nextRegExp(/]]>/);
+        var length = this.index - start;
+        this.contentHandler.characters(cdata, start, length);
         //goes after final '>'
         this.index += 3;
         this.ch = this.xml.charAt(this.index);
+        if (this.lexicalHandler) {
+            this.lexicalHandler.endCDATA();
+        }
         return true;
     } else {
         return false;
@@ -621,7 +639,12 @@ SAXParser.prototype.scanCharRef = function() {
 //[68]  EntityRef ::= '&' Name ';'
 SAXParser.prototype.scanEntityRef = function() {
     try {
-        return this.nextRegExp(/;/);
+        var ref = this.nextRegExp(/;/);
+        if (this.lexicalHandler) {
+            this.lexicalHandler.startEntity(ref);
+            this.lexicalHandler.endEntity(ref);
+        }
+        return ref;
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
