@@ -36,6 +36,8 @@ knowledge of the CeCILL license and that you accept its terms.
 
 function DomContentHandler() {
     this.saxExceptions = [];
+    //if text coming is inside a cdata section then this boolean will be set to true
+    this.cdata = false;
 }
 DomContentHandler.prototype.startDocument = function() {
     this.document = createDocument();
@@ -59,7 +61,7 @@ DomContentHandler.prototype.endElement = function(namespaceURI, localName, qName
     this.currentElement = this.currentElement.parentNode;
 };
 DomContentHandler.prototype.startPrefixMapping = function(prefix, uri) {
-    /*
+    /* not supported by all browsers
     if (this.currentElement.setAttributeNS) {
         this.currentElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, uri);
     }
@@ -72,8 +74,13 @@ DomContentHandler.prototype.processingInstruction = function(target, data) {
 DomContentHandler.prototype.ignorableWhitespace = function(ch, start, length) {
 };
 DomContentHandler.prototype.characters = function(ch, start, length) {
-    var textNode = this.document.createTextNode(ch);
-    this.currentElement.appendChild(textNode);
+    if (cdata) {
+        var cdataNode = this.document.createCDATASection(ch);
+        this.currentElement.appendChild(cdataNode);
+    } else {
+        var textNode = this.document.createTextNode(ch);
+        this.currentElement.appendChild(textNode);
+    }
 };
 DomContentHandler.prototype.skippedEntity = function(name) {
 };
@@ -134,11 +141,17 @@ DomContentHandler.prototype.fatalError = function(saxException) {
 */
 DomContentHandler.prototype.attributeDecl(eName, aName, type, mode, value) {};
 
-DomContentHandler.prototype.comment(ch, start, length) {};
+DomContentHandler.prototype.comment(ch, start, length) {
+    var commentNode = this.document.createComment(ch);
+    this.currentElement.appendChild(commentNode);
+};
 
 DomContentHandler.prototype.elementDecl(name, model) {};
 
-DomContentHandler.prototype.endCDATA() {};
+DomContentHandler.prototype.endCDATA() {
+    //used in characters() methods
+    this.cdata = false;
+};
 
 DomContentHandler.prototype.endDTD() {};
 
@@ -153,7 +166,10 @@ DomContentHandler.prototype.internalEntityDecl(name, value) {};
 //DomContentHandler.prototype.resolveEntity(publicId, systemId) {};
 DomContentHandler.prototype.resolveEntity(name, publicId, baseURI, systemId) {};
 
-DomContentHandler.prototype.startCDATA() {};
+DomContentHandler.prototype.startCDATA() {
+    //used in characters() methods
+    this.cdata = true;
+};
 
 DomContentHandler.prototype.startDTD(name, publicId, systemId) {};
 
