@@ -134,55 +134,55 @@ DummyContentHandler.prototype.serializeSaxException = function(saxException) {
  void 	startEntity(java.lang.String name)
           Report the beginning of some internal and external XML entities.
 */
-DummyContentHandler.prototype.attributeDecl(eName, aName, type, mode, value) {
+DummyContentHandler.prototype.attributeDecl = function(eName, aName, type, mode, value) {
     this.div.innerHTML += "attributeDecl [" + eName + "] [" + aName + "] [" + type + "] [" + mode + "] [" + value + "]<br/>";
 };
 
-DummyContentHandler.prototype.comment(ch, start, length) {
+DummyContentHandler.prototype.comment = function(ch, start, length) {
     this.div.innerHTML += "attributeDecl [" + ch + "] [" + start + "] [" + length + "]<br/>";
 };
 
-DummyContentHandler.prototype.elementDecl(name, model) {
+DummyContentHandler.prototype.elementDecl = function(name, model) {
     this.div.innerHTML += "elementDecl [" + name + "] [" + model + "]<br/>";
 };
 
-DummyContentHandler.prototype.endCDATA() {
+DummyContentHandler.prototype.endCDATA = function() {
     this.div.innerHTML += "endCDATA<br/>";
 };
 
-DummyContentHandler.prototype.endDTD() {
+DummyContentHandler.prototype.endDTD = function() {
     this.div.innerHTML += "endDTD<br/>";
 };
 
-DummyContentHandler.prototype.endEntity(name) {
+DummyContentHandler.prototype.endEntity = function(name) {
     this.div.innerHTML += "endEntity [" + name + "]<br/>";
 };
 
-DummyContentHandler.prototype.externalEntityDecl(name, publicId, systemId) {
+DummyContentHandler.prototype.externalEntityDecl = function(name, publicId, systemId) {
     this.div.innerHTML += "externalEntityDecl [" + name + "] [" + publicId + "] [" + systemId + "]<br/>";
 };
 
-DummyContentHandler.prototype.getExternalSubset(name, baseURI) {
+DummyContentHandler.prototype.getExternalSubset = function(name, baseURI) {
     this.div.innerHTML += "getExternalSubset [" + name + "] [" + baseURI + "]<br/>";
 };
 
-DummyContentHandler.prototype.internalEntityDecl(name, value) {
+DummyContentHandler.prototype.internalEntityDecl = function(name, value) {
     this.div.innerHTML += "internalEntityDecl [" + name + "] [" + value + "]<br/>";
 };
 
 //DummyContentHandler.prototype.resolveEntity(publicId, systemId) {};
-DummyContentHandler.prototype.resolveEntity(name, publicId, baseURI, systemId) {
+DummyContentHandler.prototype.resolveEntity = function(name, publicId, baseURI, systemId) {
     this.div.innerHTML += "resolveEntity [" + name + "] [" + publicId + "] [" +baseURI + "] [" + systemId + "]<br/>";
 };
 
-DummyContentHandler.prototype.startCDATA() {
+DummyContentHandler.prototype.startCDATA = function() {
     this.div.innerHTML += "startCDATA<br/>";
 };
 
-DummyContentHandler.prototype.startDTD(name, publicId, systemId) {
+DummyContentHandler.prototype.startDTD = function(name, publicId, systemId) {
     this.div.innerHTML += "startDTD [" + name + "] [" + publicId + "] [" + systemId + "]<br/>";
 };
 
-DummyContentHandler.prototype.startEntity(name) {
+DummyContentHandler.prototype.startEntity = function(name) {
     this.div.innerHTML += "startEntity [" + name + "]<br/>";
 };

@@ -46,9 +46,10 @@ var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + 
 /* Scanner states  */
 var STATE_XML_DECL                  =  0;
 var STATE_PROLOG                    =  1;
-var STATE_ROOT_ELEMENT              =  2;
-var STATE_CONTENT                   =  3;
-var STATE_TRAILING_MISC             =  4;
+var STATE_PROLOG_DOCTYPE_DECLARED   =  2;
+var STATE_ROOT_ELEMENT              =  3;
+var STATE_CONTENT                   =  4;
+var STATE_TRAILING_MISC             =  5;
 
 /* Error values */
 var WARNING = "W";
@@ -125,7 +126,6 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
 
     // IMPLEMENTATION-DEPENDENT PROPERTIES TO SUPPORT PARSING
     this.index = -1;
-    this.doctypeDeclared = false;
 
     this.state = STATE_XML_DECL;
 
@@ -232,7 +232,6 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.length = xml.length;
     this.index = 0;
     this.ch = this.xml.charAt(this.index);
-    this.doctypeDeclared = false;
     this.state = STATE_XML_DECL;
     this.elementsStack = [];
     this.namespaces = [];
@@ -306,14 +305,22 @@ SAXParser.prototype.scanLT = function() {
         if (this.ch == "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                if (this.doctypeDeclared) {
-                    this.fireError("can not have two doctype declaration", FATAL);
-                } else if (this.scanDoctypeDecl()) {
-                    // only one doctype declaration is allowed
-                    this.doctypeDeclared = true;
-                } else {
-                    this.fireError("neither comment nor doctype declaration after &lt;!", FATAL);
-                }
+                this.scanDoctypeDecl();
+                this.state = STATE_PROLOG_DOCTYPE_DECLARED;
+            }
+        } else if (this.ch == "?") {
+            this.nextChar(true);
+            this.scanPI();
+        } else {
+            this.state = STATE_ROOT_ELEMENT;
+            //does not go to next char exiting the method
+            this.scanLT();
+        }
+    } else if (this.state == STATE_PROLOG_DOCTYPE_DECLARED) {
+        if (this.ch == "!") {
+            this.nextChar(true);
+            if (!this.scanComment()) {
+                this.fireError("can not have two doctype declaration", FATAL);
             }
         } else if (this.ch == "?") {
             this.nextChar(true);
@@ -458,12 +465,46 @@ SAXParser.prototype.scanPI = function() {
 };
 
 
-// [28] doctypedecl ::= '<!DOCTYPE' S Name (S ExternalID)? S?
-//                      ('[' (markupdecl | PEReference | S)* ']' S?)? '>'
+//[28]   	doctypedecl	   ::=   	'<!DOCTYPE' S  Name (S  ExternalID)? S? ('[' intSubset ']' S?)? '>'
+//[28a]   	DeclSep	   ::=   	 PEReference | S
+//[28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
+//[29]   	markupdecl	   ::=   	elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment 
+//[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
+//			| 'PUBLIC' S PubidLiteral S SystemLiteral 
 SAXParser.prototype.scanDoctypeDecl = function() {
     if (this.xml.substr(this.index, 7) == "DOCTYPE") {
-        this.nextGT();
-        return true;
+        this.index += 7;
+        this.ch = this.xml.charAt(this.index);
+        this.nextChar();
+        var name = this.nextRegExp(/[ \[>]/);
+        if (this.ch == " ") {
+            this.nextChar();
+            //if there is an externalId
+            if (this.xml.substr(this.index, 6) == "SYSTEM") {
+                this.index += 6;
+                this.ch = this.xml.charAt(this.index);
+                this.nextChar();
+                var systemLiteral = this.nextRegExp(/[ \[>]/);
+            } else if (this.xml.substr(this.index, 6) == "PUBLIC") {
+                this.index += 6;
+                this.ch = this.xml.charAt(this.index);
+                this.nextChar();
+                var pubidLiteral = this.nextRegExp(/ /);
+                this.nextChar();
+                var systemLiteral = this.nextRegExp(/[ \[>]/);
+            }
+            if (this.ch == " ") {
+                this.nextChar();
+            }
+        }
+        if (this.ch == "[") {
+            this.nextChar();
+            var intSubset = this.nextRegExp(/\]/);
+            this.nextChar();
+        }
+        if (this.ch != ">") {
+            this.fireError("invalid content in doctype declaration", FATAL);
+        }
     } else {
         this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
     }

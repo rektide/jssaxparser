@@ -39,6 +39,15 @@ function DomContentHandler() {
     //if text coming is inside a cdata section then this boolean will be set to true
     this.cdata = false;
 }
+
+DomContentHandler.prototype.appendToCurrentElement = function(node) {
+    if (!this.currentElement) {
+        this.document.appendChild(node);
+    } else {
+        this.currentElement.appendChild(node);
+    }
+};
+
 DomContentHandler.prototype.startDocument = function() {
     this.document = createDocument();
 };
@@ -49,11 +58,7 @@ DomContentHandler.prototype.startElement = function(namespaceURI, localName, qNa
     } else {
         element = this.document.createElementNS(namespaceURI, qName);
     }
-    if (!this.currentElement) {
-        this.document.appendChild(element);
-    } else {
-        this.currentElement.appendChild(element);
-    }
+    this.appendToCurrentElement(element);
     this.currentElement = element;
     this.addAtts(atts);
 };
@@ -74,7 +79,7 @@ DomContentHandler.prototype.processingInstruction = function(target, data) {
 DomContentHandler.prototype.ignorableWhitespace = function(ch, start, length) {
 };
 DomContentHandler.prototype.characters = function(ch, start, length) {
-    if (cdata) {
+    if (this.cdata) {
         var cdataNode = this.document.createCDATASection(ch);
         this.currentElement.appendChild(cdataNode);
     } else {
@@ -139,41 +144,41 @@ DomContentHandler.prototype.fatalError = function(saxException) {
  void 	startEntity(java.lang.String name)
           Report the beginning of some internal and external XML entities.
 */
-DomContentHandler.prototype.attributeDecl(eName, aName, type, mode, value) {};
+DomContentHandler.prototype.attributeDecl = function(eName, aName, type, mode, value) {};
 
-DomContentHandler.prototype.comment(ch, start, length) {
+DomContentHandler.prototype.comment = function(ch, start, length) {
     var commentNode = this.document.createComment(ch);
-    this.currentElement.appendChild(commentNode);
+    this.appendToCurrentElement(commentNode);
 };
 
-DomContentHandler.prototype.elementDecl(name, model) {};
+DomContentHandler.prototype.elementDecl = function(name, model) {};
 
-DomContentHandler.prototype.endCDATA() {
+DomContentHandler.prototype.endCDATA = function() {
     //used in characters() methods
     this.cdata = false;
 };
 
-DomContentHandler.prototype.endDTD() {};
+DomContentHandler.prototype.endDTD = function() {};
 
-DomContentHandler.prototype.endEntity(name) {};
+DomContentHandler.prototype.endEntity = function(name) {};
 
-DomContentHandler.prototype.externalEntityDecl(name, publicId, systemId) {};
+DomContentHandler.prototype.externalEntityDecl = function(name, publicId, systemId) {};
 
-DomContentHandler.prototype.getExternalSubset(name, baseURI) {};
+DomContentHandler.prototype.getExternalSubset = function(name, baseURI) {};
 
-DomContentHandler.prototype.internalEntityDecl(name, value) {};
+DomContentHandler.prototype.internalEntityDecl = function(name, value) {};
 
 //DomContentHandler.prototype.resolveEntity(publicId, systemId) {};
-DomContentHandler.prototype.resolveEntity(name, publicId, baseURI, systemId) {};
+DomContentHandler.prototype.resolveEntity = function(name, publicId, baseURI, systemId) {};
 
-DomContentHandler.prototype.startCDATA() {
+DomContentHandler.prototype.startCDATA = function() {
     //used in characters() methods
     this.cdata = true;
 };
 
-DomContentHandler.prototype.startDTD(name, publicId, systemId) {};
+DomContentHandler.prototype.startDTD = function(name, publicId, systemId) {};
 
-DomContentHandler.prototype.startEntity(name) {};
+DomContentHandler.prototype.startEntity = function(name) {};
 
 
 function createDocument() {
