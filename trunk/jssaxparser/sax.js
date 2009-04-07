@@ -56,7 +56,6 @@ var WARNING = "W";
 var ERROR = "E";
 var FATAL = "F";
 
-
 // The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
 //    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
 // The feature/property defaults are incomplete, as they really depend on the implementation and how far we
@@ -104,7 +103,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/xml-1.1'];
 
     this.properties = {}; // objects
-    this.properties['http://xml.org/sax/properties/declaration-handler'] = declarationHandler || (this.declarationHandler = {
+    this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler || (this.declarationHandler = {
         attributeDecl : function (eName, aName, type, mode, value) { // java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String
             // Report an attribute type declaration (void).
         },
@@ -132,7 +131,8 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.elementsStack;
     /* for each depth, a map of namespaces */
     this.namespaces;
-
+    /* map between entity names and values */
+    var entities;
 }
 
 // BEGIN SAX2 INTERFACE
@@ -235,6 +235,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.state = STATE_XML_DECL;
     this.elementsStack = [];
     this.namespaces = [];
+    this.entities = [];
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
@@ -338,7 +339,7 @@ SAXParser.prototype.scanLT = function() {
         }
     } else if (this.state == STATE_CONTENT) {
         if (this.ch == "!") {
-            this.nextChar();
+            this.nextChar(true);
             if (!this.scanComment()) {
                 if (!this.scanCData()) {
                     this.fireError("neither comment nor CDATA after &lt;!", FATAL);
@@ -361,7 +362,7 @@ SAXParser.prototype.scanLT = function() {
         }
     } else if (this.state == STATE_TRAILING_MISC) {
         if (this.ch == "!") {
-            this.nextChar();
+            this.nextChar(true);
             if (!this.scanComment()) {
                 this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
             }
@@ -384,7 +385,7 @@ SAXParser.prototype.scanText = function() {
     
     //if found a "&"
     while (this.ch == "&") {
-        this.nextChar();
+        this.nextChar(true);
         var ref = this.scanRef();
         content += ref;
         content += this.nextRegExp(/[<&]/);
@@ -398,10 +399,13 @@ SAXParser.prototype.scanText = function() {
 SAXParser.prototype.scanRef = function() {
     if (this.ch == "#") {
         this.nextChar(true);
-        return this.scanCharRef();
+        var ref = this.scanCharRef();
     } else {
-        return this.scanEntityRef();
+        var ref = this.scanEntityRef();
     }
+    //current char is ";"
+    this.nextChar(true);
+    return ref;
 };
 
 
@@ -484,14 +488,14 @@ SAXParser.prototype.scanDoctypeDecl = function() {
                 this.index += 6;
                 this.ch = this.xml.charAt(this.index);
                 this.nextChar();
-                var systemLiteral = this.nextRegExp(/[ \[>]/);
+                var systemLiteral = this.quoteContent();
             } else if (this.xml.substr(this.index, 6) == "PUBLIC") {
                 this.index += 6;
                 this.ch = this.xml.charAt(this.index);
                 this.nextChar();
-                var pubidLiteral = this.nextRegExp(/ /);
+                var pubidLiteral = this.quoteContent();
                 this.nextChar();
-                var systemLiteral = this.nextRegExp(/[ \[>]/);
+                var systemLiteral = this.quoteContent();
             }
             if (this.ch == " ") {
                 this.nextChar();
@@ -499,7 +503,7 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         }
         if (this.ch == "[") {
             this.nextChar();
-            var intSubset = this.nextRegExp(/\]/);
+            this.scanDoctypeDeclIntSubset();
             this.nextChar();
         }
         if (this.ch != ">") {
@@ -510,19 +514,92 @@ SAXParser.prototype.scanDoctypeDecl = function() {
     }
 };
 
+/*
+actual char is non whitespace char after '['
+[28a]   	DeclSep	   ::=   	 PEReference | S
+[28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
+[29]   	markupdecl	   ::=   	 elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment  
+[70]   	EntityDecl	   ::=   	 GEDecl  | PEDecl  
+[71]   	          GEDecl	   ::=   	'<!ENTITY' S  Name  S  EntityDef  S? '>'
+[72]   	PEDecl	   ::=   	'<!ENTITY' S '%' S Name S PEDef S? '>'
+[73]   	EntityDef	   ::=   	 EntityValue  | (ExternalID  NDataDecl?)
+[74]   	PEDef	   ::=   	EntityValue | ExternalID 
+[9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
+			|  "'" ([^%&'] | PEReference | Reference)* "'"
+[69]   	PEReference	   ::=   	'%' Name ';'
+[67]   	Reference	   ::=   	 EntityRef | CharRef
+[68]   	EntityRef	   ::=   	'&' Name ';'
+[9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
+			|  "'" ([^%&'] | PEReference | Reference)* "'"
+*/
+SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
+    if (this.ch == "<") {
+        this.nextChar(true);
+        if (this.ch == "?") {
+            this.nextChar();
+            if (!this.scanPI()) {
+                this.fireError("invalid processing instruction inside doctype declaration", FATAL);
+            }
+        } else if (this.ch == "!") {
+            this.nextChar(true);
+            if (!this.scanComment()) {
+                if (this.xml.substr(this.index, 6) == "ENTITY") {
+                    this.index += 6;
+                    this.ch = this.xml.charAt(this.index);
+                    this.nextChar();
+                    if (this.ch == "%") {
+                        //no support for PEDecl
+                        this.nextGT();
+                    } else {
+                        var entityName = this.nextName();
+                        this.nextChar();
+                        if (this.ch == '"' || this.ch == "'") {
+                            var entityValue = this.quoteContent();
+                            this.entities[entityName] = entityValue;
+                            if (this.declarationHandler) {
+                                this.declarationHandler.internalEntityDecl(entityName, entityValue);
+                            }
+                        } else {
+                            //no support for (ExternalID  NDataDecl?)
+                            this.nextGT();
+                        }
+                    }
+                } else {
+                    //no support for other declarations
+                    this.nextGT();
+                }
+                if (this.ch == " ") {
+                    this.nextChar();
+                }
+                if (this.ch != ">") {
+                    this.fireError("invalid [29]markupdecl inside doctype declaration, must end with &gt;", FATAL);
+                }
+                this.nextChar();
+            }
+        }
+    //PEReference
+    } else if (this.ch == "%") {
+        var name = this.nextRegExp(";");
+    }
+    if (this.ch != "]") {
+        this.scanDoctypeDeclIntSubset();
+    }
+}
 
-// [39] element ::= EmptyElemTag | STag content ETag
-// [44] EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
-// [40] STag ::= '<' Name (S Attribute)* S? '>'
-// [41] Attribute ::= Name Eq AttValue
-// [10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
-// [67] Reference ::= EntityRef | CharRef
-// [68] EntityRef ::= '&' Name ';'
-// [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
-// [43] content ::= (element | CharData | Reference | CDSect | PI | Comment)*
-// [42] ETag ::= '</' Name S? '>'
-//[4]  NameChar ::= Letter | Digit | '.' | '-' | '_' | ':' | CombiningChar | Extender
-//[5]  Name ::= Letter | '_' | ':') (NameChar)*
+/*
+ [39] element ::= EmptyElemTag | STag content ETag
+[44] EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
+[40] STag ::= '<' Name (S Attribute)* S? '>'
+[41] Attribute ::= Name Eq AttValue
+[10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
+[67] Reference ::= EntityRef | CharRef
+[68] EntityRef ::= '&' Name ';'
+[66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
+[43] content ::= (element | CharData | Reference | CDSect | PI | Comment)*
+[42] ETag ::= '</' Name S? '>'
+[4]  NameChar ::= Letter | Digit | '.' | '-' | '_' | ':' | CombiningChar | Extender
+[5]  Name ::= Letter | '_' | ':') (NameChar)*
+*/
 SAXParser.prototype.scanMarkup = function() {
     var qName = this.getQName();
     this.elementsStack.push(qName.qName);
@@ -610,7 +687,21 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
 SAXParser.prototype.scanAttValue = function() {
     if (this.ch == '"' || this.ch == "'") {
         try {
-            var attValue = this.quoteContent();
+            this.nextChar(true);
+            var attValue = this.nextRegExp(/['"<&]/);
+            //if found a "&"
+            while (this.ch == "&") {
+                this.nextChar(true);
+                var ref = this.scanRef();
+                attValue += ref;
+                attValue += this.nextRegExp(/['"<&]/);
+            }
+            if (this.ch == "<") {
+                this.fireError("invalid attribute value, must not contain &lt;", FATAL);
+            }
+            //current char is ending quote
+            this.nextChar();
+            //var attValue = this.quoteContent();
         //adding a message in that case
         } catch(e) {
             if (e instanceof EndOfInputException) {
@@ -654,7 +745,7 @@ SAXParser.prototype.scanCData = function() {
 };
 
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
-// current ch is char after &#
+// current ch is char after "&#",  returned current char is ";"
 SAXParser.prototype.scanCharRef = function() {
     var oldIndex = this.index;
     if (this.ch == "x") {
@@ -666,7 +757,6 @@ SAXParser.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
     } else {
-        this.nextChar(true);
         while (this.ch != ";") {
             if (!/\d/.test(this.ch)) {
                 this.fireError("invalid char reference, must contain numeric characters only", ERROR);
@@ -684,6 +774,10 @@ SAXParser.prototype.scanEntityRef = function() {
         if (this.lexicalHandler) {
             this.lexicalHandler.startEntity(ref);
             this.lexicalHandler.endEntity(ref);
+        }
+        //tries to replace it by its value if declared internally in doctype declaration
+        if (this.entities[ref]) {
+            ref = this.entities[ref];
         }
         return ref;
     //adding a message in that case

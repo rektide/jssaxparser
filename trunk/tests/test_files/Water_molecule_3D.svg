@@ -11,9 +11,9 @@
       <stop stop-color="#FE1313" stop-opacity="1" offset="0" />
       <stop stop-color="#FE1313" stop-opacity="0" offset="1" />
     </linearGradient>
-    <radialGradient cx="364" cy="678" r="292" fx="364" fy="678" id="radialGradient1" xlink:href="#linearGradient1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-1.229405,4.79673e-3,4.681036e-3,1.199753,1184.239,-148.2528)" />
-    <radialGradient cx="520" cy="500" r="462" fx="520" fy="500" id="radialGradient2" xlink:href="#linearGradient2" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.325424,-2.093614e-6,2.055968e-6,1.223902,-169.2218,-111.9489)" />
-    <radialGradient cx="364" cy="678" r="292" fx="364" fy="678" id="radialGradient3" xlink:href="#linearGradient1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.229405,4.79673e-3,-4.681036e-3,1.199753,-85.23889,-136.2528)" />
+    <radialGradient cx="364" cy="678" r="292" fx="364" fy="678" id="radialGradient1" xlink:href="#linearGradient1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-1.22941, 0.00479673, 0.00468104, 1.19975, 1184.24, -148.253)" />
+    <radialGradient cx="520" cy="500" r="462" fx="520" fy="500" id="radialGradient2" xlink:href="#linearGradient2" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.32542, -2.09361e-06, 2.05597e-06, 1.2239, -169.222, -111.949)" />
+    <radialGradient cx="364" cy="678" r="292" fx="364" fy="678" id="radialGradient3" xlink:href="#linearGradient1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.22941, 0.00479673, -0.00468104, 1.19975, -85.2389, -136.253)" />
   </defs>
   <path d="M 936,417 C 736,315 390,658 481,838 C 548,972 793,1026 944,885 C 1108,732 1059,479 936,417 z " fill="black" />
   <path d="M 936,417 C 736,315 390,658 481,838 C 548,972 793,1026 944,885 C 1108,732 1059,479 936,417 z " fill="url(#radialGradient1)" />
