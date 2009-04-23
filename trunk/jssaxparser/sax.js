@@ -686,22 +686,22 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
 // [10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
 SAXParser.prototype.scanAttValue = function() {
     if (this.ch == '"' || this.ch == "'") {
+        var quote = this.ch;
         try {
             this.nextChar(true);
-            var attValue = this.nextRegExp(/['"<&]/);
+            var attValue = this.nextRegExp("[" + quote + "<&]");
             //if found a "&"
             while (this.ch == "&") {
                 this.nextChar(true);
                 var ref = this.scanRef();
                 attValue += ref;
-                attValue += this.nextRegExp(/['"<&]/);
+                attValue += this.nextRegExp("[" + quote + "<&]");
             }
             if (this.ch == "<") {
                 this.fireError("invalid attribute value, must not contain &lt;", FATAL);
             }
             //current char is ending quote
             this.nextChar();
-            //var attValue = this.quoteContent();
         //adding a message in that case
         } catch(e) {
             if (e instanceof EndOfInputException) {

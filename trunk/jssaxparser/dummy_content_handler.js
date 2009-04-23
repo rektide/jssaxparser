@@ -139,7 +139,7 @@ DummyContentHandler.prototype.attributeDecl = function(eName, aName, type, mode,
 };
 
 DummyContentHandler.prototype.comment = function(ch, start, length) {
-    this.div.innerHTML += "attributeDecl [" + ch + "] [" + start + "] [" + length + "]<br/>";
+    this.div.innerHTML += "comment [" + ch + "] [" + start + "] [" + length + "]<br/>";
 };
 
 DummyContentHandler.prototype.elementDecl = function(name, model) {

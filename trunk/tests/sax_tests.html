@@ -18,6 +18,37 @@
 		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
     }
     
+    function testParse_test_files_xslt() {
+        var fileAsText = loadFile("test_files/xslt_ex.xml");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_comment_cdata() {
+        var fileAsText = loadFile("test_files/comment_cdata.xml");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_svg() {
+        var fileAsText = loadFile("test_files/Water_molecule_3D.svg");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_svg_with_entities() {
+        var fileAsText = loadFile("test_files/chem1.svg");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_6nbn() {
+        var fileAsText = loadFile("test_files/6nbn.xml");
+        parse(fileAsText);
+    }
+    
+    function testParse_test_files_benchmark() {
+        var fileAsText = loadFile("test_files/benchmark.xml");
+        parse(fileAsText);
+    }
+    
+    
     function testParse_xml1() {
         var xml = loadXml();
         parse(xml);
@@ -46,31 +77,6 @@
     function testParse_relaxng3() {
         var xml = loadRelaxng3();
         parse(xml);
-    }
-    
-    function testParse_test_files_6nbn() {
-        var fileAsText = loadFile("test_files/6nbn.xml");
-        parse(fileAsText);
-    }
-    
-    function testParse_test_files_benchmark() {
-        var fileAsText = loadFile("test_files/benchmark.xml");
-        parse(fileAsText);
-    }
-    
-    function testParse_test_files_comment_cdata() {
-        var fileAsText = loadFile("test_files/comment_cdata.xml");
-        parse(fileAsText);
-    }
-    
-    function testParse_test_files_svg() {
-        var fileAsText = loadFile("test_files/Water_molecule_3D.svg");
-        parse(fileAsText);
-    }
-    
-    function testParse_test_files_svg_with_entities() {
-        var fileAsText = loadFile("test_files/chem1.svg");
-        parse(fileAsText);
     }
     
     function parse(xml) {
