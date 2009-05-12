@@ -56,6 +56,149 @@ var WARNING = "W";
 var ERROR = "E";
 var FATAL = "F";
 
+/* Supporting functions and exceptions */
+function Sax_Attribute(qName, namespaceURI, value) {
+    this.qName = qName;
+    this.namespaceURI = namespaceURI;
+    this.value = value;
+}
+
+function SAXException(message, exception) {
+    this.message = message;
+    this.exception = exception;
+}
+
+// Not fully implemented
+function SAXNotSupportedException (msg) { // java.lang.Exception
+    return new Error(msg || '');
+}
+function SAXNotRecognizedException (msg) { // java.lang.Exception
+    return new Error(msg || '');
+}
+
+//This constructor is more complex and not presently implemented;
+//  see Java API to implement additional arguments correctly
+function SAXParseException (msg) { // java.lang.Exception //
+    return new Error(msg || '');
+}
+
+// Should this perhaps extend SAXParseException?
+function EndOfInputException() {}
+
+
+function Sax_QName(prefix, localName) {
+    this.prefix = prefix;
+    this.localName = localName;
+    if (prefix !== "") {
+        this.qName = prefix + ":" + localName;
+    } else {
+        this.qName = localName;
+    }
+}
+
+Sax_QName.prototype.equals = function(qName) {
+    return this.qName == qName.qName;
+};
+
+/*
+ int 	getIndex(java.lang.String qName)
+          Look up the index of an attribute by XML qualified (prefixed) name.
+ int 	getIndex(java.lang.String uri, java.lang.String localName)
+          Look up the index of an attribute by Namespace name.
+ int 	getLength()
+          Return the number of attributes in the list.
+ java.lang.String 	getLocalName(int index)
+          Look up an attribute's local name by index.
+ java.lang.String 	getQName(int index)
+          Look up an attribute's XML qualified (prefixed) name by index.
+ java.lang.String 	getType(int index)
+          Look up an attribute's type by index.
+ java.lang.String 	getType(java.lang.String qName)
+          Look up an attribute's type by XML qualified (prefixed) name.
+ java.lang.String 	getType(java.lang.String uri, java.lang.String localName)
+          Look up an attribute's type by Namespace name.
+ java.lang.String 	getURI(int index)
+          Look up an attribute's Namespace URI by index.
+ java.lang.String 	getValue(int index)
+          Look up an attribute's value by index.
+ java.lang.String 	getValue(java.lang.String qName)
+          Look up an attribute's value by XML qualified (prefixed) name.
+ java.lang.String 	getValue(java.lang.String uri, java.lang.String localName)
+          Look up an attribute's value by Namespace name.
+ */
+// Change to Attributes2Impl class instead?
+function Sax_Attributes(attsArray) {
+    this.attsArray = attsArray;
+}
+Sax_Attributes.prototype.getIndex = function(arg1, arg2) {
+    if (arg2 === undefined) {
+        return this.getIndexByQName(arg1);
+    } else {
+        return this.getIndexByURI(arg1, arg2);
+    }
+};
+Sax_Attributes.prototype.getIndexByQName = function(qName) {
+    for (var i in this.attsArray) {
+        if (this.attsArray[i].qName.equals(qName)) {
+            return i;
+        }
+    }
+    return -1;
+};
+Sax_Attributes.prototype.getIndexByURI = function(uri, localName) {
+    for (var i in this.attsArray) {
+        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
+            return i;
+        }
+    }
+    return -1;
+};
+Sax_Attributes.prototype.getLength = function() {
+    return this.attsArray.length;
+};
+Sax_Attributes.prototype.getLocalName = function(index) {
+    return this.attsArray[index].qName.localName;
+};
+Sax_Attributes.prototype.getQName = function(index) {
+    return this.attsArray[index].qName.qName;
+};
+//not supported
+Sax_Attributes.prototype.getType = function(arg1, arg2) {
+    return "CDATA";
+};
+Sax_Attributes.prototype.getURI = function(index) {
+    return this.attsArray[index].namespaceURI;
+};
+Sax_Attributes.prototype.getValue = function(arg1, arg2) {
+    if (arg2 === undefined) {
+        if (typeof arg1 == "string") {
+            return this.getValueByQName(arg1);
+        } else {
+            return this.getValueByIndex(arg1);
+        }
+    } else {
+        return this.getValueByURI(arg1, arg2);
+    }
+};
+Sax_Attributes.prototype.getValueByIndex = function(index) {
+    return this.attsArray[index].value;
+};
+Sax_Attributes.prototype.getValueByQName = function(qName) {
+    for (var i in this.attsArray) {
+        if (this.attsArray[i].qName.equals(qName)) {
+            return this.attsArray[i].value;
+        }
+    }
+};
+Sax_Attributes.prototype.getValueByURI = function(uri, localName) {
+    for (var i in this.attsArray) {
+        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
+            return this.attsArray[i].value;
+        }
+    }
+};
+
+
 // The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
 //    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
 // The feature/property defaults are incomplete, as they really depend on the implementation and how far we
@@ -251,7 +394,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
             } else {
                 try {
                     this.contentHandler.endDocument();
-                } catch(e) {}
+                } catch(e2) {}
             }
         }
     }
@@ -351,7 +494,7 @@ SAXParser.prototype.scanLT = function() {
         } else if (this.ch == "/") {
             this.nextChar();
             if (this.scanEndingTag()) {
-                if (this.elementsStack.length == 0) {
+                if (this.elementsStack.length === 0) {
                     this.state = STATE_TRAILING_MISC;
                 }
             }
@@ -397,11 +540,12 @@ SAXParser.prototype.scanText = function() {
 
 //current char is after '&'
 SAXParser.prototype.scanRef = function() {
+    var ref;
     if (this.ch == "#") {
         this.nextChar(true);
-        var ref = this.scanCharRef();
+        ref = this.scanCharRef();
     } else {
-        var ref = this.scanEntityRef();
+        ref = this.scanEntityRef();
     }
     //current char is ";"
     this.nextChar(true);
@@ -481,6 +625,7 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         this.ch = this.xml.charAt(this.index);
         this.nextChar();
         var name = this.nextRegExp(/[ \[>]/);
+        var systemLiteral;
         if (this.ch == " ") {
             this.nextChar();
             //if there is an externalId
@@ -488,14 +633,14 @@ SAXParser.prototype.scanDoctypeDecl = function() {
                 this.index += 6;
                 this.ch = this.xml.charAt(this.index);
                 this.nextChar();
-                var systemLiteral = this.quoteContent();
+                systemLiteral = this.quoteContent();
             } else if (this.xml.substr(this.index, 6) == "PUBLIC") {
                 this.index += 6;
                 this.ch = this.xml.charAt(this.index);
                 this.nextChar();
                 var pubidLiteral = this.quoteContent();
                 this.nextChar();
-                var systemLiteral = this.quoteContent();
+                systemLiteral = this.quoteContent();
             }
             if (this.ch == " ") {
                 this.nextChar();
@@ -584,7 +729,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
     if (this.ch != "]") {
         this.scanDoctypeDeclIntSubset();
     }
-}
+};
 
 /*
  [39] element ::= EmptyElemTag | STag content ETag
@@ -620,7 +765,7 @@ SAXParser.prototype.getQName = function() {
 };
 
 SAXParser.prototype.scanElement = function(qName) {
-    var namespacesDeclared = new Array();
+    var namespacesDeclared = [];
     var atts = this.scanAttributes(namespacesDeclared);
     this.namespaces.push(namespacesDeclared);
     var namespaceURI = this.getNamespaceURI(qName.prefix);
@@ -644,14 +789,14 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
             return namespaceURI;
         }
     }
-    if (prefix == "") {
+    if (prefix === "") {
         return "";
     }
     this.fireError("prefix " + prefix + " not known in namespaces map", FATAL);
 };
 
 SAXParser.prototype.scanAttributes = function(namespacesDeclared) {
-    var atts = new Array();
+    var atts = [];
     this.scanAttribute(atts, namespacesDeclared);
     return new Sax_Attributes(atts);
 };
@@ -729,7 +874,7 @@ SAXParser.prototype.scanCData = function() {
         }
         // Reports the same as for text
         var start = this.index;
-        var cdata = this.nextRegExp(/]]>/);
+        var cdata = this.nextRegExp(/\]\]>/);
         var length = this.index - start;
         this.contentHandler.characters(cdata, start, length);
         //goes after final '>'
@@ -901,146 +1046,6 @@ SAXParser.prototype.fireError = function(message, gravity) {
     }
 };
 
-function Sax_QName(prefix, localName) {
-    this.prefix = prefix;
-    this.localName = localName;
-    if (prefix != "") {
-        this.qName = prefix + ":" + localName;
-    } else {
-        this.qName = localName;
-    }
-}
-
-Sax_QName.prototype.equals = function(qName) {
-    return this.qName == qName.qName;
-};
-
-/*
- int 	getIndex(java.lang.String qName)
-          Look up the index of an attribute by XML qualified (prefixed) name.
- int 	getIndex(java.lang.String uri, java.lang.String localName)
-          Look up the index of an attribute by Namespace name.
- int 	getLength()
-          Return the number of attributes in the list.
- java.lang.String 	getLocalName(int index)
-          Look up an attribute's local name by index.
- java.lang.String 	getQName(int index)
-          Look up an attribute's XML qualified (prefixed) name by index.
- java.lang.String 	getType(int index)
-          Look up an attribute's type by index.
- java.lang.String 	getType(java.lang.String qName)
-          Look up an attribute's type by XML qualified (prefixed) name.
- java.lang.String 	getType(java.lang.String uri, java.lang.String localName)
-          Look up an attribute's type by Namespace name.
- java.lang.String 	getURI(int index)
-          Look up an attribute's Namespace URI by index.
- java.lang.String 	getValue(int index)
-          Look up an attribute's value by index.
- java.lang.String 	getValue(java.lang.String qName)
-          Look up an attribute's value by XML qualified (prefixed) name.
- java.lang.String 	getValue(java.lang.String uri, java.lang.String localName)
-          Look up an attribute's value by Namespace name.
- */
-// Change to Attributes2Impl class instead?
-function Sax_Attributes(attsArray) {
-    this.attsArray = attsArray;    
-}
-Sax_Attributes.prototype.getIndex = function(arg1, arg2) {
-    if (arg2 == undefined) {
-        return this.getIndexByQName(arg1);
-    } else {
-        return this.getIndexByURI(arg1, arg2);
-    }
-};
-Sax_Attributes.prototype.getIndexByQName = function(qName) {
-    for (var i in this.attsArray) {
-        if (this.attsArray[i].qName.equals(qName)) {
-            return i;
-        }
-    }
-    return -1;
-};
-Sax_Attributes.prototype.getIndexByURI = function(uri, localName) {
-    for (var i in this.attsArray) {
-        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
-            return i;
-        }
-    }
-    return -1;
-};
-Sax_Attributes.prototype.getLength = function() {
-    return this.attsArray.length;
-};
-Sax_Attributes.prototype.getLocalName = function(index) {
-    return this.attsArray[index].qName.localName;
-};
-Sax_Attributes.prototype.getQName = function(index) {
-    return this.attsArray[index].qName.qName;
-};
-//not supported
-Sax_Attributes.prototype.getType = function(arg1, arg2) {
-    return "CDATA";
-};
-Sax_Attributes.prototype.getURI = function(index) {
-    return this.attsArray[index].namespaceURI;
-};
-Sax_Attributes.prototype.getValue = function(arg1, arg2) {
-    if (arg2 == undefined) {
-        if (typeof arg1 == "string") {
-            return this.getValueByQName(arg1);
-        } else {
-            return this.getValueByIndex(arg1);
-        }
-    } else {
-        return this.getValueByURI(arg1, arg2);
-    }
-};
-Sax_Attributes.prototype.getValueByIndex = function(index) {
-    return this.attsArray[index].value;
-};
-Sax_Attributes.prototype.getValueByQName = function(qName) {
-    for (var i in this.attsArray) {
-        if (this.attsArray[i].qName.equals(qName)) {
-            return this.attsArray[i].value;
-        }
-    }
-};
-Sax_Attributes.prototype.getValueByURI = function(uri, localName) {
-    for (var i in this.attsArray) {
-        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
-            return this.attsArray[i].value;
-        }
-    }
-};
-
-
-function Sax_Attribute(qName, namespaceURI, value) {
-    this.qName = qName;
-    this.namespaceURI = namespaceURI;
-    this.value = value;
-}
-
-function SAXException(message, exception) {
-    this.message = message;
-    this.exception = exception;
-}
-
-// Not fully implemented
-function SAXNotSupportedException (msg) { // java.lang.Exception
-    return new Error(msg || '');
-}
-function SAXNotRecognizedException (msg) { // java.lang.Exception
-    return new Error(msg || '');
-}
-
-//This constructor is more complex and not presently implemented;
-//  see Java API to implement additional arguments correctly
-function SAXParseException (msg) { // java.lang.Exception //
-    return new Error(msg || '');
-}
-
-// Should this perhaps extend SAXParseException?
-function EndOfInputException() {}
 
 
 // Add public API to global namespace (or other one, if we are in another)
@@ -1050,4 +1055,4 @@ this.SAXNotSupportedException = SAXNotSupportedException;
 this.SAXNotRecognizedException = SAXNotRecognizedException;
 this.SAXParseException = SAXParseException;
 
-})(); // end namespace
+}()); // end namespace

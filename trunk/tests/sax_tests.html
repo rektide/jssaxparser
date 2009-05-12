@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
     <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
     <script type="text/javascript" src="../jssaxparser/sax.js"></script>
@@ -85,11 +86,66 @@
         } catch(e) {
             assertTrue(e.message, false);
         }
-        assertTrue(contentHandler.saxExceptions.length + " SAX exception(s) has(have) been thrown", contentHandler.saxExceptions.length == 0);
+        assertTrue(contentHandler.saxExceptions.length + " SAX exception(s) has(have) been thrown",
+		contentHandler.saxExceptions.length == 0);
         assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
     }
 	
-    
+	function runAllTests () {
+		setUp();
+		testParse_test_files_xslt();
+		setUp(); // needed a new DOM content handler, so calling before each test
+		testParse_test_files_comment_cdata();
+		setUp();
+		testParse_test_files_svg();
+		setUp();
+		testParse_test_files_svg_with_entities();
+		setUp();
+		testParse_test_files_6nbn();
+		setUp();
+		testParse_test_files_benchmark();
+		setUp();
+		testParse_xml1();
+		setUp();
+		testParse_xml2();
+		setUp();
+		testParse_xml3();
+		setUp();
+		testParse_relaxng();
+		setUp();
+		testParse_relaxng2();
+		setUp();
+		testParse_relaxng3();
+	}
+	
+	// Brett added to be able to show something in console when error is thrown
+	JsUnitException.prototype.toString = function () {
+		return this.jsUnitMessage;
+	};
+	
+	/*
+	Object.prototype.toString = function () {
+		return this.description;
+	};
+	assertTrue('ok', true, false); // Now will show: Error: uncaught exception: Incorrect arguments passed to assert function
+	*/
+	
+	runAllTests(); // all were apparently working except following due to: Error: uncaught exception: Expected translate(20, 20) scale(4, 4) (string) but was translate(20,20) scale(4) (string); the problem didn't show up before since the test had a slight bug in two nested for loops using the same 'i' variable; I fixed it, and then the problem surfaced, until I fudged the sample file slightly--see below.
+	/*
+	setUp();
+	testParse_test_files_svg_with_entities();
+	*/
+	/*
+	// This test case shows that Mozilla is changing (auto-fixing?) the document behind the scenes for SVG, auto-translating the scale() function to have an 
+	//    extra argument (and adjusting whitespace a little too), though apparently not if created through dom.implementation
+	// Errors get triggered for us in assertAttributesEquals() in jsxmlunit.js (which was called by assertXmlEquals() in the same file, which was called in parse() above
+	text = '<svg xmlns="http://www.w3.org/2000/svg">'+
+		'<g transform="translate(20,20) scale(4)"></g></svg>' ;
+	alert(text)
+	doc=new DOMParser().parseFromString(text,"text/xml");
+	alert(new XMLSerializer().serializeToString(doc)); // Has an extra ", 4" within scale()!
+	// Solved the problem by fudging one attribute value in the SVG file (in the first <g/>) to possess a value which was equivalent to the value to which it would be translated
+	*/
     </script>
   </head>
   <body>

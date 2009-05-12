@@ -1,3 +1,4 @@
+/*global ActiveXObject, window */
 /*
 Copyright or © or Copr. Nicolas Debeissat Brett Zamir
 
@@ -34,6 +35,22 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
+/* Helper function */
+function createDocument() {
+    // code for IE
+    var doc;
+    if (window.ActiveXObject) {
+        doc = new ActiveXObject("Microsoft.XMLDOM");
+        doc.async = "false";
+    }
+    // code for Mozilla, Firefox
+    else {
+        doc = document.implementation.createDocument(null, "", null);
+    }
+    return doc;
+}
+
+
 function DomContentHandler() {
     this.saxExceptions = [];
     //if text coming is inside a cdata section then this boolean will be set to true
@@ -53,7 +70,7 @@ DomContentHandler.prototype.startDocument = function() {
 };
 DomContentHandler.prototype.startElement = function(namespaceURI, localName, qName, atts) {
     var element;
-    if (namespaceURI == '') {
+    if (namespaceURI === '' || namespaceURI === null) { // namespaceURI should be null, not empty string, no?
         element = this.document.createElement(localName);
     } else {
         element = this.document.createElementNS(namespaceURI, qName);
@@ -95,7 +112,7 @@ DomContentHandler.prototype.addAtts = function(atts) {
     for (var i = 0 ; i < atts.getLength() ; i++) {
         var namespaceURI = atts.getURI(i);
         var value = atts.getValue(i);
-        if (namespaceURI == '') {
+        if (namespaceURI === '' || namespaceURI === null) { // namespaceURI should be null, not empty string, no?
             var localName = atts.getLocalName(i);
             this.currentElement.setAttribute(localName, value);
         } else {
@@ -179,17 +196,3 @@ DomContentHandler.prototype.startCDATA = function() {
 DomContentHandler.prototype.startDTD = function(name, publicId, systemId) {};
 
 DomContentHandler.prototype.startEntity = function(name) {};
-
-
-function createDocument() {
-    // code for IE
-    if (window.ActiveXObject) {
-        var doc = new ActiveXObject("Microsoft.XMLDOM");
-        doc.async = "false";
-    }
-    // code for Mozilla, Firefox
-    else {
-        var doc = document.implementation.createDocument("", "", null);
-    }
-    return doc;
-}

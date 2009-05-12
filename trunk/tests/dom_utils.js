@@ -1,3 +1,4 @@
+/*global ActiveXObject, DOMParser, XMLSerializer, XPathResult, window, is_ignorable*/
 /*
 Copyright or © or Copr. Nicolas Debeissat
 
@@ -34,21 +35,21 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
-ELEMENT_NODE = 1;
-ATTRIBUTE_NODE = 2;
-TEXT_NODE = 3;
-CDATA_SECTION_NODE = 4;
-ENTITY_REFERENCE_NODE = 5;
-ENTITY_NODE = 6;
-PROCESSING_INSTRUCTION_NODE = 7;
-COMMENT_NODE = 8;
-DOCUMENT_NODE = 9;
-DOCUMENT_TYPE_NODE = 10;
-DOCUMENT_FRAGMENT_NODE = 11;
+var ELEMENT_NODE = 1,
+ATTRIBUTE_NODE = 2,
+TEXT_NODE = 3,
+CDATA_SECTION_NODE = 4,
+ENTITY_REFERENCE_NODE = 5,
+ENTITY_NODE = 6,
+PROCESSING_INSTRUCTION_NODE = 7,
+COMMENT_NODE = 8,
+DOCUMENT_NODE = 9,
+DOCUMENT_TYPE_NODE = 10,
+DOCUMENT_FRAGMENT_NODE = 11,
 NOTATION_NODE = 12;
 
 function cloneArray(array) {
-	var clone = new Array();
+	var clone = [];
 	for (var i in array) {
 		clone[i] = array[i];
 	}
@@ -62,7 +63,7 @@ function cloneArray(array) {
  */
 
 function applyXpath(domNode,xpath) {
-    var inputs = new Array();
+    var inputs = [];
     // code for IE
     if (window.ActiveXObject) {
         domNode.ownerDocument.setProperty("SelectionLanguage","XPath");
@@ -86,8 +87,8 @@ function applyXpath(domNode,xpath) {
 function getFirstAncestorByTagAndClass(domNode,tagName,className) {
     var ancestor = domNode.parentNode;
     while (ancestor) {
-        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() == tagName)
-        && (ancestor.className) && (ancestor.className.toLowerCase() == className)) {
+        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() == tagName) &&
+            (ancestor.className) && (ancestor.className.toLowerCase() == className)) {
             return ancestor;
         }
         ancestor = ancestor.parentNode;
@@ -130,9 +131,9 @@ function isDisplayed(domNode) {
     //checks that all the <div> ancestors of this node are really displayed
     var ancestor = domNode.parentNode;
     while (ancestor) {
-        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() == 'div')
-        && (ancestor.style) && (ancestor.style.display)
-        && (ancestor.style.display == 'none')) {
+        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() == 'div') &&
+            (ancestor.style) && (ancestor.style.display) && 
+            (ancestor.style.display == 'none')) {
             return false;
         }
         ancestor = ancestor.parentNode;
@@ -148,7 +149,7 @@ function isDisplayed(domNode) {
  */
 function getElementsByAttribute(oElm, strTagName, strAttributeName, strAttributeValue) {
     var arrElements = (strTagName == "*" && document.all)? document.all : oElm.getElementsByTagName(strTagName);
-    var arrReturnElements = new Array();
+    var arrReturnElements = [];
     //MODIFIED to be visible (and understandable)
     //var oAttributeValue = (typeof strAttributeValue != "undefined")? new RegExp("(^|\\s)" + strAttributeValue + "(\\s|$)") : null;
     var oAttributeValue = null;
@@ -183,29 +184,34 @@ function getElementByTagClassRefs(parentNode, tagName, classValue, refsValue) {
  comes from http://www.w3schools.com/dom/tryit.asp?filename=note_parsertest2
  */
 function createDocumentFromText(text) {
+    var doc;
     // code for IE
     if (window.ActiveXObject) {
-        var doc=new ActiveXObject("Microsoft.XMLDOM");
+        doc=new ActiveXObject("Microsoft.XMLDOM");
         doc.async="false";
         doc.loadXML(text);
     }
     // code for Mozilla, Firefox, Opera, etc.
-    else {
+    else if (window.DOMParser) {
         var parser=new DOMParser();
-        var doc=parser.parseFromString(text,"text/xml");
+        doc=parser.parseFromString(text,"text/xml");
+    }
+    else {
+        throw 'Your browser does not support the parsing needed to perform this function.';
     }
     return doc;
 }
 
 function createDocument() {
+    var doc;
     // code for IE
     if (window.ActiveXObject) {
-        var doc=new ActiveXObject("Microsoft.XMLDOM");
+        doc=new ActiveXObject("Microsoft.XMLDOM");
         doc.async="false";
     }
     // code for Mozilla, Firefox
     else {
-        var doc = document.implementation.createDocument("", "", null);
+        doc = document.implementation.createDocument(null, "", null);
     }
     return doc;
 }
@@ -245,16 +251,6 @@ function getPreviousSiblingElement(node, tagName) {
     return node;
 }
 
-function getNextSiblingElementRefs(node, tagName, refsValue) {
-	node = getNextSiblingElement(node, tagName);
-	while (node) {
-		if (node.getAttribute("refs") == refsValue) {
-			return node;
-		}
-		node = getNextSiblingElement(node, tagName);
-	}
-}
-
 function getNextSiblingElement(node, tagName) {
     node = node.nextSibling;
     while (node && node.nodeType != ELEMENT_NODE) {
@@ -264,6 +260,16 @@ function getNextSiblingElement(node, tagName) {
         return getNextSiblingElement(node, tagName);
     }
     return node;
+}
+
+function getNextSiblingElementRefs(node, tagName, refsValue) {
+	node = getNextSiblingElement(node, tagName);
+	while (node) {
+		if (node.getAttribute("refs") == refsValue) {
+			return node;
+		}
+		node = getNextSiblingElement(node, tagName);
+	}
 }
 
 function getFirstChildElement(parentNode, tagName) {
@@ -303,7 +309,7 @@ function innerXML(node) {
         if (node.xml) {
             return node.xml;
         } else {
-            if (typeof XMLSerializer != "undefined") {
+            if (typeof window.XMLSerializer != "undefined") {
                 var serializer = new XMLSerializer();
                 return serializer.serializeToString(node);
             }
@@ -318,11 +324,13 @@ function removePrefix(nodeName) {
     return nodeName;
 }
 
-function getNamespaceURIFromNodeName(nodeName,namespaces) {
-    if (nodeName.match(":")) {
-        return getNamespaceURI(nodeName.split(":")[0],namespaces);
+function getDefaultNamespace(namespaces) {
+    //default namespace can have been defined as prefix ""
+    if (namespaces[""]) {
+        return namespaces[""];
     }
-    return getDefaultNamespace(namespaces); 
+    //returning null namespace
+    return null;
 }
 
 function getNamespaceURI(prefix,namespaces) {
@@ -338,13 +346,11 @@ function getNamespaceURI(prefix,namespaces) {
     return getDefaultNamespace(namespaces);
 }
 
-function getDefaultNamespace(namespaces) {
-    //default namespace can have been defined as prefix ""
-    if (namespaces[""]) {
-        return namespaces[""];
+function getNamespaceURIFromNodeName(nodeName,namespaces) {
+    if (nodeName.match(":")) {
+        return getNamespaceURI(nodeName.split(":")[0],namespaces);
     }
-    //returning null namespace
-    return null;
+    return getDefaultNamespace(namespaces); 
 }
 
 function getFirstChildTextNode(domNode) {

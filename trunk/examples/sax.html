@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 	<head>
-
+		<title>SAX</title>
 		<script type="text/javascript" src="xml_samples.js"></script>
 		<script type="text/javascript" src="../jssaxparser/sax.js"></script>
         <script type="text/javascript" src="../jssaxparser/dummy_content_handler.js"></script>
@@ -15,7 +15,7 @@
         //var xml = loadRelaxng3();
 		
 		function start() {
-			div = document.getElementById("msg");
+			var div = document.getElementById("msg");
             div.innerHTML = "";
 			var contentHandler = new DummyContentHandler(div);
 			var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
@@ -28,7 +28,8 @@
 	
 	<body>
 		<div id="msg"></div>
-		<input type="button" onclick="start()"/>
-	
+		<div>
+			<input type="button" onclick="start()" value="start"/>
+		</div>
 	</body>
 </html>

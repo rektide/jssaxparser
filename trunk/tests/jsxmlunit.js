@@ -1,3 +1,4 @@
+/*global assertEquals, data_of, assertTrue, is_ignorable  */
 /*
 Copyright or © or Copr. Nicolas Debeissat
 
@@ -34,7 +35,24 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
+function assertAttributesEquals(attsExpected, attsResult) {
+    var i, j;
+    for (i = 0 ; i < attsExpected.length ; i++) {
+        var attExpected = attsExpected.item(i);
+        var attFound = false;
+        for (j = 0 ; j < attsResult.length && !attFound; j++) {
+            var attResult = attsResult.item(j);
+            if (attResult.nodeName == attExpected.nodeName) {
+                attFound = true;
+                assertEquals("invalid value of attribute " + attResult.nodeName, attExpected.value, attResult.value);
+            }
+        }
+        assertTrue("missing attribute " + attExpected.nodeName, attFound);
+    }
+}
+
 function assertXmlEquals(expected, result) {
+    var i;
     assertEquals("different nodes types", expected.nodeType, result.nodeType);
     //element nodes
     if (expected.nodeType == 1) {
@@ -42,14 +60,14 @@ function assertXmlEquals(expected, result) {
         var attsExpected = expected.attributes;
         var attsResult = result.attributes;
         //remove namespaces declaration from attributes, not supported
-        for (var i = 0 ; i < attsExpected.length ; i++) {
+        for (i = 0 ; i < attsExpected.length ; i++) {
             var attExpected = attsExpected.item(i);
             if (/^xmlns/.test(attExpected.nodeName)) {
                 expected.removeAttributeNode(attExpected);
                 i--;
             }
         }
-        for (var i = 0 ; i < attsResult.length ; i++) {
+        for (i = 0 ; i < attsResult.length ; i++) {
             var attResult = attsResult.item(i);
             if (/^xmlns/.test(attResult.nodeName)) {
                 result.removeAttributeNode(attResult);
@@ -61,14 +79,14 @@ function assertXmlEquals(expected, result) {
         var childNodesExpected = expected.childNodes;
         var childNodesResult = result.childNodes;
         //remove ignorables child nodes
-        for (var i = 0 ; i < childNodesExpected.length ; i++) {
+        for (i = 0 ; i < childNodesExpected.length ; i++) {
             var childNodeExpected = childNodesExpected.item(i);
             if (is_ignorable(childNodeExpected)) {
                 expected.removeChild(childNodeExpected);
                 i--;
             }
         }
-        for (var i = 0 ; i < childNodesResult.length ; i++) {
+        for (i = 0 ; i < childNodesResult.length ; i++) {
             var childNodeResult = childNodesResult.item(i);
             if (is_ignorable(childNodeResult)) {
                 result.removeChild(childNodeResult);
@@ -76,7 +94,7 @@ function assertXmlEquals(expected, result) {
             }
         }
         assertEquals("different number of children nodes under " + result.nodeName, childNodesExpected.length, childNodesResult.length);
-        for (var i = 0 ; i < childNodesExpected.length ; i++) {
+        for (i = 0 ; i < childNodesExpected.length ; i++) {
             assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
         }
     //text nodes
@@ -96,20 +114,5 @@ function assertXmlEquals(expected, result) {
         expectedDocument.normalize();
         resultDocument.normalize();
         assertXmlEquals(expectedDocument, resultDocument);
-    }
-}
-
-function assertAttributesEquals(attsExpected, attsResult) {
-    for (var i = 0 ; i < attsExpected.length ; i++) {
-        var attExpected = attsExpected.item(i);
-        var attFound = false;
-        for (var i = 0 ; i < attsResult.length && !attFound; i++) {
-            var attResult = attsResult.item(i);
-            if (attResult.nodeName == attExpected.nodeName) {
-                attFound = true;
-                assertEquals("invalid value of attribute " + attResult.nodeName, attExpected.value, attResult.value);
-            }
-        }
-        assertTrue("missing attribute " + attExpected.nodeName, attFound);
     }
 }

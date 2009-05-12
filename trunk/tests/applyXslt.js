@@ -1,3 +1,4 @@
+/*global ActiveXObject, XSLTProcessor, window, xsltProcessor, createDocumentFromText, innerXML */
 /*
 Copyright or © or Copr. Nicolas Debeissat
 
@@ -52,7 +53,7 @@ function loadXMLDoc(fname) {
 	    }
 	    // code for Mozilla, Firefox, Opera, etc.
 	    else if (document.implementation && document.implementation.createDocument) {
-	        xmlDoc = document.implementation.createDocument("", "", null);
+	        xmlDoc = document.implementation.createDocument(null, "", null);
 	    } else {
 	        alert('Your browser cannot handle this script');
 	    }
@@ -69,7 +70,7 @@ function loadFile(fname) {
 	} else if (window.ActiveXObject) {// code for IE6, IE5
 		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
 	}
-	if (xmlhttp != null) {
+	if (xmlhttp !== null) {
 		xmlhttp.open("GET", fname, false);
 		xmlhttp.send(null);
 		if (xmlhttp.readyState == 4) {
@@ -81,6 +82,7 @@ function loadFile(fname) {
 }
 
 function applyXslt(xml, xsl, asFragment, paramMap) {
+    var i;
     // code for IE 
     if (window.ActiveXObject) {
         var xslt = new ActiveXObject("Msxml2.XSLTemplate.3.0" );
@@ -91,8 +93,8 @@ function applyXslt(xml, xsl, asFragment, paramMap) {
 		var xslProc = xslt.createProcessor();
 		xslProc.input = xml;
 		if (paramMap) {
-			for (var i in paramMap) {
-				xsltProcessor.addParameter(i, paramMap[i]);
+			for (i in paramMap) {
+				xslProc.addParameter(i, paramMap[i]);
 			}
 		}
 		xslProc.transform();
@@ -100,11 +102,11 @@ function applyXslt(xml, xsl, asFragment, paramMap) {
     }
     // code for Mozilla, Firefox, Opera, etc.
     else if (document.implementation && document.implementation.createDocument) {
-		var xsl = loadXMLDoc(xsl);
+		xsl = loadXMLDoc(xsl);
         var xsltProcessor = new XSLTProcessor();
         xsltProcessor.importStylesheet(xsl);
 		if (paramMap) {
-			for (var i in paramMap) {
+			for (i in paramMap) {
 				xsltProcessor.setParameter(null, i, paramMap[i]);
 			}
 		}
@@ -119,7 +121,7 @@ function applyXslt(xml, xsl, asFragment, paramMap) {
 }
 
 function applyXsltOnText(xml, xsl) {
-    var xml = createDocumentFromText(xml);
+    xml = createDocumentFromText(xml);
 	var result = applyXslt(xml, xsl);
     return innerXML(result);
 }
