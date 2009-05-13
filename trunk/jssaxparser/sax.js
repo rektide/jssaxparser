@@ -499,7 +499,7 @@ SAXParser.prototype.scanLT = function() {
         if (this.ch == "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                this.fireError("can not have two doctype declaration", FATAL);
+                this.fireError("can not have two doctype declarations", FATAL);
             }
         } else if (this.ch == "?") {
             this.nextChar(true);
@@ -542,7 +542,7 @@ SAXParser.prototype.scanLT = function() {
         if (this.ch == "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
+                this.fireError("end of document, only comments or processing instructions are allowed", FATAL);
             }
         } else if (this.ch == "?") {
             this.nextChar();
@@ -631,6 +631,7 @@ SAXParser.prototype.scanComment = function() {
 // [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
 SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
     if (this.xml.substr(this.index, 5) == "?xml ") {
+        // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
         this.nextGT();
         return true;
     } else {
@@ -680,6 +681,9 @@ SAXParser.prototype.scanDoctypeDecl = function() {
                 this.nextChar();
             }
         }
+        if (this.lexicalHandler) {
+            this.lexicalHandler.startDTD(name, pubidLiteral, systemLiteral);
+        }
         if (this.ch == "[") {
             this.nextChar();
             this.scanDoctypeDeclIntSubset();
@@ -687,6 +691,9 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         }
         if (this.ch != ">") {
             this.fireError("invalid content in doctype declaration", FATAL);
+        }
+        if (this.lexicalHandler) {
+            this.lexicalHandler.endDTD();
         }
     } else {
         this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
@@ -744,7 +751,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                         }
                     }
                 } else {
-                    //no support for other declarations
+                    //no present support for other declarations
                     this.nextGT();
                 }
                 if (this.ch == " ") {
