@@ -1,11 +1,12 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
+    <title>SAX Tests</title>
     <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
     <script type="text/javascript" src="../jssaxparser/sax.js"></script>
     <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
     <script type="text/javascript" src="../examples/xml_samples.js"></script>
-	<script type="text/javascript" src="manageWhiteSpace.js"></script>
+    <script type="text/javascript" src="manageWhiteSpace.js"></script>
     <script type="text/javascript" src="dom_utils.js"></script>
     <script type="text/javascript" src="jsxmlunit.js"></script>
     <script type="text/javascript" src="applyXslt.js"></script>
@@ -116,6 +117,7 @@
 		testParse_relaxng2();
 		setUp();
 		testParse_relaxng3();
+		alert('done!');
 	}
 	
 	// Brett added to be able to show something in console when error is thrown
@@ -140,11 +142,12 @@
 	//    extra argument (and adjusting whitespace a little too), though apparently not if created through dom.implementation
 	// Errors get triggered for us in assertAttributesEquals() in jsxmlunit.js (which was called by assertXmlEquals() in the same file, which was called in parse() above
 	text = '<svg xmlns="http://www.w3.org/2000/svg">'+
-		'<g transform="translate(20,20) scale(4)"></g></svg>' ;
+		'<g transform="translate(20,20) scale(4)"><\/g><\/svg>' ;
 	alert(text)
 	doc=new DOMParser().parseFromString(text,"text/xml");
 	alert(new XMLSerializer().serializeToString(doc)); // Has an extra ", 4" within scale()!
-	// Solved the problem by fudging one attribute value in the SVG file (in the first <g/>) to possess a value which was equivalent to the value to which it would be translated
+	// Solved the problem by fudging one attribute value in the SVG file (in the first <g/>) to possess a value which was equivalent to the value to which it would be translated; note that
+	//  there are still problems if you use the latest FF3.5b4--to work with that, just remove the ", 4" at the end of the inside of scale() in chem1.svg
 	*/
     </script>
   </head>

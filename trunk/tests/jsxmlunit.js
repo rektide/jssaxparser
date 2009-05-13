@@ -54,65 +54,77 @@ function assertAttributesEquals(attsExpected, attsResult) {
 function assertXmlEquals(expected, result) {
     var i;
     assertEquals("different nodes types", expected.nodeType, result.nodeType);
-    //element nodes
-    if (expected.nodeType == 1) {
-        assertEquals("different node names", expected.nodeName, result.nodeName);
-        var attsExpected = expected.attributes;
-        var attsResult = result.attributes;
-        //remove namespaces declaration from attributes, not supported
-        for (i = 0 ; i < attsExpected.length ; i++) {
-            var attExpected = attsExpected.item(i);
-            if (/^xmlns/.test(attExpected.nodeName)) {
-                expected.removeAttributeNode(attExpected);
-                i--;
+    switch(expected.nodeType) {
+        case 1: //element nodes
+            assertEquals("different node names", expected.nodeName, result.nodeName);
+            var attsExpected = expected.attributes;
+            var attsResult = result.attributes;
+            //remove namespaces declaration from attributes, not supported
+            for (i = 0 ; i < attsExpected.length ; i++) {
+                var attExpected = attsExpected.item(i);
+                if (/^xmlns/.test(attExpected.nodeName)) {
+                    expected.removeAttributeNode(attExpected);
+                    i--;
+                }
             }
-        }
-        for (i = 0 ; i < attsResult.length ; i++) {
-            var attResult = attsResult.item(i);
-            if (/^xmlns/.test(attResult.nodeName)) {
-                result.removeAttributeNode(attResult);
-                i--;
+            for (i = 0 ; i < attsResult.length ; i++) {
+                var attResult = attsResult.item(i);
+                if (/^xmlns/.test(attResult.nodeName)) {
+                    result.removeAttributeNode(attResult);
+                    i--;
+                }
             }
-        }
-        assertEquals("different number of attributes on node " + result.nodeName, attsExpected.length, attsResult.length);
-        assertAttributesEquals(attsExpected, attsResult);
-        var childNodesExpected = expected.childNodes;
-        var childNodesResult = result.childNodes;
-        //remove ignorables child nodes
-        for (i = 0 ; i < childNodesExpected.length ; i++) {
-            var childNodeExpected = childNodesExpected.item(i);
-            if (is_ignorable(childNodeExpected)) {
-                expected.removeChild(childNodeExpected);
-                i--;
+            assertEquals("different number of attributes on node " + result.nodeName, attsExpected.length, attsResult.length);
+            assertAttributesEquals(attsExpected, attsResult);
+            var childNodesExpected = expected.childNodes;
+            var childNodesResult = result.childNodes;
+            //remove ignorables child nodes
+            for (i = 0 ; i < childNodesExpected.length ; i++) {
+                var childNodeExpected = childNodesExpected.item(i);
+                if (is_ignorable(childNodeExpected)) {
+                    expected.removeChild(childNodeExpected);
+                    i--;
+                }
             }
-        }
-        for (i = 0 ; i < childNodesResult.length ; i++) {
-            var childNodeResult = childNodesResult.item(i);
-            if (is_ignorable(childNodeResult)) {
-                result.removeChild(childNodeResult);
-                i--;
+            for (i = 0 ; i < childNodesResult.length ; i++) {
+                var childNodeResult = childNodesResult.item(i);
+                if (is_ignorable(childNodeResult)) {
+                    result.removeChild(childNodeResult);
+                    i--;
+                }
             }
-        }
-        assertEquals("different number of children nodes under " + result.nodeName, childNodesExpected.length, childNodesResult.length);
-        for (i = 0 ; i < childNodesExpected.length ; i++) {
-            assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
-        }
-    //text nodes
-    } else if (expected.nodeType == 3) {
-        assertEquals("different text content", data_of(expected), data_of(result));
-    //CDATA nodes
-    } else if (expected.nodeType == 4) {
-        assertEquals("different content in CDATA", data_of(expected), data_of(result));
-    //comment nodes
-    } else if (expected.nodeType == 8) {
-        assertEquals("different content of comment", data_of(expected), data_of(result));
-    //document
-    } else if (expected.nodeType == 9) {
-        var expectedDocument = expected.documentElement;
-        var resultDocument = result.documentElement;
-        //firefox splits long text nodes for example.
-        expectedDocument.normalize();
-        resultDocument.normalize();
-        assertXmlEquals(expectedDocument, resultDocument);
+            assertEquals("different number of children nodes under " + result.nodeName, childNodesExpected.length, childNodesResult.length);
+            for (i = 0 ; i < childNodesExpected.length ; i++) {
+                assertXmlEquals(childNodesExpected.item(i), childNodesResult.item(i));
+            }
+            break;
+        case 3: //text nodes
+            assertEquals("different text content", data_of(expected), data_of(result));
+            break;
+        case 4: //CDATA nodes
+            assertEquals("different content in CDATA", data_of(expected), data_of(result));
+            break;
+        case 8: //comment nodes
+            assertEquals("different content of comment", data_of(expected), data_of(result));
+            break;
+        case 9: //document
+            var expectedDocument = expected.documentElement;
+            var resultDocument = result.documentElement;
+            //firefox splits long text nodes for example.
+            expectedDocument.normalize();
+            resultDocument.normalize();
+            assertXmlEquals(expectedDocument, resultDocument);
+            break;
+        // Fix: Need test cases for the following node types (at least the ones implemented)
+        case 2: // attribute node
+        case 5: // entity reference node
+        case 6: // entity node
+        case 7: // processing instruction node
+        case 10: // document type node
+        case 11: // document fragment node
+        case 12: // notation node
+        default:
+            throw 'Node type not supported in jsxmlunit test';
+            break;
     }
 }

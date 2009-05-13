@@ -126,32 +126,53 @@ Sax_QName.prototype.equals = function(qName) {
  java.lang.String 	getValue(java.lang.String uri, java.lang.String localName)
           Look up an attribute's value by Namespace name.
  */
-// Change to Attributes2Impl class instead?
-function Sax_Attributes(attsArray) {
-    this.attsArray = attsArray;
-}
-Sax_Attributes.prototype.getIndex = function(arg1, arg2) {
-    if (arg2 === undefined) {
-        return this.getIndexByQName(arg1);
-    } else {
-        return this.getIndexByURI(arg1, arg2);
-    }
-};
-Sax_Attributes.prototype.getIndexByQName = function(qName) {
+
+// Helpers for Sax_Attributes (private static treated as private instance below)
+function _getIndexByQName(qName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].qName.equals(qName)) {
             return i;
         }
     }
     return -1;
-};
-Sax_Attributes.prototype.getIndexByURI = function(uri, localName) {
+}
+function _getIndexByURI(uri, localName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
             return i;
         }
     }
     return -1;
+}
+function _getValueByIndex(index) {
+    return this.attsArray[index].value;
+}
+function _getValueByQName(qName) {
+    for (var i in this.attsArray) {
+        if (this.attsArray[i].qName.equals(qName)) {
+            return this.attsArray[i].value;
+        }
+    }
+}
+function _getValueByURI(uri, localName) {
+    for (var i in this.attsArray) {
+        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
+            return this.attsArray[i].value;
+        }
+    }
+}
+
+// Change later to Attributes2Impl class instead
+function Sax_Attributes(attsArray) {
+    this.attsArray = attsArray;
+}
+// INTERFACE: Attributes: http://www.saxproject.org/apidoc/org/xml/sax/Attributes.html
+Sax_Attributes.prototype.getIndex = function(arg1, arg2) {
+    if (arg2 === undefined) {
+        return _getIndexByQName.call(this, arg1);
+    } else {
+        return _getIndexByURI.call(this, arg1, arg2);
+    }
 };
 Sax_Attributes.prototype.getLength = function() {
     return this.attsArray.length;
@@ -163,7 +184,7 @@ Sax_Attributes.prototype.getQName = function(index) {
     return this.attsArray[index].qName.qName;
 };
 //not supported
-Sax_Attributes.prototype.getType = function(arg1, arg2) {
+Sax_Attributes.prototype.getType = function(arg1, arg2) { // Should allow 1-2 arguments of different types
     return "CDATA";
 };
 Sax_Attributes.prototype.getURI = function(index) {
@@ -172,32 +193,36 @@ Sax_Attributes.prototype.getURI = function(index) {
 Sax_Attributes.prototype.getValue = function(arg1, arg2) {
     if (arg2 === undefined) {
         if (typeof arg1 == "string") {
-            return this.getValueByQName(arg1);
+            return _getValueByQName.call(this, arg1);
         } else {
-            return this.getValueByIndex(arg1);
+            return _getValueByIndex.call(this, arg1);
         }
     } else {
-        return this.getValueByURI(arg1, arg2);
-    }
-};
-Sax_Attributes.prototype.getValueByIndex = function(index) {
-    return this.attsArray[index].value;
-};
-Sax_Attributes.prototype.getValueByQName = function(qName) {
-    for (var i in this.attsArray) {
-        if (this.attsArray[i].qName.equals(qName)) {
-            return this.attsArray[i].value;
-        }
-    }
-};
-Sax_Attributes.prototype.getValueByURI = function(uri, localName) {
-    for (var i in this.attsArray) {
-        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
-            return this.attsArray[i].value;
-        }
+        return _getValueByURI.call(this, arg1, arg2);
     }
 };
 
+// INTERFACE: Attributes2: http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2.html
+/*
+ boolean 	isDeclared(int index)
+          Returns false unless the attribute was declared in the DTD.
+ boolean 	isDeclared(java.lang.String qName)
+          Returns false unless the attribute was declared in the DTD.
+ boolean 	isDeclared(java.lang.String uri, java.lang.String localName)
+          Returns false unless the attribute was declared in the DTD.
+ boolean 	isSpecified(int index)
+          Returns true unless the attribute value was provided by DTD defaulting.
+ boolean 	isSpecified(java.lang.String qName)
+          Returns true unless the attribute value was provided by DTD defaulting.
+ boolean 	isSpecified(java.lang.String uri, java.lang.String localName)
+          Returns true unless the attribute value was provided by DTD defaulting.
+*/
+Sax_Attributes.prototype.isDeclared = function (indexOrQNameOrURI, localName) {
+    throw 'isDeclared() is not presently implemented';
+};
+Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
+    throw 'isSpecified() is not presently implemented';
+};
 
 // The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
 //    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
@@ -208,6 +233,16 @@ Sax_Attributes.prototype.getValueByURI = function(uri, localName) {
 // 1) the only meaningful methods at the moment are getContentHandler(), setContentHandler(), and our own parseString().
 // 2) No property should be retrieved or set publicly.
 // 3) The SAXParser constructor currently only works with the first argument
+
+// Currently does not call the following (as does the DefaultHandler2 class)
+// 1) on the contentHandler: ignorableWhitespace(), skippedEntity(), setDocumenetLocator() (including with Locator2)
+// 2) on the DeclHandler: attributeDecl(), elementDecl(), externalEntityDecl()
+// 3) on the LexicalHandler: endDTD(), startDTD()
+// 4) on EntityResolver: resolveEntity()
+// 5) on EntityResolver2: resolveEntity() (additional args) or getExternalSubset()
+// 6) on DTDHandler: notationDecl(), unparsedEntityDecl()
+// ErrorHandler interface methods, however, are all implemented
+// Need to also implement Attributes2 in startElement (rename Sax_Attributes to Attributes2Impl and add interface)
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
     // Implements SAX2 XMLReader interface;
@@ -229,24 +264,24 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     // For official features and properties, see http://www.saxproject.org/apidoc/org/xml/sax/package-summary.html#package_description
     // We can define our own as well
     this.features = {}; // Boolean values
-    this.features['http://xml.org/sax/features/external-general-entities'];
-    this.features['http://xml.org/sax/features/external-parameter-entities'];
+    this.features['http://xml.org/sax/features/external-general-entities'] = false; // Not supported yet
+    this.features['http://xml.org/sax/features/external-parameter-entities'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/is-standalone'] = undefined; // Can only be set during parsing
-    this.features['http://xml.org/sax/features/lexical-handler/parameter-entities'];
+    this.features['http://xml.org/sax/features/lexical-handler/parameter-entities'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/namespaces'] = true; // must support true
     this.features['http://xml.org/sax/features/namespace-prefixes'] = false; // must support false
     this.features['http://xml.org/sax/features/resolve-dtd-uris'] = true;
     this.features['http://xml.org/sax/features/string-interning'] = true; // Make safe to treat string literals as identical to String()
     this.features['http://xml.org/sax/features/unicode-normalization-checking'] = false;
-    this.features['http://xml.org/sax/features/use-attributes2'];
-    this.features['http://xml.org/sax/features/use-locator2'];
+    this.features['http://xml.org/sax/features/use-attributes2'] = false; // Not supported yet
+    this.features['http://xml.org/sax/features/use-locator2'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/use-entity-resolver2'] = true;
-    this.features['http://xml.org/sax/features/validation'];
+    this.features['http://xml.org/sax/features/validation'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/xmlns-uris'] = false;
-    this.features['http://xml.org/sax/features/xml-1.1'];
+    this.features['http://xml.org/sax/features/xml-1.1'] = false; // Not supported yet
 
     this.properties = {}; // objects
-    this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler || (this.declarationHandler = {
+    this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler || {
         attributeDecl : function (eName, aName, type, mode, value) { // java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String
             // Report an attribute type declaration (void).
         },
@@ -259,7 +294,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
         internalEntityDecl : function (name, value) { // java.lang.String, java.lang.String
             // Report an internal entity declaration (void).
         }
-    });
+    };
     this.properties['http://xml.org/sax/properties/document-xml-version'] = this.documentXmlVersion = null;
     this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode;
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
@@ -271,11 +306,11 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
 
     this.state = STATE_XML_DECL;
 
-    this.elementsStack;
+    this.elementsStack = []; // Is it necessary to redo this below too?
     /* for each depth, a map of namespaces */
-    this.namespaces;
+    this.namespaces = []; // Is it necessary to redo this below too?
     /* map between entity names and values */
-    var entities;
+    this.entities = []; // Is it necessary to redo this below too?
 }
 
 // BEGIN SAX2 INTERFACE
@@ -607,8 +642,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
-    this.contentHandler.processingInstruction(this.nextName(), "");
-    this.nextGT();
+    this.contentHandler.processingInstruction(this.nextName(), this.nextEndPI());
     return true;
 };
 
@@ -1017,6 +1051,13 @@ SAXParser.prototype.nextName = function() {
 SAXParser.prototype.nextGT = function() {
     var content = this.nextRegExp(/>/);
     this.index++;
+    this.ch = this.xml.charAt(this.index);
+    return content;
+};
+
+SAXParser.prototype.nextEndPI = function() {
+    var content = this.nextRegExp(/\?>/);
+    this.index += 2;
     this.ch = this.xml.charAt(this.index);
     return content;
 };
