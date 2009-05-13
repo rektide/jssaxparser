@@ -657,23 +657,17 @@ SAXParser.prototype.scanPI = function() {
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
 //			| 'PUBLIC' S PubidLiteral S SystemLiteral 
 SAXParser.prototype.scanDoctypeDecl = function() {
-    if (this.xml.substr(this.index, 7) == "DOCTYPE") {
-        this.index += 7;
-        this.ch = this.xml.charAt(this.index);
+    if (this.isFollowedBy("DOCTYPE")) {
         this.nextChar();
         var name = this.nextRegExp(/[ \[>]/);
         var systemLiteral;
         if (WS.test(this.ch)) {
             this.nextChar();
             //if there is an externalId
-            if (this.xml.substr(this.index, 6) == "SYSTEM") {
-                this.index += 6;
-                this.ch = this.xml.charAt(this.index);
+            if (this.isFollowedBy("SYSTEM")) {
                 this.nextChar();
                 systemLiteral = this.quoteContent();
-            } else if (this.xml.substr(this.index, 6) == "PUBLIC") {
-                this.index += 6;
-                this.ch = this.xml.charAt(this.index);
+            } else if (this.isFollowedBy("PUBLIC")) {
                 this.nextChar();
                 var pubidLiteral = this.quoteContent();
                 this.nextChar();
@@ -731,9 +725,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         } else if (this.ch == "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                if (this.xml.substr(this.index, 6) == "ENTITY") {
-                    this.index += 6;
-                    this.ch = this.xml.charAt(this.index);
+                if (this.isFollowedBy("ENTITY")) {
                     this.nextChar();
                     if (this.ch == "%") {
                         //no support for PEDecl
@@ -909,9 +901,7 @@ SAXParser.prototype.scanAttValue = function() {
 // [20]   	CData	   ::=   	(Char* - (Char* ']]>' Char*))
 // [21]   	CDEnd	   ::=   	']]>'
 SAXParser.prototype.scanCData = function() {
-    if (this.xml.substr(this.index, 7) == "[CDATA[") {
-        this.index += 7;
-        this.ch = this.xml.charAt(this.index);
+    if (this.isFollowedBy("[CDATA[")) {
         if (this.lexicalHandler) {
             this.lexicalHandler.startCDATA();
         }
@@ -1034,7 +1024,6 @@ SAXParser.prototype.skipWhiteSpaces = function() {
 
 /*
 goes to next reg exp and return content, from current char to the char before reg exp
-if next reg exp is not found return false, must differenciate from ''
 */
 SAXParser.prototype.nextRegExp = function(regExp) {
     var oldIndex = this.index;
@@ -1046,6 +1035,19 @@ SAXParser.prototype.nextRegExp = function(regExp) {
         this.ch = this.xml.charAt(this.index);
         return this.xml.substring(oldIndex, this.index);
     }
+};
+
+/*
+
+*/
+SAXParser.prototype.isFollowedBy = function(str) {
+    var length = str.length;
+    if (this.xml.substr(this.index, length) == str) {
+        this.index += length;
+        this.ch = this.xml.charAt(this.index);
+        return true;
+    }
+    return false;
 };
 
 /*
