@@ -198,7 +198,12 @@ DomContentHandler.prototype.startCDATA = function() {
     this.cdata = true;
 };
 
-DomContentHandler.prototype.startDTD = function(name, publicId, systemId) {};
+DomContentHandler.prototype.startDTD = function(name, publicId, systemId) {
+    if (document.implementation && document.implementation.createDocumentType) {
+        var dt = document.implementation.createDocumentType(name, publicId, systemId);
+        _appendToCurrentElement.call(this, dt);
+    }
+};
 DomContentHandler.prototype.startEntity = function(name) {};
 
 

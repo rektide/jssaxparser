@@ -43,6 +43,8 @@ var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u0
 var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
 
+var WS = /\s/; // Fix: verify \s is XML whitespace, and allowable in all places using this expression
+
 /* Scanner states  */
 var STATE_XML_DECL                  =  0;
 var STATE_PROLOG                    =  1;
@@ -661,7 +663,7 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         this.nextChar();
         var name = this.nextRegExp(/[ \[>]/);
         var systemLiteral;
-        if (this.ch == " ") {
+        if (WS.test(this.ch)) {
             this.nextChar();
             //if there is an externalId
             if (this.xml.substr(this.index, 6) == "SYSTEM") {
@@ -677,7 +679,7 @@ SAXParser.prototype.scanDoctypeDecl = function() {
                 this.nextChar();
                 systemLiteral = this.quoteContent();
             }
-            if (this.ch == " ") {
+            if (WS.test(this.ch)) {
                 this.nextChar();
             }
         }
@@ -754,7 +756,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                     //no present support for other declarations
                     this.nextGT();
                 }
-                if (this.ch == " ") {
+                if (WS.test(this.ch)) {
                     this.nextChar();
                 }
                 if (this.ch != ">") {
