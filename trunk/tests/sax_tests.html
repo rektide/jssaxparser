@@ -88,7 +88,7 @@
             assertTrue(e.message, false);
         }
         assertTrue(contentHandler.saxExceptions.length + " SAX exception(s) has(have) been thrown",
-		contentHandler.saxExceptions.length == 0);
+		contentHandler.saxExceptions.length === 0);
         assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
     }
 	

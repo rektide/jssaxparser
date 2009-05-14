@@ -37,8 +37,8 @@ function is_all_ws( nod )
 
 function is_ignorable( nod )
 {
-  return ( nod.nodeType == 8) || // A comment node
-         ( (nod.nodeType == 3) && is_all_ws(nod) ); // a text node, all ws
+  return ( nod.nodeType === 8) || // A comment node
+         ( (nod.nodeType === 3) && is_all_ws(nod) ); // a text node, all ws
 }
 
 /**
@@ -136,10 +136,10 @@ function data_of( txt )
   var data = txt.data;
   // Use ECMA-262 Edition 3 String and RegExp features
   data = data.replace(/[\t\n\r ]+/g, " ");
-  if (data.charAt(0) == " ") {
+  if (data.charAt(0) === " ") {
     data = data.substring(1, data.length);
   }
-  if (data.charAt(data.length - 1) == " ") {
+  if (data.charAt(data.length - 1) === " ") {
     data = data.substring(0, data.length - 1);
   }
   return data;

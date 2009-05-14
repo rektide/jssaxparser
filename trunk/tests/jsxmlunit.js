@@ -42,7 +42,7 @@ function assertAttributesEquals(attsExpected, attsResult) {
         var attFound = false;
         for (j = 0 ; j < attsResult.length && !attFound; j++) {
             var attResult = attsResult.item(j);
-            if (attResult.nodeName == attExpected.nodeName) {
+            if (attResult.nodeName === attExpected.nodeName) {
                 attFound = true;
                 assertEquals("invalid value of attribute " + attResult.nodeName, attExpected.value, attResult.value);
             }

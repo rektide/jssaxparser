@@ -99,7 +99,7 @@ function Sax_QName(prefix, localName) {
 }
 
 Sax_QName.prototype.equals = function(qName) {
-    return this.qName == qName.qName;
+    return this.qName === qName.qName;
 };
 
 /*
@@ -140,7 +140,7 @@ function _getIndexByQName(qName) {
 }
 function _getIndexByURI(uri, localName) {
     for (var i in this.attsArray) {
-        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
+        if (this.attsArray[i].namespaceURI === uri && this.attsArray[i].qName.localName === localName) {
             return i;
         }
     }
@@ -158,7 +158,7 @@ function _getValueByQName(qName) {
 }
 function _getValueByURI(uri, localName) {
     for (var i in this.attsArray) {
-        if (this.attsArray[i].namespaceURI == uri && this.attsArray[i].qName.localName == localName) {
+        if (this.attsArray[i].namespaceURI === uri && this.attsArray[i].qName.localName === localName) {
             return this.attsArray[i].value;
         }
     }
@@ -194,7 +194,7 @@ Sax_Attributes.prototype.getURI = function(index) {
 };
 Sax_Attributes.prototype.getValue = function(arg1, arg2) {
     if (arg2 === undefined) {
-        if (typeof arg1 == "string") {
+        if (typeof arg1 === "string") {
             return _getValueByQName.call(this, arg1);
         } else {
             return _getValueByIndex.call(this, arg1);
@@ -439,9 +439,9 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
 
 SAXParser.prototype.next = function() {
     this.skipWhiteSpaces();
-    if (this.ch == ">") {
+    if (this.ch === ">") {
         this.nextChar();
-    } else if (this.ch == "<") {
+    } else if (this.ch === "<") {
         this.nextChar();
         this.scanLT();
     } else if (this.elementsStack.length > 0) {
@@ -474,7 +474,7 @@ SAXParser.prototype.next = function() {
 //White Space
 // [3] S ::=(#x20 | #x9 | #xD | #xA)+
 SAXParser.prototype.scanLT = function() {
-    if (this.state == STATE_XML_DECL) {
+    if (this.state === STATE_XML_DECL) {
         if (!this.scanXMLDeclOrTextDecl()) {
             this.state = STATE_PROLOG;
             this.scanLT();
@@ -482,14 +482,14 @@ SAXParser.prototype.scanLT = function() {
             //if it was a XMLDecl (only one XMLDecl is permitted)
             this.state = STATE_PROLOG;
         }
-    } else if (this.state == STATE_PROLOG) {
-        if (this.ch == "!") {
+    } else if (this.state === STATE_PROLOG) {
+        if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 this.scanDoctypeDecl();
                 this.state = STATE_PROLOG_DOCTYPE_DECLARED;
             }
-        } else if (this.ch == "?") {
+        } else if (this.ch === "?") {
             this.nextChar(true);
             this.scanPI();
         } else {
@@ -497,13 +497,13 @@ SAXParser.prototype.scanLT = function() {
             //does not go to next char exiting the method
             this.scanLT();
         }
-    } else if (this.state == STATE_PROLOG_DOCTYPE_DECLARED) {
-        if (this.ch == "!") {
+    } else if (this.state === STATE_PROLOG_DOCTYPE_DECLARED) {
+        if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 this.fireError("can not have two doctype declarations", FATAL);
             }
-        } else if (this.ch == "?") {
+        } else if (this.ch === "?") {
             this.nextChar(true);
             this.scanPI();
         } else {
@@ -511,24 +511,24 @@ SAXParser.prototype.scanLT = function() {
             //does not go to next char exiting the method
             this.scanLT();
         }
-    } else if (this.state == STATE_ROOT_ELEMENT) {
+    } else if (this.state === STATE_ROOT_ELEMENT) {
         if (this.scanMarkup()) {
             this.state = STATE_CONTENT;
         } else {
             this.state = STATE_TRAILING_MISC;
         }
-    } else if (this.state == STATE_CONTENT) {
-        if (this.ch == "!") {
+    } else if (this.state === STATE_CONTENT) {
+        if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 if (!this.scanCData()) {
                     this.fireError("neither comment nor CDATA after &lt;!", FATAL);
                 }
             }
-        } else if (this.ch == "?") {
+        } else if (this.ch === "?") {
             this.nextChar();
             this.scanPI();
-        } else if (this.ch == "/") {
+        } else if (this.ch === "/") {
             this.nextChar();
             if (this.scanEndingTag()) {
                 if (this.elementsStack.length === 0) {
@@ -540,13 +540,13 @@ SAXParser.prototype.scanLT = function() {
                 this.fireError("not a valid markup", FATAL);
             }
         }
-    } else if (this.state == STATE_TRAILING_MISC) {
-        if (this.ch == "!") {
+    } else if (this.state === STATE_TRAILING_MISC) {
+        if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 this.fireError("end of document, only comments or processing instructions are allowed", FATAL);
             }
-        } else if (this.ch == "?") {
+        } else if (this.ch === "?") {
             this.nextChar();
             if (!this.scanPI()) {
                 this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
@@ -564,7 +564,7 @@ SAXParser.prototype.scanText = function() {
     var content = this.nextRegExp(/[<&]/);
     
     //if found a "&"
-    while (this.ch == "&") {
+    while (this.ch === "&") {
         this.nextChar(true);
         var ref = this.scanRef();
         content += ref;
@@ -578,7 +578,7 @@ SAXParser.prototype.scanText = function() {
 //current char is after '&'
 SAXParser.prototype.scanRef = function() {
     var ref;
-    if (this.ch == "#") {
+    if (this.ch === "#") {
         this.nextChar(true);
         ref = this.scanCharRef();
     } else {
@@ -592,9 +592,9 @@ SAXParser.prototype.scanRef = function() {
 
 // [15] Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
 SAXParser.prototype.scanComment = function() {
-    if (this.ch == "-") {
+    if (this.ch === "-") {
         this.nextChar(true);
-        if (this.ch == "-") {
+        if (this.ch === "-") {
             //do not skip white space at beginning of comment
             this.nextChar(true);
             var start = this.index;
@@ -604,7 +604,7 @@ SAXParser.prototype.scanComment = function() {
             this.nextChar(true);
             this.nextChar(true);
             //must be '>'
-            if (this.ch == ">") {
+            if (this.ch === ">") {
                 if (this.lexicalHandler) {
                     this.lexicalHandler.comment(comment, start, length);// Brett (test for support and change start/length?)
                 }
@@ -632,7 +632,7 @@ SAXParser.prototype.scanComment = function() {
 //
 // [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
 SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
-    if (this.xml.substr(this.index, 5) == "?xml ") {
+    if (this.xml.substr(this.index, 5) === "?xml ") {
         // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
         this.nextGT();
         return true;
@@ -680,12 +680,12 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         if (this.lexicalHandler) {
             this.lexicalHandler.startDTD(name, pubidLiteral, systemLiteral);
         }
-        if (this.ch == "[") {
+        if (this.ch === "[") {
             this.nextChar();
             this.scanDoctypeDeclIntSubset();
             this.nextChar();
         }
-        if (this.ch != ">") {
+        if (this.ch !== ">") {
             this.fireError("invalid content in doctype declaration", FATAL);
         }
         if (this.lexicalHandler) {
@@ -715,25 +715,25 @@ actual char is non whitespace char after '['
 			|  "'" ([^%&'] | PEReference | Reference)* "'"
 */
 SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
-    if (this.ch == "<") {
+    if (this.ch === "<") {
         this.nextChar(true);
-        if (this.ch == "?") {
+        if (this.ch === "?") {
             this.nextChar();
             if (!this.scanPI()) {
                 this.fireError("invalid processing instruction inside doctype declaration", FATAL);
             }
-        } else if (this.ch == "!") {
+        } else if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 if (this.isFollowedBy("ENTITY")) {
                     this.nextChar();
-                    if (this.ch == "%") {
+                    if (this.ch === "%") {
                         //no support for PEDecl
                         this.nextGT();
                     } else {
                         var entityName = this.nextName();
                         this.nextChar();
-                        if (this.ch == '"' || this.ch == "'") {
+                        if (this.ch === '"' || this.ch === "'") {
                             var entityValue = this.quoteContent();
                             this.entities[entityName] = entityValue;
                             if (this.declarationHandler) {
@@ -751,17 +751,17 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                 if (WS.test(this.ch)) {
                     this.nextChar();
                 }
-                if (this.ch != ">") {
+                if (this.ch !== ">") {
                     this.fireError("invalid [29]markupdecl inside doctype declaration, must end with &gt;", FATAL);
                 }
                 this.nextChar();
             }
         }
     //PEReference
-    } else if (this.ch == "%") {
+    } else if (this.ch === "%") {
         var name = this.nextRegExp(";");
     }
-    if (this.ch != "]") {
+    if (this.ch !== "]") {
         this.scanDoctypeDeclIntSubset();
     }
 };
@@ -791,7 +791,7 @@ SAXParser.prototype.getQName = function() {
     var name = this.nextName();
     var prefix = "";
     var localName = name;
-    if (name.indexOf(":") != -1) {
+    if (name.indexOf(":") !== -1) {
         var splitResult = name.split(":");
         prefix = splitResult[0];
         localName = splitResult[1];
@@ -806,9 +806,9 @@ SAXParser.prototype.scanElement = function(qName) {
     var namespaceURI = this.getNamespaceURI(qName.prefix);
     this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
     this.skipWhiteSpaces();
-    if (this.ch == "/") {
+    if (this.ch === "/") {
         this.nextChar(true);
-        if (this.ch == ">") {
+        if (this.ch === ">") {
             this.elementsStack.pop();
             this.endMarkup(namespaceURI, qName);
         } else {
@@ -838,16 +838,16 @@ SAXParser.prototype.scanAttributes = function(namespacesDeclared) {
 
 SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
     this.skipWhiteSpaces();
-    if (this.ch != ">" && this.ch != "/") {
+    if (this.ch !== ">" && this.ch !== "/") {
         var attQName = this.getQName();
         this.skipWhiteSpaces();
-        if (this.ch == "=") {
+        if (this.ch === "=") {
             this.nextChar();
             // xmlns:bch="http://benchmark"
-            if (attQName.prefix == "xmlns") {
+            if (attQName.prefix === "xmlns") {
                 namespacesDeclared[attQName.localName] = this.scanAttValue();
                 this.contentHandler.startPrefixMapping(attQName.localName, namespacesDeclared[attQName.localName]);
-            } else if (attQName.qName == "xmlns") {
+            } else if (attQName.qName === "xmlns") {
                 namespacesDeclared[""] = this.scanAttValue();
                 this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
             } else {
@@ -865,19 +865,19 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
 
 // [10] AttValue ::= '"' ([^<&"] | Reference)* '"' | "'" ([^<&'] | Reference)* "'"
 SAXParser.prototype.scanAttValue = function() {
-    if (this.ch == '"' || this.ch == "'") {
+    if (this.ch === '"' || this.ch === "'") {
         var quote = this.ch;
         try {
             this.nextChar(true);
             var attValue = this.nextRegExp("[" + quote + "<&]");
             //if found a "&"
-            while (this.ch == "&") {
+            while (this.ch === "&") {
                 this.nextChar(true);
                 var ref = this.scanRef();
                 attValue += ref;
                 attValue += this.nextRegExp("[" + quote + "<&]");
             }
-            if (this.ch == "<") {
+            if (this.ch === "<") {
                 this.fireError("invalid attribute value, must not contain &lt;", FATAL);
             }
             //current char is ending quote
@@ -926,16 +926,16 @@ SAXParser.prototype.scanCData = function() {
 // current ch is char after "&#",  returned current char is ";"
 SAXParser.prototype.scanCharRef = function() {
     var oldIndex = this.index;
-    if (this.ch == "x") {
+    if (this.ch === "x") {
         this.nextChar(true);
-        while (this.ch != ";") {
+        while (this.ch !== ";") {
             if (!/[0-9a-fA-F]/.test(this.ch)) {
                 this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", ERROR);
             }
             this.nextChar(true);
         }
     } else {
-        while (this.ch != ";") {
+        while (this.ch !== ";") {
             if (!/\d/.test(this.ch)) {
                 this.fireError("invalid char reference, must contain numeric characters only", ERROR);
             }
@@ -972,9 +972,9 @@ SAXParser.prototype.scanEntityRef = function() {
 SAXParser.prototype.scanEndingTag = function() {
     var qName = this.getQName();
     var namespaceURI = this.getNamespaceURI(qName.prefix);
-    if (qName.qName == this.elementsStack.pop()) {
+    if (qName.qName === this.elementsStack.pop()) {
         this.skipWhiteSpaces();
-        if (this.ch == ">") {
+        if (this.ch === ">") {
             this.endMarkup(namespaceURI, qName);
             this.nextChar(true);
             return true;
@@ -1028,7 +1028,7 @@ goes to next reg exp and return content, from current char to the char before re
 SAXParser.prototype.nextRegExp = function(regExp) {
     var oldIndex = this.index;
     var inc = this.xml.substr(this.index).search(regExp);
-    if (inc == -1) {
+    if (inc === -1) {
         throw new EndOfInputException();
     } else {
         this.index += inc;
@@ -1042,7 +1042,7 @@ SAXParser.prototype.nextRegExp = function(regExp) {
 */
 SAXParser.prototype.isFollowedBy = function(str) {
     var length = str.length;
-    if (this.xml.substr(this.index, length) == str) {
+    if (this.xml.substr(this.index, length) === str) {
         this.index += length;
         this.ch = this.xml.charAt(this.index);
         return true;
@@ -1089,11 +1089,11 @@ SAXParser.prototype.fireError = function(message, gravity) {
     var saxException = new SAXException(message);
     saxException.ch = this.ch;
     saxException.index = this.index;
-    if (gravity == WARNING) {
+    if (gravity === WARNING) {
         this.contentHandler.warning(saxException);
-    } else if (gravity == ERROR) {
+    } else if (gravity === ERROR) {
         this.contentHandler.error(saxException);
-    } else if (gravity == FATAL) {
+    } else if (gravity === FATAL) {
         throw(saxException);
     }
 };

@@ -87,8 +87,8 @@ function applyXpath(domNode,xpath) {
 function getFirstAncestorByTagAndClass(domNode,tagName,className) {
     var ancestor = domNode.parentNode;
     while (ancestor) {
-        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() == tagName) &&
-            (ancestor.className) && (ancestor.className.toLowerCase() == className)) {
+        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() === tagName) &&
+            (ancestor.className) && (ancestor.className.toLowerCase() === className)) {
             return ancestor;
         }
         ancestor = ancestor.parentNode;
@@ -103,7 +103,7 @@ function getFirstAncestorByTagAndClass(domNode,tagName,className) {
 function setSelected(select,optionName) {
     var optionTags = select.getElementsByTagName('option');
     for (var i=0 ; i<optionTags.length ; i++) {
-        if (optionTags[i].getAttribute("value") == optionName) {
+        if (optionTags[i].getAttribute("value") === optionName) {
             select.selectedIndex = i;
             return true;
         }
@@ -125,15 +125,15 @@ function getSelected(selectId) {
  checks that all the <div> ancestors of that node are also displayed.
  */
 function isDisplayed(domNode) {
-    if (domNode.style && domNode.style.display && domNode.style.display == 'none') {
+    if (domNode.style && domNode.style.display && domNode.style.display === 'none') {
         return false;
     }
     //checks that all the <div> ancestors of this node are really displayed
     var ancestor = domNode.parentNode;
     while (ancestor) {
-        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() == 'div') &&
+        if ((ancestor.tagName) && (ancestor.tagName.toLowerCase() === 'div') &&
             (ancestor.style) && (ancestor.style.display) && 
-            (ancestor.style.display == 'none')) {
+            (ancestor.style.display === 'none')) {
             return false;
         }
         ancestor = ancestor.parentNode;
@@ -148,12 +148,12 @@ function isDisplayed(domNode) {
   Free to use if this text is included
  */
 function getElementsByAttribute(oElm, strTagName, strAttributeName, strAttributeValue) {
-    var arrElements = (strTagName == "*" && document.all)? document.all : oElm.getElementsByTagName(strTagName);
+    var arrElements = (strTagName === "*" && document.all)? document.all : oElm.getElementsByTagName(strTagName);
     var arrReturnElements = [];
     //MODIFIED to be visible (and understandable)
-    //var oAttributeValue = (typeof strAttributeValue != "undefined")? new RegExp("(^|\\s)" + strAttributeValue + "(\\s|$)") : null;
+    //var oAttributeValue = (typeof strAttributeValue !== "undefined")? new RegExp("(^|\\s)" + strAttributeValue + "(\\s|$)") : null;
     var oAttributeValue = null;
-    if (typeof strAttributeValue != "undefined") {
+    if (typeof strAttributeValue !== "undefined") {
         oAttributeValue = new RegExp("^" + strAttributeValue + "$");
     }
     var oCurrent;
@@ -161,8 +161,8 @@ function getElementsByAttribute(oElm, strTagName, strAttributeName, strAttribute
     for(var i=0; i<arrElements.length; i++) {
         oCurrent = arrElements[i];
         oAttribute = oCurrent.getAttribute(strAttributeName);
-        if (typeof oAttribute == "string" && oAttribute.length > 0) {
-            if (typeof strAttributeValue == "undefined" || (oAttributeValue && oAttributeValue.test(oAttribute))){
+        if (typeof oAttribute === "string" && oAttribute.length > 0) {
+            if (typeof strAttributeValue === "undefined" || (oAttributeValue && oAttributeValue.test(oAttribute))){
                 arrReturnElements.push(oCurrent);
             }
         }
@@ -174,7 +174,7 @@ function getElementByTagClassRefs(parentNode, tagName, classValue, refsValue) {
 	var elems = parentNode.getElementsByTagName(tagName);
 	for (var i in elems) {
 		var elem = elems[i];
-		if (elem.getAttribute && elem.getAttribute("class") == classValue && elem.getAttribute("refs") == refsValue) {
+		if (elem.getAttribute && elem.getAttribute("class") === classValue && elem.getAttribute("refs") === refsValue) {
 			return elem;
 		}
 	}
@@ -242,10 +242,10 @@ function textContent(node) {
 
 function getPreviousSiblingElement(node, tagName) {
     node = node.previousSibling;
-    while (node && node.nodeType != ELEMENT_NODE) {
+    while (node && node.nodeType !== ELEMENT_NODE) {
         node = node.previousSibling;
     }
-    if (node && tagName && tagName.toLowerCase() != node.tagName.toLowerCase()) {
+    if (node && tagName && tagName.toLowerCase() !== node.tagName.toLowerCase()) {
         return getPreviousSiblingElement(node, tagName);
     }
     return node;
@@ -253,10 +253,10 @@ function getPreviousSiblingElement(node, tagName) {
 
 function getNextSiblingElement(node, tagName) {
     node = node.nextSibling;
-    while (node && node.nodeType != ELEMENT_NODE) {
+    while (node && node.nodeType !== ELEMENT_NODE) {
         node = node.nextSibling;
     }
-    if (node && tagName && tagName.toLowerCase() != node.tagName.toLowerCase()) {
+    if (node && tagName && tagName.toLowerCase() !== node.tagName.toLowerCase()) {
         return getNextSiblingElement(node, tagName);
     }
     return node;
@@ -265,7 +265,7 @@ function getNextSiblingElement(node, tagName) {
 function getNextSiblingElementRefs(node, tagName, refsValue) {
 	node = getNextSiblingElement(node, tagName);
 	while (node) {
-		if (node.getAttribute("refs") == refsValue) {
+		if (node.getAttribute("refs") === refsValue) {
 			return node;
 		}
 		node = getNextSiblingElement(node, tagName);
@@ -274,10 +274,10 @@ function getNextSiblingElementRefs(node, tagName, refsValue) {
 
 function getFirstChildElement(parentNode, tagName) {
     var node = parentNode.firstChild;
-    while (node && node.nodeType != ELEMENT_NODE) {
+    while (node && node.nodeType !== ELEMENT_NODE) {
         node = node.nextSibling;
     }
-    if (tagName && node && node.tagName && node.tagName.toLowerCase() != tagName.toLowerCase()) {
+    if (tagName && node && node.tagName && node.tagName.toLowerCase() !== tagName.toLowerCase()) {
         node = getNextSiblingElement(node, tagName);
     }
     return node;
@@ -295,7 +295,7 @@ function trim(str) {
 
 function insertAfter(node, ref) {
     var pn = ref.parentNode;
-    if (ref == pn.lastChild) {
+    if (ref === pn.lastChild) {
         pn.appendChild(node);
     } else {
         pn.insertBefore(node,ref.nextSibling);
@@ -309,7 +309,7 @@ function innerXML(node) {
         if (node.xml) {
             return node.xml;
         } else {
-            if (typeof window.XMLSerializer != "undefined") {
+            if (typeof window.XMLSerializer !== "undefined") {
                 var serializer = new XMLSerializer();
                 return serializer.serializeToString(node);
             }
@@ -337,10 +337,10 @@ function getNamespaceURI(prefix,namespaces) {
     if (namespaces[prefix]) {
         return namespaces[prefix];
     }
-	if (prefix == 'xml') {
+	if (prefix === 'xml') {
         return 'http://www.w3.org/XML/1998/namespace';
     }
-	if (prefix == 'xmlns') {
+	if (prefix === 'xmlns') {
 		return 'http://www.w3.org/2000/xmlns/';
 	}
     return getDefaultNamespace(namespaces);
@@ -357,7 +357,7 @@ function getFirstChildTextNode(domNode) {
     var result = domNode.firstChild;
     while (result) {
         //keeps text node which are not white spaces
-        if (result.nodeType == TEXT_NODE && !is_ignorable(result)) {
+        if (result.nodeType === TEXT_NODE && !is_ignorable(result)) {
             return result;
         }
         result = result.nextSibling;

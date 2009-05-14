@@ -43,7 +43,7 @@ function loadXMLDoc(fname) {
 		xmlhttp.overrideMimeType('text/xml');
 		xmlhttp.open('GET', fname, false);
 		xmlhttp.send(null);
-		if (xmlhttp.readyState == 4) {
+		if (xmlhttp.readyState === 4) {
 			xmlDoc = xmlhttp.responseXML;
 		}
 	} else {
@@ -73,7 +73,7 @@ function loadFile(fname) {
 	if (xmlhttp !== null) {
 		xmlhttp.open("GET", fname, false);
 		xmlhttp.send(null);
-		if (xmlhttp.readyState == 4) {
+		if (xmlhttp.readyState === 4) {
 			return xmlhttp.responseText;
 		}
 	} else {
