@@ -62,6 +62,8 @@ var FATAL = "F";
 
 /* Supporting functions and exceptions */
 
+// Note: Try to adapt http://www.saxproject.org/apidoc/org/xml/sax/helpers/NamespaceSupport.html for internal use, as well as offer for external app
+
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
 function SAXException(message, exception) { // java.lang.Exception
     this.message = message;
@@ -184,7 +186,9 @@ function _getValueByURI(uri, localName) {
     }
 }
 
-// Change later to Attributes2Impl class instead
+// Change name later to AttributesImpl and Attributes2Impl class instead, after implementing its non-interface methods
+// http://www.saxproject.org/apidoc/org/xml/sax/helpers/AttributesImpl.html
+// http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2Impl.html
 function Sax_Attributes(attsArray) {
     this.attsArray = attsArray;
 }
@@ -207,6 +211,10 @@ Sax_Attributes.prototype.getQName = function(index) {
 };
 //not supported
 Sax_Attributes.prototype.getType = function(arg1, arg2) { // Should allow 1-2 arguments of different types
+    // Besides CDATA (default when not supported), could return "ID", "IDREF", "IDREFS", "NMTOKEN", "NMTOKENS", "ENTITY", "ENTITIES", or "NOTATION" (always in upper case).
+    // "For an enumerated attribute that is not a notation, the parser will report the type as 'NMTOKEN'."
+    // If uri and localName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if Namespace processing is not being performed."
+    // If qName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if qualified names are not available."
     return "CDATA";
 };
 Sax_Attributes.prototype.getURI = function(index) {
@@ -254,20 +262,19 @@ Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
 // So,
 // 1) the only meaningful methods at the moment are getContentHandler(), setContentHandler(), and our own parseString().
 // 2) No property should be retrieved or set publicly.
-// 3) The SAXParser constructor currently only works with the first argument
+// 3) The SAXParser constructor currently only works with these arguments: first (partially), second, and fourth (partially)
 
 // Currently does not call the following (as does the DefaultHandler2 class)
-// 1) on the contentHandler: ignorableWhitespace(), skippedEntity(), setDocumenetLocator() (including with Locator2)
+// 1) on the contentHandler: ignorableWhitespace(), skippedEntity(), setDocumentLocator() (including with Locator2)
 // 2) on the DeclHandler: attributeDecl(), elementDecl(), externalEntityDecl()
-// 3) on the LexicalHandler: endDTD(), startDTD()
-// 4) on EntityResolver: resolveEntity()
-// 5) on EntityResolver2: resolveEntity() (additional args) or getExternalSubset()
-// 6) on DTDHandler: notationDecl(), unparsedEntityDecl()
-// ErrorHandler interface methods, however, are all implemented
+// 3) on EntityResolver: resolveEntity()
+// 4) on EntityResolver2: resolveEntity() (additional args) or getExternalSubset()
+// 5) on DTDHandler: notationDecl(), unparsedEntityDecl()
+// lexicalHandler and errorHandler interface methods, however, are all implemented
 // Need to also implement Attributes2 in startElement (rename Sax_Attributes to Attributes2Impl and add interface)
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
-    // Implements SAX2 XMLReader interface;
+    // Implements SAX2 XMLReader interface; also add http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html ?
     // Since SAX2 doesn't specify constructors, this class is able to define its own behavior to accept a contentHandler, etc.
 
     this.contentHandler = contentHandler;
@@ -303,20 +310,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/xml-1.1'] = false; // Not supported yet
 
     this.properties = {}; // objects
-    this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler || {
-        attributeDecl : function (eName, aName, type, mode, value) { // java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String
-            // Report an attribute type declaration (void).
-        },
-        elementDecl : function (name, model) { // java.lang.String, java.lang.String
-            // Report an element type declaration (void).
-        },
-        externalEntityDecl : function (name, publicId, systemId) { // java.lang.String, java.lang.String, java.lang.String
-            // Report a parsed external entity declaration.
-        },
-        internalEntityDecl : function (name, value) { // java.lang.String, java.lang.String
-            // Report an internal entity declaration (void).
-        }
-    };
+    this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
     this.properties['http://xml.org/sax/properties/document-xml-version'] = this.documentXmlVersion = null;
     this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode;
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
@@ -444,7 +438,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
         throw new EndOfInputException();
     } catch(e) {
         if (e instanceof SAXParseException) {
-            this.contentHandler.fatalError(e);
+            this.errorHandler.fatalError(e);
         } else if (e instanceof EndOfInputException) {
             if (this.elementsStack.length > 0) {
                 this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
@@ -1110,9 +1104,9 @@ SAXParser.prototype.fireError = function(message, gravity) {
     saxParseException.ch = this.ch;
     saxParseException.index = this.index;
     if (gravity === WARNING) {
-        this.contentHandler.warning(saxParseException);
+        this.errorHandler.warning(saxParseException);
     } else if (gravity === ERROR) {
-        this.contentHandler.error(saxParseException);
+        this.errorHandler.error(saxParseException);
     } else if (gravity === FATAL) {
         throw(saxParseException);
     }
