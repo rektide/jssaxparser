@@ -1,5 +1,5 @@
 /*
-Copyright or © or Copr. Nicolas Debeissat Brett Zamir
+Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
 nicolas.debeissat@gmail.com (http://debeissat.nicolas.free.fr/) brettz9@yahoo.com
 

@@ -1,5 +1,5 @@
 /*
-Copyright or © or Copr. Nicolas Debeissat Brett Zamir
+Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
 nicolas.debeissat@gmail.com (http://debeissat.nicolas.free.fr/) brettz9@yahoo.com
 
@@ -57,6 +57,8 @@ var STATE_TRAILING_MISC             =  5;
 var WARNING = "W";
 var ERROR = "E";
 var FATAL = "F";
+
+
 
 /* Supporting functions and exceptions */
 function Sax_Attribute(qName, namespaceURI, value) {
