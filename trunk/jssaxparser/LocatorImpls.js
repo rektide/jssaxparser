@@ -64,6 +64,8 @@ knowledge of the CeCILL license and that you accept its terms.
           Report the beginning of some internal and external XML entities.
 */
 
+(function () { // Begin namespace
+
 /* Supporting classes  */
 // NOT USED YET (Sax class should set, though only use Locator2 API if http://xml.org/sax/features/use-locator2 feature is set)
 
@@ -166,3 +168,12 @@ Locator2Impl.prototype.setEncoding = function (encoding) {
 Locator2Impl.prototype.setXMLVersion = function (version) {
     this.version = version;
 };
+
+
+// Could put on org.xml.sax.helpers.
+this.LocatorImpl = LocatorImpl;
+
+// Could put on org.xml.sax.ext.
+this.Locator2Impl = Locator2Impl;
+
+}()); // end namespace

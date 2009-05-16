@@ -35,6 +35,9 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
+(function () { // Begin namespace
+    
+
 // Overridable handlers which ignore all parsing events (though see resolveEntity() and fatalError())
 
 // http://www.saxproject.org/apidoc/org/xml/sax/helpers/DefaultHandler.html
@@ -145,3 +148,13 @@ DefaultHandler2.prototype.resolveEntity = function(name, publicId, baseURI, syst
 };
 DefaultHandler2.prototype.getExternalSubset = function(name, baseURI) {
 };
+
+
+
+// Could put on org.xml.sax.helpers.
+this.DefaultHandler = DefaultHandler;
+
+// Could put on org.xml.sax.ext.
+this.DefaultHandler2 = DefaultHandler2;
+
+}()); // end namespace

@@ -34,7 +34,16 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
+// NOTE: We have at least a skeleton for all non-deprecated, non-adapter SAX2 classes/interfaces/exceptions,
+// except for InputSource: http://www.saxproject.org/apidoc/org/xml/sax/InputSource.html which works largely
+// with streams; we use our own parseString() instead of XMLReader's parse() which expects the InputSouce (or
+// systemId); note that resolveEntity() on EntityResolver and also getExternalSubset() on EntityResolver2 return
+// an InputSource; Locator and Locator2 also have notes on InputSource
+
 (function () { // Begin namespace
+
+var that = this; // probably window object
+
 
 /* Private static variables (constant) */
 
@@ -62,14 +71,90 @@ var FATAL = "F";
 
 /* Supporting functions and exceptions */
 
-// Note: Try to adapt http://www.saxproject.org/apidoc/org/xml/sax/helpers/NamespaceSupport.html for internal use, as well as offer for external app
+// UNUSED and IMPLEMENTED
+/*
+FIELDS
+static java.lang.String 	NSDECL
+          The namespace declaration URI as a constant.
+static java.lang.String 	XMLNS
+          The XML Namespace URI as a constant.
+
+Method Summary
+ boolean 	declarePrefix(java.lang.String prefix, java.lang.String uri)
+          Declare a Namespace prefix.
+ java.util.Enumeration 	getDeclaredPrefixes()
+          Return an enumeration of all prefixes declared in this context.
+ java.lang.String 	getPrefix(java.lang.String uri)
+          Return one of the prefixes mapped to a Namespace URI.
+ java.util.Enumeration 	getPrefixes()
+          Return an enumeration of all prefixes whose declarations are active in the current context.
+ java.util.Enumeration 	getPrefixes(java.lang.String uri)
+          Return an enumeration of all prefixes for a given URI whose declarations are active in the current context.
+ java.lang.String 	getURI(java.lang.String prefix)
+          Look up a prefix and get the currently-mapped Namespace URI.
+ boolean 	isNamespaceDeclUris()
+          Returns true if namespace declaration attributes are placed into a namespace.
+ void 	popContext()
+          Revert to the previous Namespace context.
+ java.lang.String[] 	processName(java.lang.String qName, java.lang.String[] parts, boolean isAttribute)
+          Process a raw XML qualified name, after all declarations in the current context have been handled by declarePrefix().
+ void 	pushContext()
+          Start a new Namespace context.
+ void 	reset()
+          Reset this Namespace support object for reuse.
+ void 	setNamespaceDeclUris(boolean value)
+          Controls whether namespace declaration attributes are placed into the NSDECL namespace by processName().
+ **/
+// Note: Try to adapt for internal use, as well as offer for external app
+// http://www.saxproject.org/apidoc/org/xml/sax/helpers/NamespaceSupport.html
+function NamespaceSupport () {
+    throw 'NamespaceSupport is not presently implemented';
+}
+NamespaceSupport.prototype.declarePrefix = function (prefix, uri) {
+
+};
+NamespaceSupport.prototype.getDeclaredPrefixes = function () {
+
+};
+NamespaceSupport.prototype.getPrefix = function (uri) {
+
+};
+NamespaceSupport.prototype.getPrefixes = function () {
+
+};
+NamespaceSupport.prototype.getPrefixes = function (uri) {
+
+};
+NamespaceSupport.prototype.getURI = function (prefix) {
+
+};
+NamespaceSupport.prototype.isNamespaceDeclUris = function () {
+
+};
+NamespaceSupport.prototype.popContext = function () {
+
+};
+NamespaceSupport.prototype.processName = function (qName, parts, isAttribute) {
+
+};
+NamespaceSupport.prototype.pushContext = function () {
+
+};
+NamespaceSupport.prototype.reset = function () {
+
+};
+NamespaceSupport.prototype.setNamespaceDeclUris = function (value) {
+
+};
+
+
 
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
 function SAXException(message, exception) { // java.lang.Exception
     this.message = message;
     this.exception = exception;
 }
-SAXException.prototype = new Error();
+SAXException.prototype = new Error(); // We try to make useful as a JavaScript error, though we could even implement java.lang.Exception
 SAXException.constructor = SAXException;
 SAXException.prototype.getMessage = function () {
     return this.message;
@@ -153,7 +238,7 @@ Sax_QName.prototype.equals = function(qName) {
           Look up an attribute's value by Namespace name.
  */
 
-// Private helpers for Sax_Attributes (private static treated as private instance below)
+// Private helpers for AttributesImpl (private static treated as private instance below)
 function _getIndexByQName(qName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].qName.equals(qName)) {
@@ -188,41 +273,41 @@ function _getValueByURI(uri, localName) {
     }
 }
 
-// Change name later to AttributesImpl and Attributes2Impl class instead, after implementing its non-interface methods
+
+// INCOMPLETE
 // http://www.saxproject.org/apidoc/org/xml/sax/helpers/AttributesImpl.html
-// http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2Impl.html
-function Sax_Attributes(attsArray) {
+function AttributesImpl(attsArray) {
     this.attsArray = attsArray;
 }
 // INTERFACE: Attributes: http://www.saxproject.org/apidoc/org/xml/sax/Attributes.html
-Sax_Attributes.prototype.getIndex = function(arg1, arg2) {
+AttributesImpl.prototype.getIndex = function(arg1, arg2) {
     if (arg2 === undefined) {
         return _getIndexByQName.call(this, arg1);
     } else {
         return _getIndexByURI.call(this, arg1, arg2);
     }
 };
-Sax_Attributes.prototype.getLength = function() {
+AttributesImpl.prototype.getLength = function() {
     return this.attsArray.length;
 };
-Sax_Attributes.prototype.getLocalName = function(index) {
+AttributesImpl.prototype.getLocalName = function(index) {
     return this.attsArray[index].qName.localName;
 };
-Sax_Attributes.prototype.getQName = function(index) {
+AttributesImpl.prototype.getQName = function(index) {
     return this.attsArray[index].qName.qName;
 };
 //not supported
-Sax_Attributes.prototype.getType = function(arg1, arg2) { // Should allow 1-2 arguments of different types
+AttributesImpl.prototype.getType = function(arg1, arg2) { // Should allow 1-2 arguments of different types: idnex or qName or uri+localName
     // Besides CDATA (default when not supported), could return "ID", "IDREF", "IDREFS", "NMTOKEN", "NMTOKENS", "ENTITY", "ENTITIES", or "NOTATION" (always in upper case).
     // "For an enumerated attribute that is not a notation, the parser will report the type as 'NMTOKEN'."
     // If uri and localName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if Namespace processing is not being performed."
     // If qName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if qualified names are not available."
     return "CDATA";
 };
-Sax_Attributes.prototype.getURI = function(index) {
+AttributesImpl.prototype.getURI = function(index) {
     return this.attsArray[index].namespaceURI;
 };
-Sax_Attributes.prototype.getValue = function(arg1, arg2) {
+AttributesImpl.prototype.getValue = function(arg1, arg2) {
     if (arg2 === undefined) {
         if (typeof arg1 === "string") {
             return _getValueByQName.call(this, arg1);
@@ -233,6 +318,36 @@ Sax_Attributes.prototype.getValue = function(arg1, arg2) {
         return _getValueByURI.call(this, arg1, arg2);
     }
 };
+// Other AttributesImpl methods
+AttributesImpl.prototype.addAttribute = function (uri, localName, qName, type, value) {
+
+};
+AttributesImpl.prototype.clear = function () {
+
+};
+AttributesImpl.prototype.removeAttribute = function (index) {};
+AttributesImpl.prototype.setAttribute = function (index, uri, localName, qName, type, value) {};
+AttributesImpl.prototype.setAttributes = function (atts) {};
+AttributesImpl.prototype.setLocalName = function (index, localName) {};
+AttributesImpl.prototype.setQName = function (index, qName) {};
+AttributesImpl.prototype.setType = function (index, type) {};
+AttributesImpl.prototype.setURI = function (index, uri) {};
+AttributesImpl.prototype.setValue = function (index, value) {};
+
+
+/*
+Attributes2Impl()
+          Construct a new, empty Attributes2Impl object.
+Attributes2Impl(Attributes atts)
+          Copy an existing Attributes or Attributes2 object.
+*/
+// http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2Impl.html
+// When implemented, use this attribute class if this.features['http://xml.org/sax/features/use-attributes2'] is true
+function Attributes2Impl (atts) {
+    if (atts) {}
+    throw 'Attributes2Impl is presently unimplemented';
+}
+Attributes2Impl.prototype = new AttributesImpl();
 
 // INTERFACE: Attributes2: http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2.html
 /*
@@ -249,12 +364,35 @@ Sax_Attributes.prototype.getValue = function(arg1, arg2) {
  boolean 	isSpecified(java.lang.String uri, java.lang.String localName)
           Returns true unless the attribute value was provided by DTD defaulting.
 */
-Sax_Attributes.prototype.isDeclared = function (indexOrQNameOrURI, localName) {
-    throw 'isDeclared() is not presently implemented';
+Attributes2Impl.prototype.isDeclared = function (indexOrQNameOrURI, localName) {
 };
-Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
-    throw 'isSpecified() is not presently implemented';
+Attributes2Impl.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
 };
+// Other Attributes2Impl methods
+/*
+ void 	addAttribute(java.lang.String uri, java.lang.String localName, java.lang.String qName, java.lang.String type, java.lang.String value)
+          Add an attribute to the end of the list, setting its "specified" flag to true.
+void 	removeAttribute(int index)
+          Remove an attribute from the list.
+ void 	setAttributes(Attributes atts)
+          Copy an entire Attributes object.
+ void 	setDeclared(int index, boolean value)
+          Assign a value to the "declared" flag of a specific attribute.
+ void 	setSpecified(int index, boolean value)
+          Assign a value to the "specified" flag of a specific attribute.
+ **/
+Attributes2Impl.prototype.addAttribute = function (uri, localName, qName, type, value) {
+};
+Attributes2Impl.prototype.removeAttribute = function (index) {
+};
+Attributes2Impl.prototype.setAttributes = function (atts) {
+};
+Attributes2Impl.prototype.setDeclared = function (index, value) {
+};
+Attributes2Impl.prototype.setSpecified = function (index, value) {
+};
+
+
 
 // The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
 //    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
@@ -277,7 +415,7 @@ Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
 // 4) on EntityResolver2: resolveEntity() (additional args) or getExternalSubset()
 // 5) on DTDHandler: notationDecl(), unparsedEntityDecl()
 // lexicalHandler and errorHandler interface methods, however, are all supported
-// Need to also implement Attributes2 in startElement (rename Sax_Attributes to Attributes2Impl and add interface)
+// Need to also implement Attributes2 in startElement (rename AttributesImpl to Attributes2Impl and add interface)
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
     // Implements SAX2 XMLReader interface (except for parse() methods); also add http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html ?
@@ -373,7 +511,7 @@ SAXParser.prototype.getProperty = function (name) { // (java.lang.String)
     }
     return this.properties[name];
 };
-SAXParser.prototype.parse = function () { // (InputSource input OR java.lang.String systemId)
+SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input OR java.lang.String systemId)
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
@@ -854,7 +992,7 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
 SAXParser.prototype.scanAttributes = function(namespacesDeclared) {
     var atts = [];
     this.scanAttribute(atts, namespacesDeclared);
-    return new Sax_Attributes(atts);
+    return new AttributesImpl(atts);
 };
 
 SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
@@ -1120,12 +1258,110 @@ SAXParser.prototype.fireError = function(message, gravity) {
 };
 
 
+/*
+static XMLReader 	createXMLReader()
+          Attempt to create an XMLReader from system defaults.
+static XMLReader 	createXMLReader(java.lang.String className)
+          Attempt to create an XML reader from a class name.
+*/
+function XMLReaderFactory () {
+    throw 'XMLReaderFactory is not meant to be instantiated';
+}
+XMLReaderFactory.createXMLReader = function (className) {
+    if (className) {
+        return new that[className]();
+    }
+    return new SAXParser(); // our system default XMLReader (parse() not implemented, however)
+};
+
+/*
+ XMLReader 	getParent()
+          Get the parent reader.
+ void 	setParent(XMLReader parent)
+          Set the parent reader.
+*/
+// http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html
+// Allows subclasses to override methods to filter input before reaching the parent's methods
+function XMLFilterImpl () {}
+// INTERFACE: XMLFilter: http://www.saxproject.org/apidoc/org/xml/sax/XMLFilter.html
+XMLFilterImpl.prototype.setParent = function (parent) { // e.g., SAXParser
+    this.parent = parent;
+};
+XMLFilterImpl.prototype.getParent = function () {
+    return this.parent;
+};
+// INTERFACE: XMLReader: http://www.saxproject.org/apidoc/org/xml/sax/XMLReader.html
+XMLFilterImpl.prototype.getContentHandler = function () {
+    return this.parent.getContentHandler();
+};
+XMLFilterImpl.prototype.getDTDHandler = function () {
+    return this.parent.getDTDHandler();
+};
+XMLFilterImpl.prototype.getEntityResolver = function () {
+    return this.parent.getEntityResolver();
+};
+XMLFilterImpl.prototype.getErrorHandler = function () {
+    return this.parent.getErrorHandler();
+};
+XMLFilterImpl.prototype.getFeature = function (name) { // (java.lang.String)
+    return this.parent.getFeature(name);
+};
+XMLFilterImpl.prototype.getProperty = function (name) { // (java.lang.String)
+    return this.parent.getProperty(name);
+};
+XMLFilterImpl.prototype.parse = function (inputOrSystemId) { // (InputSource input OR java.lang.String systemId)
+    return this.parent.parse();
+};
+XMLFilterImpl.prototype.setContentHandler = function (handler) { // (ContentHandler)
+    return this.parent.setContentHandler(handler);
+};
+XMLFilterImpl.prototype.setDTDHandler = function (handler) { // (DTDHandler)
+    return this.parent.setDTDHandler(handler);
+};
+XMLFilterImpl.prototype.setEntityResolver = function (resolver) { // (EntityResolver)
+    return this.parent.setEntityResolver(resolver);
+};
+XMLFilterImpl.prototype.setErrorHandler = function (handler) { // (ErrorHandler)
+    return this.parent.setErrorHandler(handler);
+};
+XMLFilterImpl.prototype.setFeature = function (name, value) { // (java.lang.String, boolean)
+    return this.parent.setFeature(name, value);
+};
+XMLFilterImpl.prototype.setProperty = function (name, value) { // (java.lang.String, java.lang.Object)
+    return this.parent.setProperty(name, value);
+};
+// END SAX2 XMLReader INTERFACE
+// BEGIN CUSTOM API (could make all but parseString() private)
+
+// The following is not really a part of XMLFilterImpl but we are effectively depending on it
+XMLFilterImpl.prototype.parseString = function(xml) {
+    return this.parent.parseString(xml);
+};
+
+
+
 
 // Add public API to global namespace (or other one, if we are in another)
-this.SAXParser = SAXParser;
+this.SAXParser = SAXParser; // To avoid introducing any of our own to the namespace, this could be commented out, and require use of XMLReaderFactory.createXMLReader(); to get a parser
+
+// Could put on org.xml.sax.
 this.SAXException = SAXException;
 this.SAXNotSupportedException = SAXNotSupportedException;
 this.SAXNotRecognizedException = SAXNotRecognizedException;
 this.SAXParseException = SAXParseException;
+
+// Could put on org.xml.sax.helpers.
+this.XMLReaderFactory = XMLReaderFactory;
+this.XMLFilterImpl = XMLFilterImpl;
+
+// Fix: could also add:
+/*
+// Could put on org.xml.sax.helpers.
+this.NamespaceSupport = NamespaceSupport;
+this.AttributesImpl = AttributesImpl;
+
+// Could put on org.xml.sax.ext.
+this.Attributes2Impl = Attributes2Impl;
+*/
 
 }()); // end namespace
