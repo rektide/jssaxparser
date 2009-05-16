@@ -15,7 +15,12 @@
 	// (Note: change reference to SAXParser above if change name)
     var contentHandler;
     var saxParser;
-	
+    
+    function setUp() {
+        contentHandler = new DomContentHandler();
+		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+    }
+
 	function parse(xml) {
         try {
             saxParser.parseString(xml);
@@ -25,12 +30,6 @@
         assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
 		contentHandler.saxParseExceptions.length === 0);
         assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
-    }
-
-    
-    function setUp() {
-        contentHandler = new DomContentHandler();
-		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
     }
     
     function testParse_test_files_xslt() {
