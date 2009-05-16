@@ -259,10 +259,14 @@ Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
 // The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
 //    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
 // The feature/property defaults are incomplete, as they really depend on the implementation and how far we
-//   implement them; however, I've added some of the defaults, two of which (on namespaces) are required to be
+//   implement them; however, we've added defaults, two of which (on namespaces) are required to be
 //   supported (though they don't need to support both true and false options).
-// So,
-// 1) the only meaningful methods at the moment are getContentHandler(), setContentHandler(), and our own parseString().
+// FURTHER NOTES:
+// 1) the only meaningful methods at the moment are: 
+//  getProperty(), setProperty() (presently only for declarationHandler and lexicalHandler),
+//  getContentHandler(), setContentHandler(),
+//  getErrorHandler(), setErrorHandler(), and
+//  our own parseString().
 // 2) No property should be retrieved or set publicly.
 // 3) The SAXParser constructor currently only works with these arguments: first (partially), second, and fourth (partially)
 
@@ -272,7 +276,7 @@ Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
 // 3) on EntityResolver: resolveEntity()
 // 4) on EntityResolver2: resolveEntity() (additional args) or getExternalSubset()
 // 5) on DTDHandler: notationDecl(), unparsedEntityDecl()
-// lexicalHandler and errorHandler interface methods, however, are all implemented
+// lexicalHandler and errorHandler interface methods, however, are all supported
 // Need to also implement Attributes2 in startElement (rename Sax_Attributes to Attributes2Impl and add interface)
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
@@ -373,6 +377,7 @@ SAXParser.prototype.parse = function () { // (InputSource input OR java.lang.Str
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
+    throw 'Not implemented: at present you must use our non-SAX parseString() method';
 };
 SAXParser.prototype.setContentHandler = function (handler) { // (ContentHandler)
     // Allow an application to register a content event handler (void).
