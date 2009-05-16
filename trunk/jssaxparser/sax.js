@@ -108,6 +108,8 @@ Method Summary
 // Note: Try to adapt for internal use, as well as offer for external app
 // http://www.saxproject.org/apidoc/org/xml/sax/helpers/NamespaceSupport.html
 function NamespaceSupport () {
+    //this.NSDECL;
+    //this.XMLNS;
     throw 'NamespaceSupport is not presently implemented';
 }
 NamespaceSupport.prototype.declarePrefix = function (prefix, uri) {
