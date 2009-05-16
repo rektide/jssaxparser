@@ -224,6 +224,6 @@ DummyContentHandler.prototype.fatalError = function(saxParseException) {
 
 
 // EXPORT
-window.DummyContentHandler = DummyContentHandler;
+this.DummyContentHandler = DummyContentHandler;
 
 }());

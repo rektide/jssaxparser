@@ -1,3 +1,4 @@
+/*global SAXParseException */
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 

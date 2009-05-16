@@ -70,7 +70,7 @@ function SAXException(message, exception) { // java.lang.Exception
     this.exception = exception;
 }
 SAXException.prototype = new Error();
-SAXException.constructor = SAXParseException;
+SAXException.constructor = SAXException;
 SAXException.prototype.getMessage = function () {
     return this.message;
 };
@@ -83,14 +83,14 @@ SAXException.prototype.getException = function () {
 function SAXNotSupportedException (msg) { // java.lang.Exception
     this.message = msg || '';
 }
-SAXNotSupportedException.prototype = new Error();
+SAXNotSupportedException.prototype = new SAXException();
 SAXNotSupportedException.constructor = SAXNotSupportedException;
 
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXNotRecognizedException.html
 function SAXNotRecognizedException (msg) { // java.lang.Exception
     this.message = msg || '';
 }
-SAXNotRecognizedException.prototype = new Error();
+SAXNotRecognizedException.prototype = new SAXException();
 SAXNotRecognizedException.constructor = SAXNotRecognizedException;
 
 //This constructor is more complex and not presently implemented;

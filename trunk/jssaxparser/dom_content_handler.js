@@ -231,6 +231,6 @@ DomContentHandler.prototype.fatalError = function(saxParseException) {
 };
 
 // EXPORT
-window.DomContentHandler = DomContentHandler;
+this.DomContentHandler = DomContentHandler;
 
 }());
