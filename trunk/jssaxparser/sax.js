@@ -106,7 +106,7 @@ SAXParseException.constructor = SAXParseException;
 function EndOfInputException() {}
 
 
-
+// Make these private unless they are based on an interface?
 function Sax_Attribute(qName, namespaceURI, value) {
     this.qName = qName;
     this.namespaceURI = namespaceURI;
