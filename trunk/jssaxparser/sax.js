@@ -61,34 +61,52 @@ var FATAL = "F";
 
 
 /* Supporting functions and exceptions */
+
+// http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
+function SAXException(message, exception) { // java.lang.Exception
+    this.message = message;
+    this.exception = exception;
+}
+SAXException.prototype = new Error();
+SAXException.constructor = SAXParseException;
+SAXException.prototype.getMessage = function () {
+    return this.message;
+};
+SAXException.prototype.getException = function () {
+    return this.exception;
+};
+
+// Not fully implemented
+function SAXNotSupportedException (msg) { // java.lang.Exception
+    this.message = msg || '';
+}
+SAXNotSupportedException.prototype = new Error();
+SAXNotSupportedException.constructor = SAXNotSupportedException;
+
+function SAXNotRecognizedException (msg) { // java.lang.Exception
+    this.message = msg || '';
+}
+SAXNotRecognizedException.prototype = new Error();
+SAXNotRecognizedException.constructor = SAXNotRecognizedException;
+
+//This constructor is more complex and not presently implemented;
+//  see Java API to implement additional arguments correctly
+function SAXParseException (msg) { // java.lang.Exception //
+    this.message = msg || '';
+}
+SAXParseException.prototype = new SAXException();
+SAXParseException.constructor = SAXParseException;
+
+// Should this perhaps extend SAXParseException?
+function EndOfInputException() {}
+
+
+
 function Sax_Attribute(qName, namespaceURI, value) {
     this.qName = qName;
     this.namespaceURI = namespaceURI;
     this.value = value;
 }
-
-function SAXException(message, exception) {
-    this.message = message;
-    this.exception = exception;
-}
-
-// Not fully implemented
-function SAXNotSupportedException (msg) { // java.lang.Exception
-    return new Error(msg || '');
-}
-function SAXNotRecognizedException (msg) { // java.lang.Exception
-    return new Error(msg || '');
-}
-
-//This constructor is more complex and not presently implemented;
-//  see Java API to implement additional arguments correctly
-function SAXParseException (msg) { // java.lang.Exception //
-    return new Error(msg || '');
-}
-
-// Should this perhaps extend SAXParseException?
-function EndOfInputException() {}
-
 
 function Sax_QName(prefix, localName) {
     this.prefix = prefix;
@@ -425,7 +443,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
         }
         throw new EndOfInputException();
     } catch(e) {
-        if (e instanceof SAXException) {
+        if (e instanceof SAXParseException) {
             this.contentHandler.fatalError(e);
         } else if (e instanceof EndOfInputException) {
             if (this.elementsStack.length > 0) {
@@ -1088,15 +1106,15 @@ SAXParser.prototype.quoteContent = function() {
 };
 
 SAXParser.prototype.fireError = function(message, gravity) {
-    var saxException = new SAXException(message);
-    saxException.ch = this.ch;
-    saxException.index = this.index;
+    var saxParseException = new SAXParseException(message);
+    saxParseException.ch = this.ch;
+    saxParseException.index = this.index;
     if (gravity === WARNING) {
-        this.contentHandler.warning(saxException);
+        this.contentHandler.warning(saxParseException);
     } else if (gravity === ERROR) {
-        this.contentHandler.error(saxException);
+        this.contentHandler.error(saxParseException);
     } else if (gravity === FATAL) {
-        throw(saxException);
+        throw(saxParseException);
     }
 };
 

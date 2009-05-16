@@ -64,6 +64,7 @@ knowledge of the CeCILL license and that you accept its terms.
           Report the beginning of some internal and external XML entities.
 */
 
+
 // Begin namespace
 (function () {
 
@@ -76,11 +77,11 @@ function _displayAtts (atts) {
     }
 }
 
-function _serializeSaxException (saxException) {
-    this.div.innerHTML += "invalid char : [" + saxException.ch + "] at index : " + saxException.index + "<br/>";
-    this.div.innerHTML += "message is : [" + saxException.message + "]<br/>";
-    if (saxException.exception) {
-        this.div.innerHTML += "wrapped exception is : [" + _serializeSaxException.call(this, saxException.exception) + "]<br/>";
+function _serializeSaxParseException (saxParseException) {
+    this.div.innerHTML += "invalid char : [" + saxParseException.ch + "] at index : " + saxParseException.index + "<br/>";
+    this.div.innerHTML += "message is : [" + saxParseException.message + "]<br/>";
+    if (saxParseException.exception) {
+        this.div.innerHTML += "wrapped exception is : [" + _serializeSaxParseException.call(this, saxParseException.exception) + "]<br/>";
     }
 }
 
@@ -191,7 +192,7 @@ DummyContentHandler.prototype.startEntity = function(name) {
 
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
-// DummyContentHandler.prototype.resolveEntity(publicId, systemId) {};
+// DummyContentHandler.prototype.resolveEntity = function (publicId, systemId) {};
 
 // INTERFACE: EntityResolver2: http://www.saxproject.org/apidoc/org/xml/sax/ext/EntityResolver2.html
 DummyContentHandler.prototype.resolveEntity = function(name, publicId, baseURI, systemId) {
@@ -210,14 +211,14 @@ DummyContentHandler.prototype.unparsedEntityDecl = function (name, publicId, sys
 };
 
 // INTERFACE: ErrorHandler: http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
-DummyContentHandler.prototype.warning = function(saxException) {
-    _serializeSaxException.call(this, saxException);
+DummyContentHandler.prototype.warning = function(saxParseException) {
+    _serializeSaxParseException.call(this, saxParseException);
 };
-DummyContentHandler.prototype.error = function(saxException) {
-    _serializeSaxException.call(this, saxException);
+DummyContentHandler.prototype.error = function(saxParseException) {
+    _serializeSaxParseException.call(this, saxParseException);
 };
-DummyContentHandler.prototype.fatalError = function(saxException) {
-    _serializeSaxException.call(this, saxException);
+DummyContentHandler.prototype.fatalError = function(saxParseException) {
+    _serializeSaxParseException.call(this, saxParseException);
 };
 
 

@@ -109,7 +109,7 @@ function _addAtts(atts) {
 
 // CLASS (could be renamed or aliased to DefaultHandler2): http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
 function DomContentHandler() {
-    this.saxExceptions = [];
+    this.saxParseExceptions = [];
     //if text coming is inside a cdata section then this boolean will be set to true
     this.cdata = false;
 }
@@ -220,14 +220,14 @@ DomContentHandler.prototype.notationDecl = function (name, publicId, systemId) {
 DomContentHandler.prototype.unparsedEntityDecl = function (name, publicId, systemId, notationName) {};
 
 // INTERFACE: ErrorHandler: http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
-DomContentHandler.prototype.warning = function(saxException) {
-    this.saxExceptions.push(saxException);
+DomContentHandler.prototype.warning = function(saxParseException) {
+    this.saxParseExceptions.push(saxParseException);
 };
-DomContentHandler.prototype.error = function(saxException) {
-    this.saxExceptions.push(saxException);
+DomContentHandler.prototype.error = function(saxParseException) {
+    this.saxParseExceptions.push(saxParseException);
 };
-DomContentHandler.prototype.fatalError = function(saxException) {
-    throw saxException;
+DomContentHandler.prototype.fatalError = function(saxParseException) {
+    throw saxParseException;
 };
 
 // EXPORT
