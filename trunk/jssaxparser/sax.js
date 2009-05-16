@@ -79,12 +79,14 @@ SAXException.prototype.getException = function () {
 };
 
 // Not fully implemented
+// http://www.saxproject.org/apidoc/org/xml/sax/SAXNotSupportedException.html
 function SAXNotSupportedException (msg) { // java.lang.Exception
     this.message = msg || '';
 }
 SAXNotSupportedException.prototype = new Error();
 SAXNotSupportedException.constructor = SAXNotSupportedException;
 
+// http://www.saxproject.org/apidoc/org/xml/sax/SAXNotRecognizedException.html
 function SAXNotRecognizedException (msg) { // java.lang.Exception
     this.message = msg || '';
 }
@@ -93,13 +95,14 @@ SAXNotRecognizedException.constructor = SAXNotRecognizedException;
 
 //This constructor is more complex and not presently implemented;
 //  see Java API to implement additional arguments correctly
+// http://www.saxproject.org/apidoc/org/xml/sax/SAXParseException.html
 function SAXParseException (msg) { // java.lang.Exception //
     this.message = msg || '';
 }
 SAXParseException.prototype = new SAXException();
 SAXParseException.constructor = SAXParseException;
 
-// Should this perhaps extend SAXParseException?
+// Our own exception; should this perhaps extend SAXParseException?
 function EndOfInputException() {}
 
 
@@ -119,7 +122,6 @@ function Sax_QName(prefix, localName) {
         this.qName = localName;
     }
 }
-
 Sax_QName.prototype.equals = function(qName) {
     return this.qName === qName.qName;
 };
@@ -151,7 +153,7 @@ Sax_QName.prototype.equals = function(qName) {
           Look up an attribute's value by Namespace name.
  */
 
-// Helpers for Sax_Attributes (private static treated as private instance below)
+// Private helpers for Sax_Attributes (private static treated as private instance below)
 function _getIndexByQName(qName) {
     for (var i in this.attsArray) {
         if (this.attsArray[i].qName.equals(qName)) {
