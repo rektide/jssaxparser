@@ -186,6 +186,11 @@ function SAXParseException (msg) { // java.lang.Exception //
 }
 SAXParseException.prototype = new SAXException();
 SAXParseException.constructor = SAXParseException;
+SAXParseException.prototype.getColumnNumber = function () {};
+SAXParseException.prototype.getLineNumber = function () {};
+SAXParseException.prototype.getPublicId = function () {};
+SAXParseException.prototype.getSystemId = function () {};
+
 
 // Our own exception; should this perhaps extend SAXParseException?
 function EndOfInputException() {}
