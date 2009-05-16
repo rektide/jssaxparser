@@ -276,7 +276,7 @@ Sax_Attributes.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
 // Need to also implement Attributes2 in startElement (rename Sax_Attributes to Attributes2Impl and add interface)
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
-    // Implements SAX2 XMLReader interface; also add http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html ?
+    // Implements SAX2 XMLReader interface (except for parse() methods); also add http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html ?
     // Since SAX2 doesn't specify constructors, this class is able to define its own behavior to accept a contentHandler, etc.
 
     this.contentHandler = contentHandler;
@@ -331,7 +331,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.entities = []; // Is it necessary to redo this below too?
 }
 
-// BEGIN SAX2 INTERFACE
+// BEGIN SAX2 XMLReader INTERFACE
 SAXParser.prototype.getContentHandler = function () {
     // Return the current content handler (ContentHandler).
     return this.contentHandler;
@@ -419,10 +419,10 @@ SAXParser.prototype.setProperty = function (name, value) { // (java.lang.String,
     }
     this.properties[name] = value;
 };
-// END SAX2 INTERFACE
+// END SAX2 XMLReader INTERFACE
 
 
-// BEGIN CUSTOM API
+// BEGIN CUSTOM API (could make all but parseString() private)
 SAXParser.prototype.parseString = function(xml) { // We implement our own for now, but should probably call the standard parse() which requires an InputSource object (or systemId string)
     this.xml = xml;
     this.length = xml.length;
