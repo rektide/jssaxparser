@@ -32,6 +32,11 @@
         assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
     }
     
+    function testParse_test_files_namespaces() {
+        var fileAsText = loadFile("test_files/namespaces.xml");
+        parse(fileAsText);
+    }
+    
     function testParse_test_files_xslt() {
         var fileAsText = loadFile("test_files/xslt_ex.xml");
         parse(fileAsText);
