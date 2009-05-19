@@ -32,6 +32,11 @@
         assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
     }
     
+    function testParse_test_files_trailing_misc() {
+        var fileAsText = loadFile("test_files/trailing_misc.xml");
+        parse(fileAsText);
+    }
+    
     function testParse_test_files_namespaces() {
         var fileAsText = loadFile("test_files/namespaces.xml");
         parse(fileAsText);
@@ -99,6 +104,10 @@
     }
     	
 	function runAllTests () {
+        setUp();
+		testParse_test_files_trailing_misc();
+        setUp();
+		testParse_test_files_namespaces();
 		setUp();
 		testParse_test_files_xslt();
 		setUp(); // needed a new DOM content handler, so calling before each test

@@ -199,9 +199,8 @@ function EndOfInputException() {}
 
 
 // Make these private unless they are based on an interface?
-function Sax_Attribute(qName, namespaceURI, value) {
+function Sax_Attribute(qName, value) {
     this.qName = qName;
-    this.namespaceURI = namespaceURI;
     this.value = value;
 }
 
@@ -652,11 +651,16 @@ SAXParser.prototype.scanLT = function() {
         if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                this.scanDoctypeDecl();
-                this.state = STATE_PROLOG_DOCTYPE_DECLARED;
+                //there is no other choice but, in case exception is not FATAL,
+                // and in order to have equivalent behaviours between scan()
+                if (this.scanDoctypeDecl()) {
+                    this.state = STATE_PROLOG_DOCTYPE_DECLARED;
+                }
             }
         } else if (this.ch === "?") {
             this.nextChar(true);
+            //in case it is not a valid processing instruction
+            //scanPI will throw the exception itself, with a better message
             this.scanPI();
         } else {
             this.state = STATE_ROOT_ELEMENT;
@@ -667,10 +671,16 @@ SAXParser.prototype.scanLT = function() {
         if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                this.fireError("can not have two doctype declarations", FATAL);
+                if (this.isFollowedBy("DOCTYPE")) {
+                    this.fireError("can not have two doctype declarations", FATAL);
+                } else {
+                    this.fireError("invalid declaration, only a comment is allowed here after &lt;!", FATAL);
+                }
             }
         } else if (this.ch === "?") {
             this.nextChar(true);
+            //in case it is not a valid processing instruction
+            //scanPI will throw the exception itself, with a better message
             this.scanPI();
         } else {
             this.state = STATE_ROOT_ELEMENT;
@@ -681,7 +691,7 @@ SAXParser.prototype.scanLT = function() {
         if (this.scanMarkup()) {
             this.state = STATE_CONTENT;
         } else {
-            this.state = STATE_TRAILING_MISC;
+            this.fireError("document is empty, no root element detected", FATAL);
         }
     } else if (this.state === STATE_CONTENT) {
         if (this.ch === "!") {
@@ -693,6 +703,8 @@ SAXParser.prototype.scanLT = function() {
             }
         } else if (this.ch === "?") {
             this.nextChar();
+            //in case it is not a valid processing instruction
+            //scanPI will throw the exception itself, with a better message
             this.scanPI();
         } else if (this.ch === "/") {
             this.nextChar();
@@ -778,9 +790,11 @@ SAXParser.prototype.scanComment = function() {
                 return true;
             } else {
                 this.fireError("end of comment not valid, must be --&gt;", FATAL);
+                return false;
             }
         } else {
             this.fireError("beginning comment markup is invalid, must be &lt;!--", FATAL);
+            return false;
         }
     } else {
         // can be a doctype
@@ -853,12 +867,15 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         }
         if (this.ch !== ">") {
             this.fireError("invalid content in doctype declaration", FATAL);
+            return false;
         }
         if (this.lexicalHandler) {
             this.lexicalHandler.endDTD();
         }
+        return true;
     } else {
         this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
+        return false;
     }
 };
 
@@ -966,9 +983,7 @@ SAXParser.prototype.getQName = function() {
 };
 
 SAXParser.prototype.scanElement = function(qName) {
-    var namespacesDeclared = [];
-    var atts = this.scanAttributes(namespacesDeclared);
-    this.namespaces.push(namespacesDeclared);
+    var atts = this.scanAttributes();
     var namespaceURI = this.getNamespaceURI(qName.prefix);
     this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
     this.skipWhiteSpaces();
@@ -996,9 +1011,20 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
     this.fireError("prefix " + prefix + " not known in namespaces map", FATAL);
 };
 
-SAXParser.prototype.scanAttributes = function(namespacesDeclared) {
+SAXParser.prototype.scanAttributes = function() {
     var atts = [];
+    //namespaces declared at this step will be stored at one level of global this.namespaces
+    var namespacesDeclared = [];
     this.scanAttribute(atts, namespacesDeclared);
+    this.namespaces.push(namespacesDeclared);
+    //as namespaces are defined only after parsing all the attributes, adds the namespaceURI here
+    //loop optimization
+    var i = atts.length;
+    while (i--) {
+        var att = atts[i];
+        var namespaceURI = this.getNamespaceURI(att.qName.prefix);
+        att.namespaceURI = namespaceURI;
+    }
     return new AttributesImpl(atts);
 };
 
@@ -1016,13 +1042,9 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
             } else if (attQName.qName === "xmlns") {
                 namespacesDeclared[""] = this.scanAttValue();
                 this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
-            } else { // Fix: This must be fixed since this.namespaces may not yet be established if this is a 
-                          // namespaced attribute looking for a declaration, say on the same element the namespace
-                          // is declared; this.namespaces won't even exist yet for a root element, even if the namespace
-                          // declaration occurs sequentially before the namespaced attribute is used
-                var namespaceURI = this.getNamespaceURI(attQName.prefix);
+            } else {
                 var value = this.scanAttValue();
-                var att = new Sax_Attribute(attQName, namespaceURI, value);
+                var att = new Sax_Attribute(attQName, value);
                 atts.push(att);
             }
             this.scanAttribute(atts, namespacesDeclared);
@@ -1149,9 +1171,11 @@ SAXParser.prototype.scanEndingTag = function() {
             return true;
         } else {
             this.fireError("invalid ending markup, does not finish with &gt;", FATAL);
+            return false;
         }
     } else {
         this.fireError("invalid ending markup, markup name does not match current one", FATAL);
+        return false;
     }
 };
 
