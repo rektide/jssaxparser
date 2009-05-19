@@ -1016,7 +1016,10 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
             } else if (attQName.qName === "xmlns") {
                 namespacesDeclared[""] = this.scanAttValue();
                 this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
-            } else {
+            } else { // Fix: This must be fixed since this.namespaces may not yet be established if this is a 
+                          // namespaced attribute looking for a declaration, say on the same element the namespace
+                          // is declared; this.namespaces won't even exist yet for a root element, even if the namespace
+                          // declaration occurs sequentially before the namespaced attribute is used
                 var namespaceURI = this.getNamespaceURI(attQName.prefix);
                 var value = this.scanAttValue();
                 var att = new Sax_Attribute(attQName, namespaceURI, value);

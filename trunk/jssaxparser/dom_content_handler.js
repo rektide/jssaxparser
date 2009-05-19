@@ -105,11 +105,19 @@ function _addAtts(atts) {
         }
     }
 }
-
+function _addNsDecls () { // Will add namespaces (for true XHTML) where they are declared (even if not used at that point)
+    if (this.currentElement.setAttributeNodeNS) {
+        for (var prefix in this.currentAttNodes) {
+            this.currentElement.setAttributeNodeNS(this.currentAttNodes[prefix]);
+        }
+        this.currentAttNodes = {};
+    }
+}
 
 // CLASS (could be renamed or aliased to DefaultHandler2): http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
 function DomContentHandler() {
     this.saxParseExceptions = [];
+    this.currentAttNodes = {};
     //if text coming is inside a cdata section then this boolean will be set to true
     this.cdata = false;
 }
@@ -132,16 +140,24 @@ DomContentHandler.prototype.startElement = function(namespaceURI, localName, qNa
     _appendToCurrentElement.call(this, element);
     this.currentElement = element;
     _addAtts.call(this, atts);
+    _addNsDecls.call(this);
 };
 DomContentHandler.prototype.endElement = function(namespaceURI, localName, qName) {
     this.currentElement = this.currentElement.parentNode;
 };
 DomContentHandler.prototype.startPrefixMapping = function(prefix, uri) {
-    /* not supported by all browsers
-    if (this.currentElement.setAttributeNS) {
-        this.currentElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, uri);
+    /* not supported by all browsers*/
+    if (this.document.createAttributeNS) {
+        // We need to store the declaration for later addition to the element, since the
+        //   element is not yet available
+        var qName = prefix ? "xmlns:" + prefix : "xmlns";
+        var att = this.document.createAttributeNS("http://www.w3.org/2000/xmlns/", qName);
+        att.nodeValue = uri;
+        if (!prefix) {
+            prefix = ':'; // Put some unique value as our key which a prefix cannot use
+        }
+        this.currentAttNodes[prefix] = att;
     }
-    */
 };
 DomContentHandler.prototype.endPrefixMapping = function(prefix) {
 };
