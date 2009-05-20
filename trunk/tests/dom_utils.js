@@ -178,6 +178,7 @@ function getElementByTagClassRefs(parentNode, tagName, classValue, refsValue) {
 			return elem;
 		}
 	}
+    return null;
 }
 
 /*
@@ -270,6 +271,7 @@ function getNextSiblingElementRefs(node, tagName, refsValue) {
 		}
 		node = getNextSiblingElement(node, tagName);
 	}
+    return null;
 }
 
 function getFirstChildElement(parentNode, tagName) {
@@ -312,6 +314,9 @@ function innerXML(node) {
             if (typeof window.XMLSerializer !== "undefined") {
                 var serializer = new XMLSerializer();
                 return serializer.serializeToString(node);
+            }
+            else {
+                throw 'XML serialization is apparently not supported by your browser.';
             }
         }
     }

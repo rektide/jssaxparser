@@ -79,6 +79,7 @@ function loadFile(fname) {
 	} else {
 		alert("Your browser does not support XMLHTTP.");
 	}
+    return false;
 }
 
 function applyXslt(xml, xsl, asFragment, paramMap) {
@@ -117,6 +118,9 @@ function applyXslt(xml, xsl, asFragment, paramMap) {
 			resultDocument = xsltProcessor.transformToDocument(xml, document);
 		}
         return resultDocument;
+    }
+    else {
+        throw 'Your browser apparently does not support XSLT';
     }
 }
 

@@ -3,3 +3,4 @@
 	<firstmarkupunderroot>aTest</firstmarkupunderroot>
 </rootmarkup>
 <!-- a comment at the end -->
+<?procInst and a procesing instruction too ?>

@@ -262,7 +262,7 @@ function _getIndexByURI(uri, localName) {
     return -1;
 }
 function _getValueByIndex(index) {
-    return this.attsArray[index].value;
+    return this.attsArray[index] ? this.attsArray[index].value : null;
 }
 function _getValueByQName(qName) {
     for (var i in this.attsArray) {
@@ -270,6 +270,7 @@ function _getValueByQName(qName) {
             return this.attsArray[i].value;
         }
     }
+    return null;
 }
 function _getValueByURI(uri, localName) {
     for (var i in this.attsArray) {
@@ -277,6 +278,7 @@ function _getValueByURI(uri, localName) {
             return this.attsArray[i].value;
         }
     }
+    return null;
 }
 
 
@@ -1009,6 +1011,7 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
         return "";
     }
     this.fireError("prefix " + prefix + " not known in namespaces map", FATAL);
+    return false;
 };
 
 SAXParser.prototype.scanAttributes = function() {
@@ -1084,6 +1087,7 @@ SAXParser.prototype.scanAttValue = function() {
         return attValue;
     } else {
         this.fireError("invalid attribute value declaration, must begin with a quote", FATAL);
+        return false;
     }
 };
 
@@ -1153,6 +1157,7 @@ SAXParser.prototype.scanEntityRef = function() {
     } catch(e) {
         if (e instanceof EndOfInputException) {
             this.fireError("document incomplete, entity reference must end with ;", FATAL);
+            return false;
         } else {
             throw e;
         }
