@@ -204,10 +204,14 @@ function Sax_Attribute(qName, value) {
     this.value = value;
 }
 
+/*
+in case of attributes, empty prefix will be null because default namespace is null for attributes
+in case of elements, empty prefix will be "".
+*/
 function Sax_QName(prefix, localName) {
     this.prefix = prefix;
     this.localName = localName;
-    if (prefix !== "") {
+    if (prefix) {
         this.qName = prefix + ":" + localName;
     } else {
         this.qName = localName;
@@ -246,7 +250,8 @@ Sax_QName.prototype.equals = function(qName) {
 
 // Private helpers for AttributesImpl (private static treated as private instance below)
 function _getIndexByQName(qName) {
-    for (var i in this.attsArray) {
+    var i = this.attsArray.length;
+    while (i--) {
         if (this.attsArray[i].qName.equals(qName)) {
             return i;
         }
@@ -254,7 +259,8 @@ function _getIndexByQName(qName) {
     return -1;
 }
 function _getIndexByURI(uri, localName) {
-    for (var i in this.attsArray) {
+    var i = this.attsArray.length;
+    while (i--) {
         if (this.attsArray[i].namespaceURI === uri && this.attsArray[i].qName.localName === localName) {
             return i;
         }
@@ -265,7 +271,8 @@ function _getValueByIndex(index) {
     return this.attsArray[index] ? this.attsArray[index].value : null;
 }
 function _getValueByQName(qName) {
-    for (var i in this.attsArray) {
+    var i = this.attsArray.length;
+    while (i--) {
         if (this.attsArray[i].qName.equals(qName)) {
             return this.attsArray[i].value;
         }
@@ -273,7 +280,8 @@ function _getValueByQName(qName) {
     return null;
 }
 function _getValueByURI(uri, localName) {
-    for (var i in this.attsArray) {
+    var i = this.attsArray.length;
+    while (i--) {
         if (this.attsArray[i].namespaceURI === uri && this.attsArray[i].qName.localName === localName) {
             return this.attsArray[i].value;
         }
@@ -966,22 +974,25 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
 [5]  Name ::= Letter | '_' | ':') (NameChar)*
 */
 SAXParser.prototype.scanMarkup = function() {
-    var qName = this.getQName();
+    var qName = this.getQName("");
     this.elementsStack.push(qName.qName);
     this.scanElement(qName);
     return true;
 };
 
-SAXParser.prototype.getQName = function() {
+/*
+if called from an element parsing defaultPrefix would be ""
+if called from an attribute parsing defaultPrefix would be null
+*/
+SAXParser.prototype.getQName = function(defaultPrefix) {
     var name = this.nextName();
-    var prefix = "";
     var localName = name;
     if (name.indexOf(":") !== -1) {
         var splitResult = name.split(":");
-        prefix = splitResult[0];
+        defaultPrefix = splitResult[0];
         localName = splitResult[1];
     }
-    return new Sax_QName(prefix, localName);
+    return new Sax_QName(defaultPrefix, localName);
 };
 
 SAXParser.prototype.scanElement = function(qName) {
@@ -1001,14 +1012,20 @@ SAXParser.prototype.scanElement = function(qName) {
 };
 
 SAXParser.prototype.getNamespaceURI = function(prefix) {
-    for (var i in this.namespaces) {
+    // if attribute, prefix may be null, then namespaceURI is null
+    if (prefix === null) {
+        return null;
+    }
+    var i = this.namespaces.length;
+    while (i--) {
         var namespaceURI = this.namespaces[i][prefix];
         if (namespaceURI) {
             return namespaceURI;
         }
     }
-    if (prefix === "") {
-        return "";
+    //in case default namespace is not declared, prefix is "", namespaceURI is null
+    if (!prefix) {
+        return null;
     }
     this.fireError("prefix " + prefix + " not known in namespaces map", FATAL);
     return false;
@@ -1017,7 +1034,7 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
 SAXParser.prototype.scanAttributes = function() {
     var atts = [];
     //namespaces declared at this step will be stored at one level of global this.namespaces
-    var namespacesDeclared = [];
+    var namespacesDeclared = {};
     this.scanAttribute(atts, namespacesDeclared);
     this.namespaces.push(namespacesDeclared);
     //as namespaces are defined only after parsing all the attributes, adds the namespaceURI here
@@ -1025,8 +1042,7 @@ SAXParser.prototype.scanAttributes = function() {
     var i = atts.length;
     while (i--) {
         var att = atts[i];
-        var namespaceURI = this.getNamespaceURI(att.qName.prefix);
-        att.namespaceURI = namespaceURI;
+        att.namespaceURI = this.getNamespaceURI(att.qName.prefix);
     }
     return new AttributesImpl(atts);
 };
@@ -1034,7 +1050,7 @@ SAXParser.prototype.scanAttributes = function() {
 SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
     this.skipWhiteSpaces();
     if (this.ch !== ">" && this.ch !== "/") {
-        var attQName = this.getQName();
+        var attQName = this.getQName(null);
         this.skipWhiteSpaces();
         if (this.ch === "=") {
             this.nextChar();
@@ -1166,7 +1182,7 @@ SAXParser.prototype.scanEntityRef = function() {
 
 // [42] ETag ::= '</' Name S? '>'
 SAXParser.prototype.scanEndingTag = function() {
-    var qName = this.getQName();
+    var qName = this.getQName("");
     var namespaceURI = this.getNamespaceURI(qName.prefix);
     if (qName.qName === this.elementsStack.pop()) {
         this.skipWhiteSpaces();
