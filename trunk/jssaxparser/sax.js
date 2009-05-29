@@ -197,13 +197,6 @@ SAXParseException.prototype.getSystemId = function () {};
 // Our own exception; should this perhaps extend SAXParseException?
 function EndOfInputException() {}
 
-
-// Make these private unless they are based on an interface?
-function Sax_Attribute(qName, value) {
-    this.qName = qName;
-    this.value = value;
-}
-
 /*
 in case of attributes, empty prefix will be null because default namespace is null for attributes
 in case of elements, empty prefix will be "".
@@ -220,194 +213,6 @@ function Sax_QName(prefix, localName) {
 Sax_QName.prototype.equals = function(qName) {
     return this.qName === qName.qName;
 };
-
-/*
- int 	getIndex(java.lang.String qName)
-          Look up the index of an attribute by XML qualified (prefixed) name.
- int 	getIndex(java.lang.String uri, java.lang.String localName)
-          Look up the index of an attribute by Namespace name.
- int 	getLength()
-          Return the number of attributes in the list.
- java.lang.String 	getLocalName(int index)
-          Look up an attribute's local name by index.
- java.lang.String 	getQName(int index)
-          Look up an attribute's XML qualified (prefixed) name by index.
- java.lang.String 	getType(int index)
-          Look up an attribute's type by index.
- java.lang.String 	getType(java.lang.String qName)
-          Look up an attribute's type by XML qualified (prefixed) name.
- java.lang.String 	getType(java.lang.String uri, java.lang.String localName)
-          Look up an attribute's type by Namespace name.
- java.lang.String 	getURI(int index)
-          Look up an attribute's Namespace URI by index.
- java.lang.String 	getValue(int index)
-          Look up an attribute's value by index.
- java.lang.String 	getValue(java.lang.String qName)
-          Look up an attribute's value by XML qualified (prefixed) name.
- java.lang.String 	getValue(java.lang.String uri, java.lang.String localName)
-          Look up an attribute's value by Namespace name.
- */
-
-// Private helpers for AttributesImpl (private static treated as private instance below)
-function _getIndexByQName(qName) {
-    var i = this.attsArray.length;
-    while (i--) {
-        if (this.attsArray[i].qName.equals(qName)) {
-            return i;
-        }
-    }
-    return -1;
-}
-function _getIndexByURI(uri, localName) {
-    var i = this.attsArray.length;
-    while (i--) {
-        if (this.attsArray[i].namespaceURI === uri && this.attsArray[i].qName.localName === localName) {
-            return i;
-        }
-    }
-    return -1;
-}
-function _getValueByIndex(index) {
-    return this.attsArray[index] ? this.attsArray[index].value : null;
-}
-function _getValueByQName(qName) {
-    var i = this.attsArray.length;
-    while (i--) {
-        if (this.attsArray[i].qName.equals(qName)) {
-            return this.attsArray[i].value;
-        }
-    }
-    return null;
-}
-function _getValueByURI(uri, localName) {
-    var i = this.attsArray.length;
-    while (i--) {
-        if (this.attsArray[i].namespaceURI === uri && this.attsArray[i].qName.localName === localName) {
-            return this.attsArray[i].value;
-        }
-    }
-    return null;
-}
-
-
-// INCOMPLETE
-// http://www.saxproject.org/apidoc/org/xml/sax/helpers/AttributesImpl.html
-function AttributesImpl(attsArray) {
-    this.attsArray = attsArray;
-}
-// INTERFACE: Attributes: http://www.saxproject.org/apidoc/org/xml/sax/Attributes.html
-AttributesImpl.prototype.getIndex = function(arg1, arg2) {
-    if (arg2 === undefined) {
-        return _getIndexByQName.call(this, arg1);
-    } else {
-        return _getIndexByURI.call(this, arg1, arg2);
-    }
-};
-AttributesImpl.prototype.getLength = function() {
-    return this.attsArray.length;
-};
-AttributesImpl.prototype.getLocalName = function(index) {
-    return this.attsArray[index].qName.localName;
-};
-AttributesImpl.prototype.getQName = function(index) {
-    return this.attsArray[index].qName.qName;
-};
-//not supported
-AttributesImpl.prototype.getType = function(arg1, arg2) { // Should allow 1-2 arguments of different types: idnex or qName or uri+localName
-    // Besides CDATA (default when not supported), could return "ID", "IDREF", "IDREFS", "NMTOKEN", "NMTOKENS", "ENTITY", "ENTITIES", or "NOTATION" (always in upper case).
-    // "For an enumerated attribute that is not a notation, the parser will report the type as 'NMTOKEN'."
-    // If uri and localName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if Namespace processing is not being performed."
-    // If qName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if qualified names are not available."
-    return "CDATA";
-};
-AttributesImpl.prototype.getURI = function(index) {
-    return this.attsArray[index].namespaceURI;
-};
-AttributesImpl.prototype.getValue = function(arg1, arg2) {
-    if (arg2 === undefined) {
-        if (typeof arg1 === "string") {
-            return _getValueByQName.call(this, arg1);
-        } else {
-            return _getValueByIndex.call(this, arg1);
-        }
-    } else {
-        return _getValueByURI.call(this, arg1, arg2);
-    }
-};
-// Other AttributesImpl methods
-AttributesImpl.prototype.addAttribute = function (uri, localName, qName, type, value) {
-
-};
-AttributesImpl.prototype.clear = function () {
-
-};
-AttributesImpl.prototype.removeAttribute = function (index) {};
-AttributesImpl.prototype.setAttribute = function (index, uri, localName, qName, type, value) {};
-AttributesImpl.prototype.setAttributes = function (atts) {};
-AttributesImpl.prototype.setLocalName = function (index, localName) {};
-AttributesImpl.prototype.setQName = function (index, qName) {};
-AttributesImpl.prototype.setType = function (index, type) {};
-AttributesImpl.prototype.setURI = function (index, uri) {};
-AttributesImpl.prototype.setValue = function (index, value) {};
-
-
-/*
-Attributes2Impl()
-          Construct a new, empty Attributes2Impl object.
-Attributes2Impl(Attributes atts)
-          Copy an existing Attributes or Attributes2 object.
-*/
-// http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2Impl.html
-// When implemented, use this attribute class if this.features['http://xml.org/sax/features/use-attributes2'] is true
-function Attributes2Impl (atts) {
-    if (atts) {}
-    throw 'Attributes2Impl is presently unimplemented';
-}
-Attributes2Impl.prototype = new AttributesImpl();
-
-// INTERFACE: Attributes2: http://www.saxproject.org/apidoc/org/xml/sax/ext/Attributes2.html
-/*
- boolean 	isDeclared(int index)
-          Returns false unless the attribute was declared in the DTD.
- boolean 	isDeclared(java.lang.String qName)
-          Returns false unless the attribute was declared in the DTD.
- boolean 	isDeclared(java.lang.String uri, java.lang.String localName)
-          Returns false unless the attribute was declared in the DTD.
- boolean 	isSpecified(int index)
-          Returns true unless the attribute value was provided by DTD defaulting.
- boolean 	isSpecified(java.lang.String qName)
-          Returns true unless the attribute value was provided by DTD defaulting.
- boolean 	isSpecified(java.lang.String uri, java.lang.String localName)
-          Returns true unless the attribute value was provided by DTD defaulting.
-*/
-Attributes2Impl.prototype.isDeclared = function (indexOrQNameOrURI, localName) {
-};
-Attributes2Impl.prototype.isSpecified = function (indexOrQNameOrURI, localName) {
-};
-// Other Attributes2Impl methods
-/*
- void 	addAttribute(java.lang.String uri, java.lang.String localName, java.lang.String qName, java.lang.String type, java.lang.String value)
-          Add an attribute to the end of the list, setting its "specified" flag to true.
-void 	removeAttribute(int index)
-          Remove an attribute from the list.
- void 	setAttributes(Attributes atts)
-          Copy an entire Attributes object.
- void 	setDeclared(int index, boolean value)
-          Assign a value to the "declared" flag of a specific attribute.
- void 	setSpecified(int index, boolean value)
-          Assign a value to the "specified" flag of a specific attribute.
- **/
-Attributes2Impl.prototype.addAttribute = function (uri, localName, qName, type, value) {
-};
-Attributes2Impl.prototype.removeAttribute = function (index) {
-};
-Attributes2Impl.prototype.setAttributes = function (atts) {
-};
-Attributes2Impl.prototype.setDeclared = function (index, value) {
-};
-Attributes2Impl.prototype.setSpecified = function (index, value) {
-};
-
 
 
 // The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
@@ -441,7 +246,14 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.dtdHandler = dtdHandler;
     this.errorHandler = errorHandler;
     this.entityResolver = null;
-
+    
+    //check that an implementation of Attributes is provided
+    try {
+        new AttributesImpl();
+    } catch(e) {
+        throw new SAXException("you must import an implementation of Attributes, like AttributesImpl.js, in the html", e);
+    }
+    
     this.disallowedGetProperty = [];
     this.disallowedGetFeature = [];
     this.disallowedSetProperty = [];
@@ -475,18 +287,6 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode;
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
     this.properties['http://xml.org/sax/properties/xml-string'] = this.xmlString = null;
-
-
-    // IMPLEMENTATION-DEPENDENT PROPERTIES TO SUPPORT PARSING
-    this.index = -1;
-
-    this.state = STATE_XML_DECL;
-
-    this.elementsStack = []; // Is it necessary to redo this below too?
-    /* for each depth, a map of namespaces */
-    this.namespaces = []; // Is it necessary to redo this below too?
-    /* map between entity names and values */
-    this.entities = []; // Is it necessary to redo this below too?
 }
 
 // BEGIN SAX2 XMLReader INTERFACE
@@ -589,8 +389,10 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.ch = this.xml.charAt(this.index);
     this.state = STATE_XML_DECL;
     this.elementsStack = [];
+    /* for each depth, a map of namespaces */
     this.namespaces = [];
-    this.entities = [];
+    /* map between entity names and values */
+    this.entities = {};
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
@@ -608,6 +410,8 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
                     this.contentHandler.endDocument();
                 } catch(e2) {}
             }
+        } else {
+            throw e;
         }
     }
 };
@@ -1032,19 +836,20 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
 };
 
 SAXParser.prototype.scanAttributes = function() {
-    var atts = [];
+    var atts = new AttributesImpl();
     //namespaces declared at this step will be stored at one level of global this.namespaces
     var namespacesDeclared = {};
     this.scanAttribute(atts, namespacesDeclared);
     this.namespaces.push(namespacesDeclared);
     //as namespaces are defined only after parsing all the attributes, adds the namespaceURI here
     //loop optimization
-    var i = atts.length;
+    var i = atts.getLength();
     while (i--) {
-        var att = atts[i];
-        att.namespaceURI = this.getNamespaceURI(att.qName.prefix);
+        var prefix = atts.getPrefix(i);
+        var namespaceURI = this.getNamespaceURI(prefix);
+        atts.setURI(i, namespaceURI);
     }
-    return new AttributesImpl(atts);
+    return atts;
 };
 
 SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
@@ -1063,8 +868,8 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
                 this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
             } else {
                 var value = this.scanAttValue();
-                var att = new Sax_Attribute(attQName, value);
-                atts.push(att);
+                //we do not know yet the namespace URI
+                atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, undefined, value);
             }
             this.scanAttribute(atts, namespacesDeclared);
         } else {
