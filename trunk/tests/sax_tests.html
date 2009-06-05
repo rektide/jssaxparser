@@ -103,7 +103,12 @@
         var xml = loadRelaxng3();
         parse(xml);
     }
-    	
+    
+    function testParse_catalog_dtd() {
+        var fileAsText = loadFile("test_files/catalog_dtd.xml");
+        parse(fileAsText);
+    }
+    
 	function runAllTests () {
         setUp();
 		testParse_test_files_trailing_misc();
@@ -133,7 +138,9 @@
 		testParse_relaxng2();
 		setUp();
 		testParse_relaxng3();
-		alert('done!');
+        setUp();
+        testParse_catalog_dtd();
+        alert('done!');
 	}
 	
 	// Brett added to be able to show something in console when error is thrown

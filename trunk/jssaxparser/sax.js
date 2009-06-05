@@ -645,9 +645,6 @@ SAXParser.prototype.scanPI = function() {
 
 
 //[28]   	doctypedecl	   ::=   	'<!DOCTYPE' S  Name (S  ExternalID)? S? ('[' intSubset ']' S?)? '>'
-//[28a]   	DeclSep	   ::=   	 PEReference | S
-//[28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
-//[29]   	markupdecl	   ::=   	elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment 
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
 //			| 'PUBLIC' S PubidLiteral S SystemLiteral 
 SAXParser.prototype.scanDoctypeDecl = function() {
@@ -676,7 +673,9 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         }
         if (this.ch === "[") {
             this.nextChar();
-            this.scanDoctypeDeclIntSubset();
+            while (this.ch !== "]") {
+                this.scanDoctypeDeclIntSubset();
+            }
             this.nextChar();
         }
         if (this.ch !== ">") {
@@ -698,11 +697,6 @@ actual char is non whitespace char after '['
 [28a]   	DeclSep	   ::=   	 PEReference | S
 [28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
 [29]   	markupdecl	   ::=   	 elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment  
-[70]   	EntityDecl	   ::=   	 GEDecl  | PEDecl  
-[71]   	          GEDecl	   ::=   	'<!ENTITY' S  Name  S  EntityDef  S? '>'
-[72]   	PEDecl	   ::=   	'<!ENTITY' S '%' S Name S PEDef S? '>'
-[73]   	EntityDef	   ::=   	 EntityValue  | (ExternalID  NDataDecl?)
-[74]   	PEDef	   ::=   	EntityValue | ExternalID 
 [9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
 			|  "'" ([^%&'] | PEReference | Reference)* "'"
 [69]   	PEReference	   ::=   	'%' Name ';'
@@ -722,28 +716,10 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         } else if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                if (this.isFollowedBy("ENTITY")) {
-                    this.nextChar();
-                    if (this.ch === "%") {
-                        //no support for PEDecl
-                        this.nextGT();
-                    } else {
-                        var entityName = this.nextName();
-                        this.nextChar();
-                        if (this.ch === '"' || this.ch === "'") {
-                            var entityValue = this.quoteContent();
-                            this.entities[entityName] = entityValue;
-                            if (this.declarationHandler) {
-                                this.declarationHandler.internalEntityDecl(entityName, entityValue);
-                            }
-                        } else {
-                            //no support for (ExternalID  NDataDecl?)
-                            this.nextGT();
-                        }
-                    }
-                } else {
+                if (!this.scanEntityDecl() && !this.scanElementDecl()
+                && !this.scanAttlistDecl()) {
                     //no present support for other declarations
-                    this.nextGT();
+                    this.nextRegExp(/>/);
                 }
                 if (WS.test(this.ch)) {
                     this.nextChar();
@@ -756,12 +732,141 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         }
     //PEReference
     } else if (this.ch === "%") {
-        var name = this.nextRegExp(";");
-    }
-    if (this.ch !== "]") {
-        this.scanDoctypeDeclIntSubset();
+        var name = this.nextRegExp(/;/);
     }
 };
+
+/*
+[70]   	EntityDecl	   ::=   	 GEDecl  | PEDecl  
+[71]   	          GEDecl	   ::=   	'<!ENTITY' S  Name  S  EntityDef  S? '>'
+[72]   	PEDecl	   ::=   	'<!ENTITY' S '%' S Name S PEDef S? '>'
+[73]   	EntityDef	   ::=   	 EntityValue  | (ExternalID  NDataDecl?)
+[74]   	PEDef	   ::=   	EntityValue | ExternalID 
+*/
+SAXParser.prototype.scanEntityDecl = function() {
+    if (this.isFollowedBy("ENTITY")) {
+        this.nextChar();
+        if (this.ch === "%") {
+            //no support for PEDecl
+            this.nextGT();
+        } else {
+            var entityName = this.nextName();
+            this.nextChar();
+            if (this.ch === '"' || this.ch === "'") {
+                var entityValue = this.quoteContent();
+                this.entities[entityName] = entityValue;
+                if (this.declarationHandler) {
+                    this.declarationHandler.internalEntityDecl(entityName, entityValue);
+                }
+            } else {
+                //no support for (ExternalID  NDataDecl?)
+                this.nextGT();
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+/*
+[45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'	[VC: Unique Element Type Declaration]
+[46]   	contentspec	   ::=   	'EMPTY' | 'ANY' | Mixed | children 
+[51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
+			| '(' S? '#PCDATA' S? ')' 	[VC: Proper Group/PE Nesting]
+				[VC: No Duplicate Types]
+[47]   	children	   ::=   	(choice | seq) ('?' | '*' | '+')?
+*/
+SAXParser.prototype.scanElementDecl = function() {
+    if (this.isFollowedBy("ELEMENT")) {
+        this.nextChar();
+        var name = this.nextName();
+        this.nextChar();
+        /*
+        The content model will consist of the string "EMPTY", the string "ANY", or a parenthesised group, optionally followed by an occurrence indicator. The model will be normalized so that all parameter entities are fully resolved and all whitespace is removed,and will include the enclosing parentheses. Other normalization (such as removing redundant parentheses or simplifying occurrence indicators) is at the discretion of the parser.
+        */
+        var model = this.nextRegExp(/>/);
+        if (this.declarationHandler) {
+            this.declarationHandler.elementDecl(name, model);
+        }
+        return true;
+    }
+    return false;
+}
+
+/*
+[52]   	AttlistDecl	   ::=   	'<!ATTLIST' S  Name  AttDef* S? '>'
+[53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl 
+[54]   	AttType	   ::=   	 StringType | TokenizedType | EnumeratedType
+[55]   	StringType	   ::=   	'CDATA'
+[56]   	TokenizedType	   ::=   	'ID'	[VC: ID]
+			| 'IDREF'	[VC: IDREF]
+			| 'IDREFS'	[VC: IDREF]
+			| 'ENTITY'	[VC: Entity Name]
+			| 'ENTITIES'	[VC: Entity Name]
+			| 'NMTOKEN'	[VC: Name Token]
+			| 'NMTOKENS'	[VC: Name Token]
+[60]   	DefaultDecl	   ::=   	'#REQUIRED' | '#IMPLIED'
+			| (('#FIXED' S)? AttValue)
+*/
+SAXParser.prototype.scanAttlistDecl = function() {
+    if (this.isFollowedBy("ATTLIST")) {
+        this.nextChar();
+        var eName = this.nextName();
+        this.nextChar();
+        while (this.ch !== ">") {
+            this.scanAttDef(eName);
+        }
+        return true;
+    }
+    return false;
+}
+
+/*
+[57]   	EnumeratedType	   ::=   	 NotationType | Enumeration
+[58]   	NotationType	   ::=   	'NOTATION' S '(' S? Name (S? '|' S? Name)* S? ')'
+[59]   	Enumeration	   ::=   	'(' S? Nmtoken (S? '|' S? Nmtoken)* S? ')'
+*/
+SAXParser.prototype.scanAttDef = function(eName) {
+    var aName = this.nextName();
+    this.nextChar();
+    var type = "";
+    //Enumeration
+    if (this.ch === "(") {
+        type = this.nextRegExp(/\)/);
+    } else {
+        type = this.nextRegExp(WS);
+    }
+    this.nextChar();
+    //DefaultDecl
+    var mode = null;
+    if (this.isFollowedBy("#")) {
+        mode = "#" + this.nextRegExp(WS);
+        this.nextChar();
+    }
+    var attValue = null;
+    //attValue
+    if (this.ch === '"' || this.ch === "'") {
+        var quote = this.ch;
+        this.nextChar(true);
+        var attValue = this.nextRegExp("[" + quote + "<&]");
+        //if found a "&"
+        while (this.ch === "&") {
+            this.nextChar(true);
+            var ref = this.scanRef();
+            attValue += ref;
+            attValue += this.nextRegExp("[" + quote + "<&]");
+        }
+        if (this.ch === "<") {
+            this.fireError("invalid attribute value, must not contain &lt;", FATAL);
+            return false;
+        }
+        //current char is ending quote
+        this.nextChar();
+    }
+    if (this.declarationHandler) {
+        this.declarationHandler.attributeDecl(eName, aName, type, mode, attValue);
+    }
+}
 
 /*
  [39] element ::= EmptyElemTag | STag content ETag
@@ -894,6 +999,7 @@ SAXParser.prototype.scanAttValue = function() {
             }
             if (this.ch === "<") {
                 this.fireError("invalid attribute value, must not contain &lt;", FATAL);
+                return false;
             }
             //current char is ending quote
             this.nextChar();
@@ -901,6 +1007,7 @@ SAXParser.prototype.scanAttValue = function() {
         } catch(e) {
             if (e instanceof EndOfInputException) {
                 this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
+                return false;
             } else {
                 throw e;
             }
