@@ -766,7 +766,7 @@ SAXParser.prototype.scanEntityDecl = function() {
         return true;
     }
     return false;
-}
+};
 
 /*
 [45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'	[VC: Unique Element Type Declaration]
@@ -791,7 +791,7 @@ SAXParser.prototype.scanElementDecl = function() {
         return true;
     }
     return false;
-}
+};
 
 /*
 [52]   	AttlistDecl	   ::=   	'<!ATTLIST' S  Name  AttDef* S? '>'
@@ -819,7 +819,7 @@ SAXParser.prototype.scanAttlistDecl = function() {
         return true;
     }
     return false;
-}
+};
 
 /*
 [57]   	EnumeratedType	   ::=   	 NotationType | Enumeration
@@ -866,7 +866,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
     if (this.declarationHandler) {
         this.declarationHandler.attributeDecl(eName, aName, type, mode, attValue);
     }
-}
+};
 
 /*
  [39] element ::= EmptyElemTag | STag content ETag
