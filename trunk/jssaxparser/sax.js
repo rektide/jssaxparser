@@ -393,6 +393,9 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.namespaces = [];
     /* map between entity names and values */
     this.entities = {};
+    /* map between parameter entity names and values
+            the parameter entites are used inside the DTD */
+    this.parameterEntities = {};
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
@@ -651,25 +654,18 @@ SAXParser.prototype.scanDoctypeDecl = function() {
     if (this.isFollowedBy("DOCTYPE")) {
         this.nextChar();
         var name = this.nextRegExp(/[ \[>]/);
+        var externalId = new ExternalId();
         var systemLiteral;
         if (WS.test(this.ch)) {
             this.nextChar();
             //if there is an externalId
-            if (this.isFollowedBy("SYSTEM")) {
-                this.nextChar();
-                systemLiteral = this.quoteContent();
-            } else if (this.isFollowedBy("PUBLIC")) {
-                this.nextChar();
-                var pubidLiteral = this.quoteContent();
-                this.nextChar();
-                systemLiteral = this.quoteContent();
-            }
+            this.scanExternalId(externalId);
             if (WS.test(this.ch)) {
                 this.nextChar();
             }
         }
         if (this.lexicalHandler) {
-            this.lexicalHandler.startDTD(name, pubidLiteral, systemLiteral);
+            this.lexicalHandler.startDTD(name, externalId.pubidLiteral, externalId.systemLiteral);
         }
         if (this.ch === "[") {
             this.nextChar();
@@ -690,6 +686,29 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
         return false;
     }
+};
+
+/*
+object to store pubidLiteral and systemLiteral
+*/
+function ExternalId() {
+    this.pubidLiteral = null;
+    this.systemLiteral = null;
+}
+
+SAXParser.prototype.scanExternalId = function(externalId) {
+    if (this.isFollowedBy("SYSTEM")) {
+        this.nextChar();
+        externalId.systemLiteral = this.quoteContent();
+        return true;
+    } else if (this.isFollowedBy("PUBLIC")) {
+        this.nextChar();
+        externalId.pubidLiteral = this.quoteContent();
+        this.nextChar();
+        externalId.systemLiteral = this.quoteContent();
+        return true;
+    }
+    return false;
 };
 
 /*
@@ -725,7 +744,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                     this.nextChar();
                 }
                 if (this.ch !== ">") {
-                    this.fireError("invalid [29]markupdecl inside doctype declaration, must end with &gt;", FATAL);
+                    this.fireError("invalid markup declaration inside doctype declaration, must end with &gt;", FATAL);
                 }
                 this.nextChar();
             }
@@ -742,25 +761,46 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
 [72]   	PEDecl	   ::=   	'<!ENTITY' S '%' S Name S PEDef S? '>'
 [73]   	EntityDef	   ::=   	 EntityValue  | (ExternalID  NDataDecl?)
 [74]   	PEDef	   ::=   	EntityValue | ExternalID 
+[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
+			| 'PUBLIC' S PubidLiteral S SystemLiteral
+[76]   	NDataDecl	   ::=   	S 'NDATA' S Name 
 */
 SAXParser.prototype.scanEntityDecl = function() {
     if (this.isFollowedBy("ENTITY")) {
         this.nextChar();
         if (this.ch === "%") {
-            //no support for PEDecl
-            this.nextGT();
+            this.nextChar();
+            var entityName = this.nextName();
+            this.nextChar();
+            //if already declared, not effective
+            if (!this.entities[entityName]) {
+                var externalId = new ExternalId();
+                if (!this.scanExternalId(externalId)) {
+                    var entityValue = this.scanEntityValue();
+                    this.parameterEntities[entityName] = entityValue;
+                    if (this.declarationHandler) {
+                        this.declarationHandler.internalEntityDecl("%" + entityName, entityValue);
+                    }
+                }
+            }
         } else {
             var entityName = this.nextName();
             this.nextChar();
-            if (this.ch === '"' || this.ch === "'") {
-                var entityValue = this.quoteContent();
-                this.entities[entityName] = entityValue;
-                if (this.declarationHandler) {
-                    this.declarationHandler.internalEntityDecl(entityName, entityValue);
+            //if already declared, not effective
+            if (!this.entities[entityName]) {
+                var externalId = new ExternalId();
+                if (this.scanExternalId(externalId)) {
+                    if (this.isFollowedBy("NDATA")) {
+                        this.nextChar();
+                        var ndataName = this.nextName();
+                    }
+                } else {
+                    var entityValue = this.scanEntityValue();
+                    this.entities[entityName] = entityValue;
+                    if (this.declarationHandler) {
+                        this.declarationHandler.internalEntityDecl(entityName, entityValue);
+                    }
                 }
-            } else {
-                //no support for (ExternalID  NDataDecl?)
-                this.nextGT();
             }
         }
         return true;
@@ -769,11 +809,56 @@ SAXParser.prototype.scanEntityDecl = function() {
 };
 
 /*
-[45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'	[VC: Unique Element Type Declaration]
+[9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
+			|  "'" ([^%&'] | PEReference | Reference)* "'"
+[68]   	EntityRef	   ::=   	'&' Name ';'	
+[69]   	PEReference	   ::=   	'%' Name ';'
+*/
+SAXParser.prototype.scanEntityValue = function() {
+    if (this.ch === '"' || this.ch === "'") {
+        var quote = this.ch;
+        this.nextChar(true);
+        var entityValue = this.nextRegExp("[" + quote + "%]");
+        //if found a "%" must replace it, EntityRef are not replaced here.
+        while (this.ch === "%") {
+            this.nextChar(true);
+            var ref = this.scanPeRef();
+            entityValue += ref;
+            entityValue += this.nextRegExp("[" + quote + "%]");
+        }
+        //current char is ending quote
+        this.nextChar();
+        return entityValue;
+    } else {
+        this.fireError("invalid entity value declaration, must begin with a quote", ERROR);
+        return false;
+    }
+};
+
+SAXParser.prototype.scanPeRef = function() {
+    try {
+        var ref = this.nextRegExp(/;/);
+        //tries to replace it by its value if declared internally in doctype declaration
+        if (this.parameterEntities[ref]) {
+            ref = this.parameterEntities[ref];
+        }
+        return ref;
+    //adding a message in that case
+    } catch(e) {
+        if (e instanceof EndOfInputException) {
+            this.fireError("document incomplete, parameter entity reference must end with ;", FATAL);
+            return false;
+        } else {
+            throw e;
+        }
+    }
+};
+
+/*
+[45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'
 [46]   	contentspec	   ::=   	'EMPTY' | 'ANY' | Mixed | children 
 [51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
-			| '(' S? '#PCDATA' S? ')' 	[VC: Proper Group/PE Nesting]
-				[VC: No Duplicate Types]
+			| '(' S? '#PCDATA' S? ')'
 [47]   	children	   ::=   	(choice | seq) ('?' | '*' | '+')?
 */
 SAXParser.prototype.scanElementDecl = function() {
