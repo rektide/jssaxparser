@@ -7,6 +7,8 @@
 <!ENTITY   rights "All rights reserved" >
 <!ENTITY   book   "La Peste: Albert Camus, 
 &#xA9; 1947 . &rights;" >
+<!ENTITY % YN '"Yes"' >
+<!ENTITY WhatHeSaid "He said YN" >
 
 <!ELEMENT CATALOG (PRODUCT*)>
 

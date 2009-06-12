@@ -396,6 +396,10 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     /* map between parameter entity names and values
             the parameter entites are used inside the DTD */
     this.parameterEntities = {};
+    /* As an attribute is declared for an element, that should
+                contain a map between element name and a map between
+                attributes name and types ( 3 level tree) */
+    this.attributesType = {};
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
@@ -716,13 +720,6 @@ actual char is non whitespace char after '['
 [28a]   	DeclSep	   ::=   	 PEReference | S
 [28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
 [29]   	markupdecl	   ::=   	 elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment  
-[9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
-			|  "'" ([^%&'] | PEReference | Reference)* "'"
-[69]   	PEReference	   ::=   	'%' Name ';'
-[67]   	Reference	   ::=   	 EntityRef | CharRef
-[68]   	EntityRef	   ::=   	'&' Name ';'
-[9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
-			|  "'" ([^%&'] | PEReference | Reference)* "'"
 */
 SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
     if (this.ch === "<") {
@@ -749,9 +746,13 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                 this.nextChar();
             }
         }
-    //PEReference
+    /*PEReference I am not sure that is allowed here as PE Between Declarations
+The replacement text of a parameter entity reference in a DeclSep
+MUST match the production extSubsetDecl.
+which may say that it is not allowed in an internal subset.
+*/
     } else if (this.ch === "%") {
-        var name = this.nextRegExp(/;/);
+        var entityName = this.nextRegExp(/;/);
     }
 };
 
@@ -880,23 +881,13 @@ SAXParser.prototype.scanElementDecl = function() {
 
 /*
 [52]   	AttlistDecl	   ::=   	'<!ATTLIST' S  Name  AttDef* S? '>'
-[53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl 
-[54]   	AttType	   ::=   	 StringType | TokenizedType | EnumeratedType
-[55]   	StringType	   ::=   	'CDATA'
-[56]   	TokenizedType	   ::=   	'ID'	[VC: ID]
-			| 'IDREF'	[VC: IDREF]
-			| 'IDREFS'	[VC: IDREF]
-			| 'ENTITY'	[VC: Entity Name]
-			| 'ENTITIES'	[VC: Entity Name]
-			| 'NMTOKEN'	[VC: Name Token]
-			| 'NMTOKENS'	[VC: Name Token]
-[60]   	DefaultDecl	   ::=   	'#REQUIRED' | '#IMPLIED'
-			| (('#FIXED' S)? AttValue)
 */
 SAXParser.prototype.scanAttlistDecl = function() {
     if (this.isFollowedBy("ATTLIST")) {
         this.nextChar();
         var eName = this.nextName();
+        //initializes the attributesType map
+        this.attributesType[eName] = {};
         this.nextChar();
         while (this.ch !== ">") {
             this.scanAttDef(eName);
@@ -907,20 +898,34 @@ SAXParser.prototype.scanAttlistDecl = function() {
 };
 
 /*
+[53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl 
+[54]   	AttType	   ::=   	 StringType | TokenizedType | EnumeratedType
+[55]   	StringType	   ::=   	'CDATA'
+[56]   	TokenizedType	   ::=   	'ID'	[VC: ID]
+			| 'IDREF'	[VC: IDREF]
+			| 'IDREFS'	[VC: IDREF]
+			| 'ENTITY'	[VC: Entity Name]
+			| 'ENTITIES'	[VC: Entity Name]
+			| 'NMTOKEN'	[VC: Name Token]
+			| 'NMTOKENS'	[VC: Name Token]
 [57]   	EnumeratedType	   ::=   	 NotationType | Enumeration
 [58]   	NotationType	   ::=   	'NOTATION' S '(' S? Name (S? '|' S? Name)* S? ')'
 [59]   	Enumeration	   ::=   	'(' S? Nmtoken (S? '|' S? Nmtoken)* S? ')'
+[60]   	DefaultDecl	   ::=   	'#REQUIRED' | '#IMPLIED'
+			| (('#FIXED' S)? AttValue)
 */
 SAXParser.prototype.scanAttDef = function(eName) {
     var aName = this.nextName();
     this.nextChar();
-    var type = "";
+    var type;
     //Enumeration
     if (this.ch === "(") {
         type = this.nextRegExp(/\)/);
     } else {
         type = this.nextRegExp(WS);
     }
+    //stores the declared type of that attribute for method getType() of AttributesImpl
+    this.attributesType[eName][aName] = type;
     this.nextChar();
     //DefaultDecl
     var mode = null;
@@ -990,7 +995,7 @@ SAXParser.prototype.getQName = function(defaultPrefix) {
 };
 
 SAXParser.prototype.scanElement = function(qName) {
-    var atts = this.scanAttributes();
+    var atts = this.scanAttributes(qName);
     var namespaceURI = this.getNamespaceURI(qName.prefix);
     this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
     this.skipWhiteSpaces();
@@ -1025,11 +1030,11 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
     return false;
 };
 
-SAXParser.prototype.scanAttributes = function() {
+SAXParser.prototype.scanAttributes = function(qName) {
     var atts = new AttributesImpl();
     //namespaces declared at this step will be stored at one level of global this.namespaces
     var namespacesDeclared = {};
-    this.scanAttribute(atts, namespacesDeclared);
+    this.scanAttribute(qName, atts, namespacesDeclared);
     this.namespaces.push(namespacesDeclared);
     //as namespaces are defined only after parsing all the attributes, adds the namespaceURI here
     //loop optimization
@@ -1042,7 +1047,7 @@ SAXParser.prototype.scanAttributes = function() {
     return atts;
 };
 
-SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
+SAXParser.prototype.scanAttribute = function(qName, atts, namespacesDeclared) {
     this.skipWhiteSpaces();
     if (this.ch !== ">" && this.ch !== "/") {
         var attQName = this.getQName(null);
@@ -1058,10 +1063,17 @@ SAXParser.prototype.scanAttribute = function(atts, namespacesDeclared) {
                 this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
             } else {
                 var value = this.scanAttValue();
+                //get the type of that attribute from internal DTD if found (no support of namespace in DTD)
+                var type = null;
+                var elementName = qName.localName;
+                var elementMap = this.attributesType[elementName];
+                if (elementMap) {
+                    type = elementMap[attQName.localName];
+                }
                 //we do not know yet the namespace URI
-                atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, undefined, value);
+                atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
             }
-            this.scanAttribute(atts, namespacesDeclared);
+            this.scanAttribute(qName, atts, namespacesDeclared);
         } else {
             this.fireError("invalid attribute, must contain = between name and value", FATAL);
         }
@@ -1410,10 +1422,6 @@ this.XMLFilterImpl = XMLFilterImpl;
 /*
 // Could put on org.xml.sax.helpers.
 this.NamespaceSupport = NamespaceSupport;
-this.AttributesImpl = AttributesImpl;
-
-// Could put on org.xml.sax.ext.
-this.Attributes2Impl = Attributes2Impl;
 */
 
 }()); // end namespace

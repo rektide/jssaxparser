@@ -88,7 +88,7 @@ function _getValueByIndex(index) {
 function _getValueByQName(qName) {
     var i = this.attsArray.length;
     while (i--) {
-        if (this.attsArray[i].qName.equals(qName)) {
+        if (this.attsArray[i].qName === qName) {
             return this.attsArray[i].value;
         }
     }
@@ -155,6 +155,26 @@ AttributesImpl.prototype.getType = function(arg1, arg2) { // Should allow 1-2 ar
     // "For an enumerated attribute that is not a notation, the parser will report the type as 'NMTOKEN'."
     // If uri and localName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if Namespace processing is not being performed."
     // If qName passed, should return the "attribute type as a string, or null if the attribute is not in the list or if qualified names are not available."
+    var index;
+    if (!arg2) {
+        if (arg1) {
+            //if it is an index, otherwise should return NaN
+            index = parseInt(arg1);
+            //index may be 0
+            if (!index && index !== 0) {
+                //then it is qName
+                index = _getIndexByQName.call(this, arg1);
+            }
+        }
+    } else {
+        index = _getIndexByURI.call(this, arg1, arg2);
+    }
+    if (index || index === 0) {
+        var type = this.attsArray[index].type;
+        if (type) {
+            return type;
+        }
+    }
     return "CDATA";
 };
 AttributesImpl.prototype.getURI = function(index) {
