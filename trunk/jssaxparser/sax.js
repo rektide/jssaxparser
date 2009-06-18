@@ -391,6 +391,9 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.elementsStack = [];
     /* for each depth, a map of namespaces */
     this.namespaces = [];
+    var xmlNamespace = {};
+    xmlNamespace["xml"] = "http://www.w3.org/XML/1998/namespace";
+    this.namespaces.push(xmlNamespace);
     /* map between entity names and values */
     this.entities = {};
     /* map between parameter entity names and values
@@ -400,6 +403,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
                 contain a map between element name and a map between
                 attributes name and types ( 3 level tree) */
     this.attributesType = {};
+    this.baseURI = location;
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
@@ -744,6 +748,11 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                     this.fireError("invalid markup declaration inside doctype declaration, must end with &gt;", FATAL);
                 }
                 this.nextChar();
+            } else {
+                //if comment, must go over the whitespaces as they are not significative in doctype internal subset declaration
+                if (WS.test(this.ch)) {
+                    this.nextChar();
+                }
             }
         }
     /*PEReference I am not sure that is allowed here as PE Between Declarations
@@ -753,6 +762,8 @@ which may say that it is not allowed in an internal subset.
 */
     } else if (this.ch === "%") {
         var entityName = this.nextRegExp(/;/);
+    } else {
+        this.fireError("invalid character in  internal subset of doctype declaration : " + this.ch, FATAL);
     }
 };
 
@@ -1174,10 +1185,11 @@ SAXParser.prototype.scanEntityRef = function() {
             this.lexicalHandler.endEntity(ref);
         }
         //tries to replace it by its value if declared internally in doctype declaration
-        if (this.entities[ref]) {
-            ref = this.entities[ref];
+        var replacement = this.entities[ref];
+        if (replacement) {
+            return replacement;
         }
-        return ref;
+        return "";
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
