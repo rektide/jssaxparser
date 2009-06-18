@@ -193,6 +193,11 @@ SAXParseException.prototype.getLineNumber = function () {};
 SAXParseException.prototype.getPublicId = function () {};
 SAXParseException.prototype.getSystemId = function () {};
 
+function SAXIntEntityNotFoundException (entityName) {
+    this.entityName = entityName;
+}
+SAXIntEntityNotFoundException.prototype = new SAXParseException();
+SAXIntEntityNotFoundException.constructor = SAXIntEntityNotFoundException;
 
 // Our own exception; should this perhaps extend SAXParseException?
 function EndOfInputException() {}
@@ -399,6 +404,8 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     /* map between parameter entity names and values
             the parameter entites are used inside the DTD */
     this.parameterEntities = {};
+    /* map between external entity names and URIs  */    
+    this.externalEntities = {};
     /* As an attribute is declared for an element, that should
                 contain a map between element name and a map between
                 attributes name and types ( 3 level tree) */
@@ -569,8 +576,27 @@ SAXParser.prototype.scanText = function() {
     //if found a "&"
     while (this.ch === "&") {
         this.nextChar(true);
-        var ref = this.scanRef();
-        content += ref;
+        try {
+            var ref = this.scanRef();
+            content += ref;
+        } catch (e) {
+            if (e instanceof SAXIntEntityNotFoundException) {
+                // at this place in XML, that entity ref may be an external entity
+                var uri = this.externalEntities[e.entityName];
+                if (uri === undefined) {
+                    this.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", ERROR);
+                } else {
+                    try {
+                        var txt = loadFile(uri);
+                        if (txt) {
+                            content += txt;
+                        }
+                    } catch (e) {}
+                }
+            } else {
+                throw e;
+            }
+        }
         content += this.nextRegExp(/[<&]/);
     }
     var length = this.index - start;
@@ -578,7 +604,10 @@ SAXParser.prototype.scanText = function() {
 };
 
 
-//current char is after '&'
+/*
+current char is after '&'
+may return undefined if entity has not been found (if external for example)
+*/
 SAXParser.prototype.scanRef = function() {
     var ref;
     if (this.ch === "#") {
@@ -587,8 +616,6 @@ SAXParser.prototype.scanRef = function() {
     } else {
         ref = this.scanEntityRef();
     }
-    //current char is ";"
-    this.nextChar(true);
     return ref;
 };
 
@@ -793,6 +820,8 @@ SAXParser.prototype.scanEntityDecl = function() {
                     if (this.declarationHandler) {
                         this.declarationHandler.internalEntityDecl("%" + entityName, entityValue);
                     }
+                } else {
+                    this.externalEntities[entityName] = externalId;
                 }
             }
         } else {
@@ -806,6 +835,7 @@ SAXParser.prototype.scanEntityDecl = function() {
                         this.nextChar();
                         var ndataName = this.nextName();
                     }
+                    this.externalEntities[entityName] = externalId;
                 } else {
                     var entityValue = this.scanEntityValue();
                     this.entities[entityName] = entityValue;
@@ -851,10 +881,12 @@ SAXParser.prototype.scanPeRef = function() {
     try {
         var ref = this.nextRegExp(/;/);
         //tries to replace it by its value if declared internally in doctype declaration
-        if (this.parameterEntities[ref]) {
-            ref = this.parameterEntities[ref];
+        var replacement = this.parameterEntities[ref];
+        if (replacement) {
+            return replacement;
         }
-        return ref;
+        this.fireError("parameter entity reference " + ref + "has not been declared, no replacement found", ERROR);
+        return "";
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
@@ -949,13 +981,13 @@ SAXParser.prototype.scanAttDef = function(eName) {
     if (this.ch === '"' || this.ch === "'") {
         var quote = this.ch;
         this.nextChar(true);
-        var attValue = this.nextRegExp("[" + quote + "<&]");
-        //if found a "&"
-        while (this.ch === "&") {
+        var attValue = this.nextRegExp("[" + quote + "<%]");
+        //if found a "%" must replace it, PeRef are replaced here but not EntityRef
+        while (this.ch === "%") {
             this.nextChar(true);
-            var ref = this.scanRef();
+            var ref = this.scanPeRef();
             attValue += ref;
-            attValue += this.nextRegExp("[" + quote + "<&]");
+            attValue += this.nextRegExp("[" + quote + "<%]");
         }
         if (this.ch === "<") {
             this.fireError("invalid attribute value, must not contain &lt;", FATAL);
@@ -1101,8 +1133,16 @@ SAXParser.prototype.scanAttValue = function() {
             //if found a "&"
             while (this.ch === "&") {
                 this.nextChar(true);
-                var ref = this.scanRef();
-                attValue += ref;
+                try {
+                    var ref = this.scanRef();
+                    attValue += ref;
+                } catch (e) {
+                    if (e instanceof SAXIntEntityNotFoundException) {
+                        this.fireError("entity reference : [" + e.entityName + "] not declared, ignoring it", ERROR);
+                    } else {
+                        throw e;
+                    }
+                }
                 attValue += this.nextRegExp("[" + quote + "<&]");
             }
             if (this.ch === "<") {
@@ -1154,7 +1194,7 @@ SAXParser.prototype.scanCData = function() {
 };
 
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
-// current ch is char after "&#",  returned current char is ";"
+// current ch is char after "&#",  returned current char is after ";"
 SAXParser.prototype.scanCharRef = function() {
     var oldIndex = this.index;
     if (this.ch === "x") {
@@ -1173,23 +1213,29 @@ SAXParser.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
     }
+    //current char is ';'
+    this.nextChar(true);
     return this.xml.substring(oldIndex, this.index);
 };
 
-//[68]  EntityRef ::= '&' Name ';'
+/*
+[68]  EntityRef ::= '&' Name ';'
+may return undefined, has to be managed differently depending on 
+*/
 SAXParser.prototype.scanEntityRef = function() {
     try {
         var ref = this.nextRegExp(/;/);
+        // current char is ';'
+        this.nextChar(true);
         if (this.lexicalHandler) {
             this.lexicalHandler.startEntity(ref);
             this.lexicalHandler.endEntity(ref);
         }
-        //tries to replace it by its value if declared internally in doctype declaration
         var replacement = this.entities[ref];
-        if (replacement) {
-            return replacement;
+        if (replacement === undefined) {
+            throw new SAXIntEntityNotFoundException(ref);
         }
-        return "";
+        return replacement;
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
