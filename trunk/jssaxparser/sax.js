@@ -67,6 +67,7 @@ var WARNING = "W";
 var ERROR = "E";
 var FATAL = "F";
 
+var XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
 
 
 /* Supporting functions and exceptions */
@@ -397,7 +398,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     /* for each depth, a map of namespaces */
     this.namespaces = [];
     var xmlNamespace = {};
-    xmlNamespace["xml"] = "http://www.w3.org/XML/1998/namespace";
+    xmlNamespace["xml"] = XML_NAMESPACE;
     this.namespaces.push(xmlNamespace);
     /* map between entity names and values */
     this.entities = {};
@@ -410,7 +411,12 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
                 contain a map between element name and a map between
                 attributes name and types ( 3 level tree) */
     this.attributesType = {};
-    this.baseURI = location;
+    /* this.baseURI is the relative URI of the XML file loaded. not possible to load a file above the html */
+    if (!this.baseURI) {
+        this.baseURI = location;
+    }
+    /* on each depth, a relative base URI, empty if no xml:base found, is recorded */
+    this.relativeBaseUris = [];
     this.contentHandler.startDocument();
     try {
         while (this.index < this.length) {
@@ -571,38 +577,63 @@ SAXParser.prototype.scanLT = function() {
 // in character data only if it is an entity reference
 SAXParser.prototype.scanText = function() {
     var start = this.index;
-    var content = this.nextRegExp(/[<&]/);
-    
-    //if found a "&"
-    while (this.ch === "&") {
-        this.nextChar(true);
-        try {
+    var content = this.nextCharRegExp(/[<&]/);
+    //in case of external entity, the process is reinitialized??
+    var entityStart;
+    try {
+        //if found a "&"
+        while (this.ch === "&") {
+            entityStart = this.index;
+            this.nextChar(true);
             var ref = this.scanRef();
-            content += ref;
-        } catch (e) {
-            if (e instanceof SAXIntEntityNotFoundException) {
-                // at this place in XML, that entity ref may be an external entity
-                var uri = this.externalEntities[e.entityName];
-                if (uri === undefined) {
-                    this.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", ERROR);
-                } else {
-                    try {
-                        var txt = loadFile(uri);
-                        if (txt) {
-                            content += txt;
-                        }
-                    } catch (e) {}
-                }
-            } else {
-                throw e;
-            }
+            content += ref;            
+            content += this.nextCharRegExp(/[<&]/);
         }
-        content += this.nextRegExp(/[<&]/);
+    } catch (e) {
+        if (e instanceof SAXIntEntityNotFoundException) {
+            // at this place in XML, that entity ref may be an external entity
+            var externalId = this.externalEntities[e.entityName];
+            if (externalId === undefined) {
+                this.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", ERROR);
+            } else {
+                try {
+                    var relativeBaseUri = this.getRelativeBaseUri();
+                    var externalContent = this.resolveEntity(e.entityName, externalId.publicId, relativeBaseUri, externalId.systemId);
+                    content += externalContent;
+                    // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
+                    this.xml = this.xml.substring(0, entityStart).concat(externalContent, this.xml.substr(this.index));
+                    this.length = this.xml.length;
+                    this.index = entityStart;
+                    this.ch = this.xml.charAt(this.index);
+                    //there may need another state or just parse xml declaration here.
+                    this.state = STATE_XML_DECL;
+                } catch (e) {}
+            }
+        } else {
+            throw e;
+        }
     }
+    //in all cases report the text found, a text found in external entity
     var length = this.index - start;
     this.contentHandler.characters(content, start, length);
 };
 
+SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, systemId) {
+    var txt = loadFile(this.baseURI + systemId);
+    if (txt) {
+        return txt;
+    }
+    return "";
+};
+
+SAXParser.prototype.getRelativeBaseUri = function() {
+    var returned = "";
+    var i = this.relativeBaseUris.length;
+    while (i--) {
+        returned += this.relativeBaseUris[i];
+    }
+    return returned;
+};
 
 /*
 current char is after '&'
@@ -683,24 +714,18 @@ SAXParser.prototype.scanPI = function() {
 
 
 //[28]   	doctypedecl	   ::=   	'<!DOCTYPE' S  Name (S  ExternalID)? S? ('[' intSubset ']' S?)? '>'
-//[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
-//			| 'PUBLIC' S PubidLiteral S SystemLiteral 
 SAXParser.prototype.scanDoctypeDecl = function() {
     if (this.isFollowedBy("DOCTYPE")) {
         this.nextChar();
-        var name = this.nextRegExp(/[ \[>]/);
+        var name = this.nextCharRegExp(/[ \[>]/);
         var externalId = new ExternalId();
-        var systemLiteral;
-        if (WS.test(this.ch)) {
-            this.nextChar();
-            //if there is an externalId
-            this.scanExternalId(externalId);
-            if (WS.test(this.ch)) {
-                this.nextChar();
-            }
+        this.skipWhiteSpaces();
+        //if there is an externalId
+        if (this.scanExternalId(externalId)) {
+            this.skipWhiteSpaces();
         }
         if (this.lexicalHandler) {
-            this.lexicalHandler.startDTD(name, externalId.pubidLiteral, externalId.systemLiteral);
+            this.lexicalHandler.startDTD(name, externalId.publicId, externalId.systemId);
         }
         if (this.ch === "[") {
             this.nextChar();
@@ -724,23 +749,25 @@ SAXParser.prototype.scanDoctypeDecl = function() {
 };
 
 /*
-object to store pubidLiteral and systemLiteral
+object to store publicId and systemId
 */
 function ExternalId() {
-    this.pubidLiteral = null;
-    this.systemLiteral = null;
+    this.publicId = null;
+    this.systemId = null;
 }
 
+//[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
+//			| 'PUBLIC' S PubidLiteral S SystemLiteral 
 SAXParser.prototype.scanExternalId = function(externalId) {
     if (this.isFollowedBy("SYSTEM")) {
         this.nextChar();
-        externalId.systemLiteral = this.quoteContent();
+        externalId.systemId = this.quoteContent();
         return true;
     } else if (this.isFollowedBy("PUBLIC")) {
         this.nextChar();
-        externalId.pubidLiteral = this.quoteContent();
+        externalId.publicId = this.quoteContent();
         this.nextChar();
-        externalId.systemLiteral = this.quoteContent();
+        externalId.systemId = this.quoteContent();
         return true;
     }
     return false;
@@ -766,20 +793,16 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                 if (!this.scanEntityDecl() && !this.scanElementDecl()
                 && !this.scanAttlistDecl()) {
                     //no present support for other declarations
-                    this.nextRegExp(/>/);
+                    this.nextCharRegExp(/>/);
                 }
-                if (WS.test(this.ch)) {
-                    this.nextChar();
-                }
+                this.skipWhiteSpaces();
                 if (this.ch !== ">") {
                     this.fireError("invalid markup declaration inside doctype declaration, must end with &gt;", FATAL);
                 }
                 this.nextChar();
             } else {
                 //if comment, must go over the whitespaces as they are not significative in doctype internal subset declaration
-                if (WS.test(this.ch)) {
-                    this.nextChar();
-                }
+                this.skipWhiteSpaces();
             }
         }
     /*PEReference I am not sure that is allowed here as PE Between Declarations
@@ -788,7 +811,7 @@ MUST match the production extSubsetDecl.
 which may say that it is not allowed in an internal subset.
 */
     } else if (this.ch === "%") {
-        var entityName = this.nextRegExp(/;/);
+        var entityName = this.nextCharRegExp(/;/);
     } else {
         this.fireError("invalid character in  internal subset of doctype declaration : " + this.ch, FATAL);
     }
@@ -860,13 +883,13 @@ SAXParser.prototype.scanEntityValue = function() {
     if (this.ch === '"' || this.ch === "'") {
         var quote = this.ch;
         this.nextChar(true);
-        var entityValue = this.nextRegExp("[" + quote + "%]");
+        var entityValue = this.nextCharRegExp(new RegExp("[" + quote + "%]"));
         //if found a "%" must replace it, EntityRef are not replaced here.
         while (this.ch === "%") {
             this.nextChar(true);
             var ref = this.scanPeRef();
             entityValue += ref;
-            entityValue += this.nextRegExp("[" + quote + "%]");
+            entityValue += this.nextCharRegExp(new RegExp("[" + quote + "%]"));
         }
         //current char is ending quote
         this.nextChar();
@@ -879,7 +902,7 @@ SAXParser.prototype.scanEntityValue = function() {
 
 SAXParser.prototype.scanPeRef = function() {
     try {
-        var ref = this.nextRegExp(/;/);
+        var ref = this.nextCharRegExp(/;/);
         //tries to replace it by its value if declared internally in doctype declaration
         var replacement = this.parameterEntities[ref];
         if (replacement) {
@@ -913,7 +936,7 @@ SAXParser.prototype.scanElementDecl = function() {
         /*
         The content model will consist of the string "EMPTY", the string "ANY", or a parenthesised group, optionally followed by an occurrence indicator. The model will be normalized so that all parameter entities are fully resolved and all whitespace is removed,and will include the enclosing parentheses. Other normalization (such as removing redundant parentheses or simplifying occurrence indicators) is at the discretion of the parser.
         */
-        var model = this.nextRegExp(/>/);
+        var model = this.nextCharRegExp(/>/);
         if (this.declarationHandler) {
             this.declarationHandler.elementDecl(name, model);
         }
@@ -963,9 +986,9 @@ SAXParser.prototype.scanAttDef = function(eName) {
     var type;
     //Enumeration
     if (this.ch === "(") {
-        type = this.nextRegExp(/\)/);
+        type = this.nextCharRegExp(/\)/);
     } else {
-        type = this.nextRegExp(WS);
+        type = this.nextCharRegExp(WS);
     }
     //stores the declared type of that attribute for method getType() of AttributesImpl
     this.attributesType[eName][aName] = type;
@@ -973,7 +996,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
     //DefaultDecl
     var mode = null;
     if (this.isFollowedBy("#")) {
-        mode = "#" + this.nextRegExp(WS);
+        mode = "#" + this.nextCharRegExp(WS);
         this.nextChar();
     }
     var attValue = null;
@@ -981,13 +1004,13 @@ SAXParser.prototype.scanAttDef = function(eName) {
     if (this.ch === '"' || this.ch === "'") {
         var quote = this.ch;
         this.nextChar(true);
-        var attValue = this.nextRegExp("[" + quote + "<%]");
+        var attValue = this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
         //if found a "%" must replace it, PeRef are replaced here but not EntityRef
         while (this.ch === "%") {
             this.nextChar(true);
             var ref = this.scanPeRef();
             attValue += ref;
-            attValue += this.nextRegExp("[" + quote + "<%]");
+            attValue += this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
         }
         if (this.ch === "<") {
             this.fireError("invalid attribute value, must not contain &lt;", FATAL);
@@ -1077,16 +1100,28 @@ SAXParser.prototype.scanAttributes = function(qName) {
     var atts = new AttributesImpl();
     //namespaces declared at this step will be stored at one level of global this.namespaces
     var namespacesDeclared = {};
+    //same way, in all cases a baseUriAddition is recorded on each level
+    var baseUriAddition = "";
     this.scanAttribute(qName, atts, namespacesDeclared);
     this.namespaces.push(namespacesDeclared);
     //as namespaces are defined only after parsing all the attributes, adds the namespaceURI here
-    //loop optimization
     var i = atts.getLength();
     while (i--) {
         var prefix = atts.getPrefix(i);
         var namespaceURI = this.getNamespaceURI(prefix);
         atts.setURI(i, namespaceURI);
+        //handling special xml: attributes
+        if (namespaceURI === XML_NAMESPACE) {
+            switch (atts.getLocalName(i)) {
+                case "base":
+                    baseUriAddition = atts.getValue(i);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
+    this.relativeBaseUris.push(baseUriAddition);
     return atts;
 };
 
@@ -1129,7 +1164,7 @@ SAXParser.prototype.scanAttValue = function() {
         var quote = this.ch;
         try {
             this.nextChar(true);
-            var attValue = this.nextRegExp("[" + quote + "<&]");
+            var attValue = this.nextCharRegExp(new RegExp("[" + quote + "<&]"));
             //if found a "&"
             while (this.ch === "&") {
                 this.nextChar(true);
@@ -1143,7 +1178,7 @@ SAXParser.prototype.scanAttValue = function() {
                         throw e;
                     }
                 }
-                attValue += this.nextRegExp("[" + quote + "<&]");
+                attValue += this.nextCharRegExp(new RegExp("[" + quote + "<&]"));
             }
             if (this.ch === "<") {
                 this.fireError("invalid attribute value, must not contain &lt;", FATAL);
@@ -1224,7 +1259,7 @@ may return undefined, has to be managed differently depending on
 */
 SAXParser.prototype.scanEntityRef = function() {
     try {
-        var ref = this.nextRegExp(/;/);
+        var ref = this.nextCharRegExp(/;/);
         // current char is ';'
         this.nextChar(true);
         if (this.lexicalHandler) {
@@ -1274,6 +1309,7 @@ SAXParser.prototype.endMarkup = function(namespaceURI, qName) {
     for (var i in namespacesRemoved) {
         this.contentHandler.endPrefixMapping(i);
     }
+    this.relativeBaseUris.pop();
 };
 
 
@@ -1319,6 +1355,19 @@ SAXParser.prototype.nextRegExp = function(regExp) {
 };
 
 /*
+memory usage reduction of nextRegExp, compares char by char, does not extract this.xml.substr(this.index)
+*/
+SAXParser.prototype.nextCharRegExp = function(regExp) {
+    for (var oldIndex = this.index ; this.index < this.length ; this.index++) {
+        this.ch = this.xml.charAt(this.index);
+        if (regExp.test(this.ch)) {
+            return this.xml.substring(oldIndex, this.index);
+        }
+    }
+    throw new EndOfInputException();
+};
+
+/*
 
 */
 SAXParser.prototype.isFollowedBy = function(str) {
@@ -1336,12 +1385,12 @@ SAXParser.prototype.isFollowedBy = function(str) {
 [5]   	Name	   ::=   	(Letter | '_' | ':') (NameChar)*
 */
 SAXParser.prototype.nextName = function() {
-    return this.nextRegExp(NOT_START_OR_END_CHAR);
+    return this.nextCharRegExp(NOT_START_OR_END_CHAR);
 };
 
 
 SAXParser.prototype.nextGT = function() {
-    var content = this.nextRegExp(/>/);
+    var content = this.nextCharRegExp(/>/);
     this.index++;
     this.ch = this.xml.charAt(this.index);
     return content;
@@ -1360,7 +1409,7 @@ current char is opening ' or "
 */
 SAXParser.prototype.quoteContent = function() {
     this.index++;
-    var content = this.nextRegExp(this.ch);
+    var content = this.nextCharRegExp(new RegExp(this.ch));
     this.index++;
     this.ch = this.xml.charAt(this.index);
     return content;

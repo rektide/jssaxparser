@@ -36,6 +36,7 @@
     
     function testParse_w3ctestSuite() {
         var fileAsText = loadFile("xmlconf/xmlconf.xml");
+        saxParser.baseURI = "xmlconf/";
         parse(fileAsText);
     }
 	
