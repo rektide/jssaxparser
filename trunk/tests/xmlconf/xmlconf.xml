@@ -46,7 +46,7 @@
     &jclark-xmltest;
 </TESTCASES>
 
-<!--TESTCASES PROFILE="Fuji Xerox Japanese Text Tests XML 1.0 Tests" xml:base="japanese/">    
+<TESTCASES PROFILE="Fuji Xerox Japanese Text Tests XML 1.0 Tests" xml:base="japanese/">    
     &xerox-japanese;
 </TESTCASES>
 
@@ -65,9 +65,9 @@
     &ibm-invalid;
     &ibm-not-wf;
     &ibm-valid;
-</TESTCASES-->
+</TESTCASES>
 <!-- Wrapping TESTCASES elements below added by Dieter Köhler -->
-<!--TESTCASES PROFILE="IBM XML 1.1 Tests" xml:base="ibm/xml-1.1/">
+<TESTCASES PROFILE="IBM XML 1.1 Tests" xml:base="ibm/xml-1.1/">
     &ibm-xml1.1-invalid;
     &ibm-xml1.1-not-wf;
     &ibm-xml1.1-valid;
@@ -93,6 +93,6 @@
 </TESTCASES>
 <TESTCASES xml:base="eduni/namespaces/errata-1e/">
     &eduni-nse;
-</TESTCASES-->
+</TESTCASES>
 
 </TESTSUITE>

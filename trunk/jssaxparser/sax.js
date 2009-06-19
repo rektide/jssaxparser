@@ -1286,7 +1286,8 @@ SAXParser.prototype.scanEntityRef = function() {
 SAXParser.prototype.scanEndingTag = function() {
     var qName = this.getQName("");
     var namespaceURI = this.getNamespaceURI(qName.prefix);
-    if (qName.qName === this.elementsStack.pop()) {
+    var currentElement = this.elementsStack.pop();
+    if (qName.qName === currentElement) {
         this.skipWhiteSpaces();
         if (this.ch === ">") {
             this.endMarkup(namespaceURI, qName);
@@ -1297,7 +1298,7 @@ SAXParser.prototype.scanEndingTag = function() {
             return false;
         }
     } else {
-        this.fireError("invalid ending markup, markup name does not match current one", FATAL);
+        this.fireError("invalid ending markup : [" + qName.qName + "], markup name does not match current one : [" + currentElement + "]", FATAL);
         return false;
     }
 };
