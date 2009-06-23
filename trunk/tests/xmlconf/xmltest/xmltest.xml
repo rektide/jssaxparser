@@ -754,11 +754,11 @@ contains whitespace on both sides of the equal sign. </TEST>
 	URI="valid/sa/011.xml" SECTIONS="3.1 [40]"
 	OUTPUT="valid/sa/out/011.xml">
     Test demonstrates mutliple Attibutes within the Start-tag. </TEST>
-<TEST TYPE="valid" ENTITIES="none" ID="valid-sa-012"
+<!--TEST TYPE="valid" ENTITIES="none" ID="valid-sa-012"
 	URI="valid/sa/012.xml" SECTIONS="2.3 [4]"
 	OUTPUT="valid/sa/out/012.xml" NAMESPACE="no">
     Uses a legal XML 1.0 name consisting of a single colon
-    character (disallowed by the latest XML Namespaces draft).</TEST>
+    character (disallowed by the latest XML Namespaces draft).</TEST-->
 <TEST TYPE="valid" ENTITIES="none" ID="valid-sa-013"
 	URI="valid/sa/013.xml" SECTIONS="2.3 3.1 [13] [40]"
 	OUTPUT="valid/sa/out/013.xml">

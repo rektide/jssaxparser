@@ -16,46 +16,120 @@
 	// (Note: change reference to SAXParser above if change name)
     var contentHandler;
     var saxParser;
+    var output;
     
     function setUp() {
         contentHandler = new DomContentHandler();
-		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        output = document.getElementById("output");
     }
     
-    function parse(xml) {
+    function testParse_xmlconf() {
+        var fileAsText = loadFile("xmlconf/xmlconf.xml");
+        saxParser.baseURI = "xmlconf/";
         try {
-            saxParser.parseString(xml);
+            saxParser.parseString(fileAsText);
         } catch(e) {
             assertTrue(e.message, false);
         }
-        assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
-		contentHandler.saxParseExceptions.length === 0);
-        assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
     }
-
     
-    function testParse_w3ctestSuite() {
-        var fileAsText = loadFile("xmlconf/xmlconf.xml");
-        saxParser.baseURI = "xmlconf/";
-        parse(fileAsText);
+    function testParse_jclark_xmltest() {
+        testParse_xmlconf();
+        var xmlConf = contentHandler.document;
+        var testcases = xmlConf.getElementsByTagName("TESTCASES");
+        var jclarkTestcase = testcases.item(0);
+        //there must be content of xmlconf\xmltest\xmltest.xml inside
+        var tests = jclarkTestcase.getElementsByTagName("TEST");
+        for (var i in tests) {
+            var test = tests.item(i);
+            parseTestCase(test);
+        }
     }
-	
-	function runAllTests () {
+    
+    function parseTestCase(testNode) {
+        var uri = testNode.getAttribute("URI");
+        var xmlAsString = loadFile("xmlconf/xmltest/" + uri);
+        var contentHandler2 = new DomContentHandler();
+        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
+        var testLabel = textContent(testNode);
+        var type = testNode.getAttribute("TYPE");
+        //not well formed
+        if (type === "not-wf") {
+            try {
+                saxParser2.parseString(xmlAsString);
+                //should have been exceptions
+                assertTrue("no not-wf detected for uri : " + uri + ", test label was : " + testLabel, false);
+            } catch(e) {
+                //e may be the jsunit exception
+                if (e instanceof SAXException) {
+                    output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>" + e.message + "</td></tr>";
+                } else {
+                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                }
+            }
+        } else if (type === "invalid") {
+            try {
+                output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td>";
+                saxParser2.parseString(xmlAsString);
+                //should have been exceptions
+                assertTrue("no invalid detected for uri : " + uri + ", expected message was : " + testLabel, false);
+            } catch(e) {
+                //e may be the jsunit exception
+                if (e instanceof SAXException) {
+                    output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>" + e.message + "</td></tr>";
+                } else {
+                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                }
+            }
+        } else if (type === "valid") {
+            try {
+                saxParser2.parseString(xmlAsString);
+                output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>valid</td></tr>";
+            } catch(e) {
+                assertTrue(e.message + "for uri : " + uri + ", test label was : " + testLabel, false);
+            }
+        }
+    }
+    
+    function testParseIndividual() {
+        var xmlAsString = loadFile("xmlconf/xmltest/not-wf/sa/009.xml");
+        var contentHandler2 = new DomContentHandler();
+        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
+        try {
+            saxParser2.parseString(xmlAsString);
+        } catch(e) {
+            assertTrue(e.message, true);
+        }
+    }
+    
+    function runAllTests () {
+        //setUp();
+        //testParseIndividual();
+        
         setUp();
-		testParse_w3ctestSuite();
+        testParse_xmlconf();
+        setUp();
+        testParse_jclark_xmltest();
+        
         alert('done!');
-	}
-	
-	// Brett added to be able to show something in console when error is thrown
-	JsUnitException.prototype.toString = function () {
-		return this.jsUnitMessage;
-	};
-	
-	
-	runAllTests(); 
+    }
+    
+    // Brett added to be able to show something in console when error is thrown
+    JsUnitException.prototype.toString = function () {
+        return this.jsUnitMessage;
+    };
+    
     </script>
   </head>
-  <body>
+  <body onload="runAllTests()">
     This is a Test Page for sax.js
+    <div id="outputDiv" style="font-size:xx-small;">
+        <table id="output">
+            <tr><th>uri</th><th>test label</th><th>result message</th></tr>
+            
+            
+        </table>
+    </div>
   </body>
 </html>
