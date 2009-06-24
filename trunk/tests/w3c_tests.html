@@ -41,7 +41,8 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
-        for (var i in tests) {
+        var i = tests.length;
+        for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
             parseTestCase(test);
         }
@@ -65,7 +66,11 @@
                 if (e instanceof SAXException) {
                     output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>" + e.message + "</td></tr>";
                 } else {
-                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                    if (isAssumedNotConformant(uri)) {
+                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "</td><td>" + testLabel + "</td><td>NOT SUPPORTED</td></tr>";
+                    } else {
+                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                    }
                 }
             }
         } else if (type === "invalid") {
@@ -87,27 +92,44 @@
                 saxParser2.parseString(xmlAsString);
                 output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>valid</td></tr>";
             } catch(e) {
-                assertTrue(e.message + "for uri : " + uri + ", test label was : " + testLabel, false);
+                if (isAssumedNotConformant(uri)) {
+                    output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "</td><td>" + testLabel + "</td><td>NOT SUPPORTED</td></tr>";
+                } else {
+                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                }
             }
         }
     }
     
     function testParseIndividual() {
-        var xmlAsString = loadFile("xmlconf/xmltest/not-wf/sa/009.xml");
-        var contentHandler2 = new DomContentHandler();
-        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
+        var xmlAsString = loadFile("xmlconf/xmltest/not-wf/sa/041.xml");
+        contentHandler = new DomContentHandler();
+        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         try {
-            saxParser2.parseString(xmlAsString);
+            saxParser.parseString(xmlAsString);
         } catch(e) {
             assertTrue(e.message, true);
         }
     }
     
+    function isAssumedNotConformant(uri) {
+        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
+        switch (uri) {
+            case "not-wf/sa/030.xml":
+            case "not-wf/sa/031.xml":
+            case "not-wf/sa/032.xml":
+            case "not-wf/sa/033.xml":
+            case "valid/sa/012.xml":
+                return true;
+            default:
+                return false;
+        }
+    }
+    
     function runAllTests () {
-        //setUp();
+        setUp();
         //testParseIndividual();
         
-        setUp();
         testParse_xmlconf();
         setUp();
         testParse_jclark_xmltest();

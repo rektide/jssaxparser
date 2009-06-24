@@ -53,7 +53,13 @@ var NOT_VALID_START_CHAR_REGEXP = new RegExp("[^" + NAME_START_CHAR + "]");
 var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
 
+//for performance reason I do not want to be conformant here
+//[2]   	Char	   ::=   	#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+//var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
+var CHAR_DATA_REGEXP = /[<&\]]/;
+
 var WS = /\s/; // Fix: verify \s is XML whitespace, and allowable in all places using this expression
+var ALL_WS = /[\t\n\r ]/;
 
 /* Scanner states  */
 var STATE_XML_DECL                  =  0;
@@ -528,7 +534,12 @@ SAXParser.prototype.scanLT = function() {
         }
     } else if (this.state === STATE_ROOT_ELEMENT) {
         if (this.scanMarkup()) {
-            this.state = STATE_CONTENT;
+            //there may be just a root empty markup (already closed)
+            if (this.elementsStack.length > 0) {
+                this.state = STATE_CONTENT;
+            } else {
+                this.state = STATE_TRAILING_MISC;
+            }
         } else {
             this.fireError("document is empty, no root element detected", FATAL);
         }
@@ -546,7 +557,7 @@ SAXParser.prototype.scanLT = function() {
             //scanPI will throw the exception itself, with a better message
             this.scanPI();
         } else if (this.ch === "/") {
-            this.nextChar();
+            this.nextChar(true);
             if (this.scanEndingTag()) {
                 if (this.elementsStack.length === 0) {
                     this.state = STATE_TRAILING_MISC;
@@ -568,17 +579,19 @@ SAXParser.prototype.scanLT = function() {
             if (!this.scanPI()) {
                 this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
             }
+        } else if (this.ch === "/") {
+            this.fireError("invalid ending tag at root of the document", FATAL);
+        } else {
+            this.fireError("only one document element is allowed", FATAL);
         }
     }
 };
 
-
-// 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
 //  what I understand from there : http://www.w3.org/TR/REC-xml/#dt-chardata is that & is allowed
 // in character data only if it is an entity reference
 SAXParser.prototype.scanText = function() {
     var start = this.index;
-    var content = this.nextCharRegExp(/[<&]/);
+    var content = this.scanCharData();
     //in case of external entity, the process is reinitialized??
     var entityStart;
     try {
@@ -588,7 +601,7 @@ SAXParser.prototype.scanText = function() {
             this.nextChar(true);
             var ref = this.scanRef();
             content += ref;            
-            content += this.nextCharRegExp(/[<&]/);
+            content += this.scanCharData();
         }
     } catch (e) {
         if (e instanceof InternalEntityNotFoundException) {
@@ -600,7 +613,6 @@ SAXParser.prototype.scanText = function() {
                 try {
                     var relativeBaseUri = this.getRelativeBaseUri();
                     var externalContent = this.resolveEntity(e.entityName, externalId.publicId, relativeBaseUri, externalId.systemId);
-                    content += externalContent;
                     this.includeEntity(entityStart, externalContent);
                     //there may need another state or just parse xml declaration here.
                     this.state = STATE_XML_DECL;
@@ -610,18 +622,52 @@ SAXParser.prototype.scanText = function() {
             throw e;
         }
     }
-    //in all cases report the text found, a text found in external entity
+    //in all cases report the text found, a text found before external entity if present
     var length = this.index - start;
     this.contentHandler.characters(content, start, length);
 };
 
+// 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
+SAXParser.prototype.scanCharData = function() {
+    var content = this.nextCharRegExp(CHAR_DATA_REGEXP);
+    //if found a "]", must ensure that it is not followed by "]>"
+    while (this.ch === "]") {
+        this.nextChar(true);
+        if (this.isFollowedBy("]>")) {
+            this.fireError("Text may not contain a literal ']]&gt;' sequence", FATAL);
+            return false;
+        }
+        content += "]" + this.nextCharRegExp(CHAR_DATA_REGEXP);
+    }
+    return content;
+};
+
 SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, systemId) {
-    var txt = loadFile(this.baseURI + systemId);
+    var txt = this.loadFile(this.baseURI + systemId);
     if (txt) {
         return txt;
     }
     return "";
 };
+
+SAXParser.prototype.loadFile = function(fname) {
+	var xmlhttp = null;
+	if (window.XMLHttpRequest) {// code for Firefox, Opera, IE7, etc.
+		xmlhttp = new XMLHttpRequest();
+	} else if (window.ActiveXObject) {// code for IE6, IE5
+		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	if (xmlhttp !== null) {
+		xmlhttp.open("GET", fname, false);
+		xmlhttp.send(null);
+		if (xmlhttp.readyState === 4) {
+			return xmlhttp.responseText;
+		}
+	} else {
+		this.fireError("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", ERROR);
+	}
+    return false;
+}
 
 SAXParser.prototype.getRelativeBaseUri = function() {
     var returned = "";
@@ -1165,8 +1211,13 @@ SAXParser.prototype.scanAttribute = function(qName, atts, namespacesDeclared) {
                 if (elementMap) {
                     type = elementMap[attQName.localName];
                 }
-                //we do not know yet the namespace URI
-                atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
+                //check that an attribute with the same qName has not already been defined
+                if (atts.getIndex(attQName.qName) !== -1) {
+                    this.fireError("multiple declarations for same attribute : [" + attQName.qName + "]", FATAL);
+                } else {
+                    //we do not know yet the namespace URI
+                    atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
+                }
             }
             this.scanAttribute(qName, atts, namespacesDeclared);
         } else {
@@ -1352,7 +1403,7 @@ SAXParser.prototype.nextChar = function(dontSkipWhiteSpace) {
 };
 
 SAXParser.prototype.skipWhiteSpaces = function() {
-    while (/[\t\n\r ]/.test(this.ch)) {
+    while (ALL_WS.test(this.ch)) {
         this.index++;
         if (this.index >= this.length) {
             throw new EndOfInputException();
