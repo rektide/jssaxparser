@@ -74,91 +74,6 @@ var WARNING = "W";
 var ERROR = "E";
 var FATAL = "F";
 
-var XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
-
-
-/* Supporting functions and exceptions */
-
-// UNUSED and IMPLEMENTED
-/*
-FIELDS
-static java.lang.String 	NSDECL
-          The namespace declaration URI as a constant.
-static java.lang.String 	XMLNS
-          The XML Namespace URI as a constant.
-
-Method Summary
- boolean 	declarePrefix(java.lang.String prefix, java.lang.String uri)
-          Declare a Namespace prefix.
- java.util.Enumeration 	getDeclaredPrefixes()
-          Return an enumeration of all prefixes declared in this context.
- java.lang.String 	getPrefix(java.lang.String uri)
-          Return one of the prefixes mapped to a Namespace URI.
- java.util.Enumeration 	getPrefixes()
-          Return an enumeration of all prefixes whose declarations are active in the current context.
- java.util.Enumeration 	getPrefixes(java.lang.String uri)
-          Return an enumeration of all prefixes for a given URI whose declarations are active in the current context.
- java.lang.String 	getURI(java.lang.String prefix)
-          Look up a prefix and get the currently-mapped Namespace URI.
- boolean 	isNamespaceDeclUris()
-          Returns true if namespace declaration attributes are placed into a namespace.
- void 	popContext()
-          Revert to the previous Namespace context.
- java.lang.String[] 	processName(java.lang.String qName, java.lang.String[] parts, boolean isAttribute)
-          Process a raw XML qualified name, after all declarations in the current context have been handled by declarePrefix().
- void 	pushContext()
-          Start a new Namespace context.
- void 	reset()
-          Reset this Namespace support object for reuse.
- void 	setNamespaceDeclUris(boolean value)
-          Controls whether namespace declaration attributes are placed into the NSDECL namespace by processName().
- **/
-// Note: Try to adapt for internal use, as well as offer for external app
-// http://www.saxproject.org/apidoc/org/xml/sax/helpers/NamespaceSupport.html
-function NamespaceSupport () {
-    //this.NSDECL;
-    //this.XMLNS;
-    throw 'NamespaceSupport is not presently implemented';
-}
-NamespaceSupport.prototype.declarePrefix = function (prefix, uri) {
-
-};
-NamespaceSupport.prototype.getDeclaredPrefixes = function () {
-
-};
-NamespaceSupport.prototype.getPrefix = function (uri) {
-
-};
-NamespaceSupport.prototype.getPrefixes = function () {
-
-};
-NamespaceSupport.prototype.getPrefixes = function (uri) {
-
-};
-NamespaceSupport.prototype.getURI = function (prefix) {
-
-};
-NamespaceSupport.prototype.isNamespaceDeclUris = function () {
-
-};
-NamespaceSupport.prototype.popContext = function () {
-
-};
-NamespaceSupport.prototype.processName = function (qName, parts, isAttribute) {
-
-};
-NamespaceSupport.prototype.pushContext = function () {
-
-};
-NamespaceSupport.prototype.reset = function () {
-
-};
-NamespaceSupport.prototype.setNamespaceDeclUris = function (value) {
-
-};
-
-
-
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
 function SAXException(message, exception) { // java.lang.Exception
     this.message = message;
@@ -265,6 +180,12 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
         new AttributesImpl();
     } catch(e) {
         throw new SAXException("you must import an implementation of Attributes, like AttributesImpl.js, in the html", e);
+    }
+    
+    try {
+        this.namespaceSupport = new NamespaceSupport();
+    } catch(e) {
+        throw new SAXException("you must import an implementation of NamespaceSupport, like NamespaceSupport.js, in the html", e);
     }
     
     this.disallowedGetProperty = [];
@@ -402,11 +323,8 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.ch = this.xml.charAt(this.index);
     this.state = STATE_XML_DECL;
     this.elementsStack = [];
-    /* for each depth, a map of namespaces */
-    this.namespaces = [];
-    var xmlNamespace = {};
-    xmlNamespace["xml"] = XML_NAMESPACE;
-    this.namespaces.push(xmlNamespace);
+    this.namespaceSupport.reset();
+    
     /* map between entity names and values */
     this.entities = {};
     /* map between parameter entity names and values
@@ -1169,7 +1087,13 @@ SAXParser.prototype.getQName = function(defaultPrefix) {
 
 SAXParser.prototype.scanElement = function(qName) {
     var atts = this.scanAttributes(qName);
-    var namespaceURI = this.getNamespaceURI(qName.prefix);
+    var namespaceURI = null;
+    try {
+        namespaceURI = this.namespaceSupport.getURI(qName.prefix);
+    } catch(e) {
+        //should be a PrefixNotFoundException but not specified so no hypothesis
+        this.fireError("namespace of element : [" + qName.qName + "] not found", ERROR);
+    }
     this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
     this.skipWhiteSpaces();
     if (this.ch === "/") {
@@ -1184,42 +1108,26 @@ SAXParser.prototype.scanElement = function(qName) {
     }
 };
 
-SAXParser.prototype.getNamespaceURI = function(prefix) {
-    // if attribute, prefix may be null, then namespaceURI is null
-    if (prefix === null) {
-        return null;
-    }
-    var i = this.namespaces.length;
-    while (i--) {
-        var namespaceURI = this.namespaces[i][prefix];
-        if (namespaceURI) {
-            return namespaceURI;
-        }
-    }
-    //in case default namespace is not declared, prefix is "", namespaceURI is null
-    if (!prefix) {
-        return null;
-    }
-    this.fireError("prefix " + prefix + " not known in namespaces map", ERROR);
-    return null;
-};
-
 SAXParser.prototype.scanAttributes = function(qName) {
     var atts = new AttributesImpl();
     //namespaces declared at this step will be stored at one level of global this.namespaces
-    var namespacesDeclared = {};
+    this.namespaceSupport.pushContext();
     //same way, in all cases a baseUriAddition is recorded on each level
     var baseUriAddition = "";
-    this.scanAttribute(qName, atts, namespacesDeclared);
-    this.namespaces.push(namespacesDeclared);
+    this.scanAttribute(qName, atts);
     //as namespaces are defined only after parsing all the attributes, adds the namespaceURI here
     var i = atts.getLength();
     while (i--) {
         var prefix = atts.getPrefix(i);
-        var namespaceURI = this.getNamespaceURI(prefix);
+        var namespaceURI = null;
+        try {
+            namespaceURI = this.namespaceSupport.getURI(prefix);
+        } catch(e) {
+            this.fireError("namespace of attribute : [" + qName.qName + "] not found", ERROR);
+        }
         atts.setURI(i, namespaceURI);
         //handling special xml: attributes
-        if (namespaceURI === XML_NAMESPACE) {
+        if (namespaceURI === this.namespaceSupport.XMLNS) {
             switch (atts.getLocalName(i)) {
                 case "base":
                     baseUriAddition = atts.getValue(i);
@@ -1233,22 +1141,21 @@ SAXParser.prototype.scanAttributes = function(qName) {
     return atts;
 };
 
-SAXParser.prototype.scanAttribute = function(qName, atts, namespacesDeclared) {
+SAXParser.prototype.scanAttribute = function(qName, atts) {
     this.skipWhiteSpaces();
     if (this.ch !== ">" && this.ch !== "/") {
         var attQName = this.getQName(null);
         this.skipWhiteSpaces();
         if (this.ch === "=") {
             this.nextChar();
-            // xmlns:bch="http://benchmark"
+            var value = this.scanAttValue();
             if (attQName.prefix === "xmlns") {
-                namespacesDeclared[attQName.localName] = this.scanAttValue();
-                this.contentHandler.startPrefixMapping(attQName.localName, namespacesDeclared[attQName.localName]);
+                this.namespaceSupport.declarePrefix(attQName.localName, value);
+                this.contentHandler.startPrefixMapping(attQName.localName, value);
             } else if (attQName.qName === "xmlns") {
-                namespacesDeclared[""] = this.scanAttValue();
-                this.contentHandler.startPrefixMapping("", namespacesDeclared[""]);
+                this.namespaceSupport.declarePrefix("", value);
+                this.contentHandler.startPrefixMapping("", value);
             } else {
-                var value = this.scanAttValue();
                 //get the type of that attribute from internal DTD if found (no support of namespace in DTD)
                 var type = null;
                 var elementName = qName.localName;
@@ -1264,7 +1171,7 @@ SAXParser.prototype.scanAttribute = function(qName, atts, namespacesDeclared) {
                     atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
                 }
             }
-            this.scanAttribute(qName, atts, namespacesDeclared);
+            this.scanAttribute(qName, atts);
         } else {
             this.fireError("invalid attribute, must contain = between name and value", FATAL);
         }
@@ -1401,7 +1308,12 @@ SAXParser.prototype.scanEntityRef = function() {
 // [42] ETag ::= '</' Name S? '>'
 SAXParser.prototype.scanEndingTag = function() {
     var qName = this.getQName("");
-    var namespaceURI = this.getNamespaceURI(qName.prefix);
+    var namespaceURI = null;
+    try {
+        namespaceURI = this.namespaceSupport.getURI(qName.prefix);
+    } catch(e) {
+        this.fireError("namespace of ending tag : [" + qName.qName + "] not found", ERROR);
+    }
     var currentElement = this.elementsStack.pop();
     if (qName.qName === currentElement) {
         this.skipWhiteSpaces();
@@ -1422,7 +1334,7 @@ SAXParser.prototype.scanEndingTag = function() {
 
 SAXParser.prototype.endMarkup = function(namespaceURI, qName) {
     this.contentHandler.endElement(namespaceURI, qName.localName, qName.qName);
-    var namespacesRemoved = this.namespaces.pop();
+    var namespacesRemoved = this.namespaceSupport.popContext();
     for (var i in namespacesRemoved) {
         this.contentHandler.endPrefixMapping(i);
     }
@@ -1656,11 +1568,5 @@ this.SAXParseException = SAXParseException;
 // Could put on org.xml.sax.helpers.
 this.XMLReaderFactory = XMLReaderFactory;
 this.XMLFilterImpl = XMLFilterImpl;
-
-// Fix: could also add:
-/*
-// Could put on org.xml.sax.helpers.
-this.NamespaceSupport = NamespaceSupport;
-*/
 
 }()); // end namespace
