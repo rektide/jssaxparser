@@ -59,6 +59,7 @@
         if (type === "not-wf") {
             try {
                 saxParser2.parseString(xmlAsString);
+                throwNotFatalException(saxParser2.errorHandler);
                 //should have been exceptions
                 assertTrue("no not-wf detected for uri : " + uri + ", test label was : " + testLabel, false);
             } catch(e) {
@@ -77,6 +78,7 @@
             try {
                 output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td>";
                 saxParser2.parseString(xmlAsString);
+                throwNotFatalException(saxParser2.errorHandler);
                 //should have been exceptions
                 assertTrue("no invalid detected for uri : " + uri + ", expected message was : " + testLabel, false);
             } catch(e) {
@@ -90,6 +92,7 @@
         } else if (type === "valid") {
             try {
                 saxParser2.parseString(xmlAsString);
+                throwNotFatalException(saxParser2.errorHandler);
                 output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>valid</td></tr>";
             } catch(e) {
                 if (isAssumedNotConformant(uri)) {
@@ -101,14 +104,9 @@
         }
     }
     
-    function testParseIndividual() {
-        var xmlAsString = loadFile("xmlconf/xmltest/not-wf/sa/041.xml");
-        contentHandler = new DomContentHandler();
-        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
-        try {
-            saxParser.parseString(xmlAsString);
-        } catch(e) {
-            assertTrue(e.message, true);
+    function throwNotFatalException(errorHandler) {
+        if (errorHandler.saxParseExceptions.length > 0) {
+            throw errorHandler.saxParseExceptions[0];
         }
     }
     
@@ -124,6 +122,19 @@
             default:
                 return false;
         }
+    }
+    
+    function testParseIndividual() {
+        var xmlAsString = loadFile("xmlconf/xmltest/not-wf/sa/002.xml");
+        contentHandler = new DomContentHandler();
+        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        try {
+            saxParser.parseString(xmlAsString);
+            throwNotFatalException(saxParser.errorHandler);
+        } catch(e) {
+            assertTrue(e.message, true);
+        }
+        var a = "A";
     }
     
     function runAllTests () {

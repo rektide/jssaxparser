@@ -425,6 +425,10 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     /* on each depth, a relative base URI, empty if no xml:base found, is recorded */
     this.relativeBaseUris = [];
     this.contentHandler.startDocument();
+    //if all whitespaces, w3c test case xmlconf/xmltest/not-wf/sa/050.xml
+    if (!(/[^\t\n\r ]/.test(this.xml))) {
+        this.fireError("empty document", FATAL);
+    }
     try {
         while (this.index < this.length) {
             this.next();
@@ -634,8 +638,7 @@ SAXParser.prototype.scanCharData = function() {
     while (this.ch === "]") {
         this.nextChar(true);
         if (this.isFollowedBy("]>")) {
-            this.fireError("Text may not contain a literal ']]&gt;' sequence", FATAL);
-            return false;
+            this.fireError("Text may not contain a literal ']]&gt;' sequence", ERROR);
         }
         content += "]" + this.nextCharRegExp(CHAR_DATA_REGEXP);
     }
@@ -813,18 +816,39 @@ function ExternalId() {
 SAXParser.prototype.scanExternalId = function(externalId) {
     if (this.isFollowedBy("SYSTEM")) {
         this.nextChar();
-        externalId.systemId = this.quoteContent();
+        externalId.systemId = this.scanSystemLiteral();
         this.skipWhiteSpaces();
         return true;
     } else if (this.isFollowedBy("PUBLIC")) {
         this.nextChar();
-        externalId.publicId = this.quoteContent();
+        externalId.publicId = this.scanPubIdLiteral();
         this.nextChar();
-        externalId.systemId = this.quoteContent();
+        externalId.systemId = this.scanSystemLiteral();
         this.skipWhiteSpaces();
         return true;
     }
     return false;
+};
+
+//current char should be the quote
+//[11]   	SystemLiteral	   ::=   	('"' [^"]* '"') | ("'" [^']* "'")
+SAXParser.prototype.scanSystemLiteral = function(externalId) {
+    if (this.ch !== "'" && this.ch !== '"') {
+        this.fireError("invalid sytem Id declaration, should begin with a quote", FATAL);
+        return false;
+    }
+    return this.quoteContent();
+};
+
+//current char should be the quote
+//[12]   	PubidLiteral	   ::=   	'"' PubidChar* '"' | "'" (PubidChar - "'")* "'"
+//[13]   	PubidChar	   ::=   	#x20 | #xD | #xA | [a-zA-Z0-9] | [-'()+,./:=?;!*#@$_%]
+SAXParser.prototype.scanPubIdLiteral = function(externalId) {
+    if (this.ch !== "'" && this.ch !== '"') {
+        this.fireError("invalid Public Id declaration, should begin with a quote", FATAL);
+        return false;
+    }
+    return this.quoteContent();
 };
 
 /*
@@ -1025,35 +1049,16 @@ SAXParser.prototype.scanAttlistDecl = function() {
 
 /*
 [53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl 
-[54]   	AttType	   ::=   	 StringType | TokenizedType | EnumeratedType
-[55]   	StringType	   ::=   	'CDATA'
-[56]   	TokenizedType	   ::=   	'ID'	[VC: ID]
-			| 'IDREF'	[VC: IDREF]
-			| 'IDREFS'	[VC: IDREF]
-			| 'ENTITY'	[VC: Entity Name]
-			| 'ENTITIES'	[VC: Entity Name]
-			| 'NMTOKEN'	[VC: Name Token]
-			| 'NMTOKENS'	[VC: Name Token]
-[57]   	EnumeratedType	   ::=   	 NotationType | Enumeration
-[58]   	NotationType	   ::=   	'NOTATION' S '(' S? Name (S? '|' S? Name)* S? ')'
-[59]   	Enumeration	   ::=   	'(' S? Nmtoken (S? '|' S? Nmtoken)* S? ')'
 [60]   	DefaultDecl	   ::=   	'#REQUIRED' | '#IMPLIED'
 			| (('#FIXED' S)? AttValue)
 */
 SAXParser.prototype.scanAttDef = function(eName) {
     var aName = this.nextName();
-    this.nextChar();
-    var type;
-    //Enumeration
-    if (this.ch === "(") {
-        this.nextChar(true);
-        type = this.nextCharRegExp(/\)/);
-    } else {
-        type = this.nextCharRegExp(WS);
-    }
+    this.skipWhiteSpaces();
+    var type = this.scanAttType();
     //stores the declared type of that attribute for method getType() of AttributesImpl
     this.attributesType[eName][aName] = type;
-    this.nextChar();
+    this.skipWhiteSpaces();
     //DefaultDecl
     var mode = null;
     if (this.ch === "#") {
@@ -1086,6 +1091,45 @@ SAXParser.prototype.scanAttDef = function(eName) {
         this.declarationHandler.attributeDecl(eName, aName, type, mode, attValue);
     }
 };
+
+/*
+[54]   	AttType	   ::=   	 StringType | TokenizedType | EnumeratedType
+[55]   	StringType	   ::=   	'CDATA'
+[56]   	TokenizedType	   ::=   	'ID'	[VC: ID]
+			| 'IDREF'	[VC: IDREF]
+			| 'IDREFS'	[VC: IDREF]
+			| 'ENTITY'	[VC: Entity Name]
+			| 'ENTITIES'	[VC: Entity Name]
+			| 'NMTOKEN'	[VC: Name Token]
+			| 'NMTOKENS'	[VC: Name Token]
+[57]   	EnumeratedType	   ::=   	 NotationType | Enumeration
+[58]   	NotationType	   ::=   	'NOTATION' S '(' S? Name (S? '|' S? Name)* S? ')'
+[59]   	Enumeration	   ::=   	'(' S? Nmtoken (S? '|' S? Nmtoken)* S? ')'
+[7]   	           Nmtoken	   ::=   	(NameChar)+
+*/
+SAXParser.prototype.scanAttType = function() {
+    //Enumeration
+    if (this.ch === "(") {
+        this.nextChar(true);
+        var type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
+        while (this.ch === "|") {
+            //for the moment concatenates into type the enumeration
+            type += this.ch + this.nextCharRegExp(NOT_START_OR_END_CHAR);
+        }
+        if (this.ch !== ")") {
+            this.fireError("Invalid character : [" + this.ch + "] in ATTLIST enumeration", ERROR);
+            type += this.ch + this.nextCharRegExp(WS);
+        }
+        this.nextChar();
+        return type;
+    } else {
+        var type = this.nextCharRegExp(WS);
+        if (!/^CDATA$|^ID$|^IDREF$|^IDREFS$|^ENTITY$|^ENTITIES$|^NMTOKEN$|^NMTOKENS$/.test(type)) {
+            this.fireError("Invalid type : [" + type + "] defined in ATTLIST", ERROR);
+        }
+        return type;
+    }
+}
 
 /*
  [39] element ::= EmptyElemTag | STag content ETag
@@ -1135,6 +1179,7 @@ SAXParser.prototype.scanElement = function(qName) {
             this.endMarkup(namespaceURI, qName);
         } else {
             this.fireError("invalid empty markup, must finish with /&gt;", FATAL);
+            return false;
         }
     }
 };
@@ -1155,8 +1200,8 @@ SAXParser.prototype.getNamespaceURI = function(prefix) {
     if (!prefix) {
         return null;
     }
-    this.fireError("prefix " + prefix + " not known in namespaces map", FATAL);
-    return false;
+    this.fireError("prefix " + prefix + " not known in namespaces map", ERROR);
+    return null;
 };
 
 SAXParser.prototype.scanAttributes = function(qName) {
@@ -1213,7 +1258,7 @@ SAXParser.prototype.scanAttribute = function(qName, atts, namespacesDeclared) {
                 }
                 //check that an attribute with the same qName has not already been defined
                 if (atts.getIndex(attQName.qName) !== -1) {
-                    this.fireError("multiple declarations for same attribute : [" + attQName.qName + "]", FATAL);
+                    this.fireError("multiple declarations for same attribute : [" + attQName.qName + "]", ERROR);
                 } else {
                     //we do not know yet the namespace URI
                     atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
@@ -1303,16 +1348,14 @@ SAXParser.prototype.scanCharRef = function() {
         this.nextChar(true);
         while (this.ch !== ";") {
             if (!/[0-9a-fA-F]/.test(this.ch)) {
-                this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", FATAL);
-                return "";
+                this.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", ERROR);
             }
             this.nextChar(true);
         }
     } else {
         while (this.ch !== ";") {
             if (!/\d/.test(this.ch)) {
-                this.fireError("invalid char reference, must contain numeric characters only", FATAL);
-                return "";
+                this.fireError("invalid char reference, must contain numeric characters only", ERROR);
             }
             this.nextChar(true);
         }
@@ -1331,7 +1374,7 @@ SAXParser.prototype.scanEntityRef = function() {
         var ref = this.nextName();
         //current char must be ';'
         if (this.ch !== ";") {
-            this.fireError("entity : [" + ref + "] contains an invalid character : [" + this.ch + "], or it is not ended by ;", FATAL);
+            this.fireError("entity : [" + ref + "] contains an invalid character : [" + this.ch + "], or it is not ended by ;", ERROR);
             return "";
         }
         this.nextChar(true);
@@ -1470,8 +1513,7 @@ SAXParser.prototype.isFollowedBy = function(str) {
 SAXParser.prototype.nextName = function() {
     if (NOT_VALID_START_CHAR_REGEXP.test(this.ch)) {
         this.fireError("invalid starting character in Name : [" + this.ch + "]", FATAL);
-        //in case changes the gravity
-        return this.nextCharRegExp(NOT_START_OR_END_CHAR);
+        return "";
     }
     var name = this.ch;
     this.nextChar(true);
