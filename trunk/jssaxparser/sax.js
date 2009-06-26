@@ -1,3 +1,4 @@
+/*global ActiveXObject, AttributesImpl, ExternalId, NamespaceSupport, XMLHttpRequest, location, window */
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
@@ -7,27 +8,27 @@ This software is a computer program whose purpose is to parse XML
 files respecting SAX2 specifications.
 
 This software is governed by the CeCILL license under French law and
-abiding by the rules of distribution of free software.  You can  use, 
+abiding by the rules of distribution of free software. You can use,
 modify and/ or redistribute the software under the terms of the CeCILL
 license as circulated by CEA, CNRS and INRIA at the following URL
-"http://www.cecill.info". 
+"http://www.cecill.info".
 
-As a counterpart to the access to the source code and  rights to copy,
+As a counterpart to the access to the source code and rights to copy,
 modify and redistribute granted by the license, users are provided only
-with a limited warranty  and the software's author,  the holder of the
-economic rights,  and the successive licensors  have only  limited
-liability. 
+with a limited warranty and the software's author, the holder of the
+economic rights, and the successive licensors have only limited
+liability.
 
 In this respect, the user's attention is drawn to the risks associated
-with loading,  using,  modifying and/or developing or reproducing the
+with loading, using, modifying and/or developing or reproducing the
 software by the user in light of its specific status of free software,
-that may mean  that it is complicated to manipulate,  and  that  also
-therefore means  that it is reserved for developers  and  experienced
+that may mean that it is complicated to manipulate, and that also
+therefore means that it is reserved for developers and experienced
 professionals having in-depth computer knowledge. Users are therefore
 encouraged to load and test the software's suitability as regards their
-requirements in conditions enabling the security of their systems and/or 
-data to be ensured and,  more generally, to use and operate it in the 
-same conditions as regards security. 
+requirements in conditions enabling the security of their systems and/or
+data to be ensured and, more generally, to use and operate it in the
+same conditions as regards security.
 
 The fact that you are presently reading this means that you have had
 knowledge of the CeCILL license and that you accept its terms.
@@ -44,7 +45,6 @@ knowledge of the CeCILL license and that you accept its terms.
 
 var that = this; // probably window object
 
-
 /* Private static variables (constant) */
 
 /* XML Name regular expressions */
@@ -58,10 +58,10 @@ var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + 
 //var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
 var CHAR_DATA_REGEXP = /[<&\]]/;
 
-var WS = /\s/; // Fix: verify \s is XML whitespace, and allowable in all places using this expression
-var ALL_WS = /[\t\n\r ]/;
+var WS = /[\t\n\r ]/; // \s is too inclusive
+var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
 
-/* Scanner states  */
+/* Scanner states */
 var STATE_XML_DECL                  =  0;
 var STATE_PROLOG                    =  1;
 var STATE_PROLOG_DOCTYPE_DECLARED   =  2;
@@ -87,6 +87,12 @@ SAXException.prototype.getMessage = function () {
 SAXException.prototype.getException = function () {
     return this.exception;
 };
+
+//check that an implementation of Attributes is provided
+if (typeof that.AttributesImpl !== 'function') {
+    throw new SAXException("you must import an implementation of Attributes, like AttributesImpl.js, in the html");
+}
+
 
 // Not fully implemented
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXNotSupportedException.html
@@ -166,26 +172,31 @@ Sax_QName.prototype.equals = function(qName) {
 // lexicalHandler and errorHandler interface methods, however, are all supported
 // Need to also implement Attributes2 in startElement (rename AttributesImpl to Attributes2Impl and add interface)
 
-function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode) {
+function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode, locator) {
     // Implements SAX2 XMLReader interface (except for parse() methods); also add http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html ?
     // Since SAX2 doesn't specify constructors, this class is able to define its own behavior to accept a contentHandler, etc.
 
     this.contentHandler = contentHandler;
+    this.locator = locator;
+    if (this.locator) { // Set defaults (if accessed before set)
+        // For Locator (there are no standard fields for us to use; our Locator must support these)
+        this.locator.columnNumber = -1;
+        this.locator.lineNumber = -1;
+        this.locator.publicId = null;
+        this.locator.systemId = null;
+        // For Locator2 (there are no standard fields for us to use; our Locator2 must support these)
+        this.locator.version = null;
+        this.locator.encoding = null;
+    }
+    this.contentHandler.setDocumentLocator(locator);
     this.dtdHandler = dtdHandler;
     this.errorHandler = errorHandler;
     this.entityResolver = null;
     
-    //check that an implementation of Attributes is provided
-    try {
-        new AttributesImpl();
-    } catch(e) {
-        throw new SAXException("you must import an implementation of Attributes, like AttributesImpl.js, in the html", e);
-    }
-    
     try {
         this.namespaceSupport = new NamespaceSupport();
-    } catch(e) {
-        throw new SAXException("you must import an implementation of NamespaceSupport, like NamespaceSupport.js, in the html", e);
+    } catch(e2) {
+        throw new SAXException("you must import an implementation of NamespaceSupport, like NamespaceSupport.js, in the html", e2);
     }
     
     this.disallowedGetProperty = [];
@@ -204,7 +215,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/is-standalone'] = undefined; // Can only be set during parsing
     this.features['http://xml.org/sax/features/lexical-handler/parameter-entities'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/namespaces'] = true; // must support true
-    this.features['http://xml.org/sax/features/namespace-prefixes'] = false; // must support false
+    this.features['http://xml.org/sax/features/namespace-prefixes'] = false; // must support false; are we now operating as true? (i.e., XML qualified names (with prefixes) and attributes (including xmlns* attributes) are available?)
     this.features['http://xml.org/sax/features/resolve-dtd-uris'] = true;
     this.features['http://xml.org/sax/features/string-interning'] = true; // Make safe to treat string literals as identical to String()
     this.features['http://xml.org/sax/features/unicode-normalization-checking'] = false;
@@ -538,7 +549,7 @@ SAXParser.prototype.scanText = function() {
                     this.includeEntity(entityStart, externalContent);
                     //there may need another state or just parse xml declaration here.
                     this.state = STATE_XML_DECL;
-                } catch (e) {}
+                } catch (e2) {}
             }
         } else {
             throw e;
@@ -588,7 +599,7 @@ SAXParser.prototype.loadFile = function(fname) {
 		this.fireError("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", ERROR);
 	}
     return false;
-}
+};
 
 SAXParser.prototype.getRelativeBaseUri = function() {
     var returned = "";
@@ -786,8 +797,8 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         } else if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                if (!this.scanEntityDecl() && !this.scanElementDecl()
-                && !this.scanAttlistDecl()) {
+                if (!this.scanEntityDecl() && !this.scanElementDecl() &&
+                        !this.scanAttlistDecl()) {
                     //no present support for other declarations
                     this.nextCharRegExp(/>/);
                 }
@@ -830,17 +841,18 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
 [76]   	NDataDecl	   ::=   	S 'NDATA' S Name 
 */
 SAXParser.prototype.scanEntityDecl = function() {
+    var entityName, externalId, entityValue;
     if (this.isFollowedBy("ENTITY")) {
         this.nextChar();
         if (this.ch === "%") {
             this.nextChar();
-            var entityName = this.nextName();
+            entityName = this.nextName();
             this.nextChar();
             //if already declared, not effective
             if (!this.entities[entityName]) {
-                var externalId = new ExternalId();
+                externalId = new ExternalId();
                 if (!this.scanExternalId(externalId)) {
-                    var entityValue = this.scanEntityValue();
+                    entityValue = this.scanEntityValue();
                     this.parameterEntities[entityName] = entityValue;
                     if (this.declarationHandler) {
                         this.declarationHandler.internalEntityDecl("%" + entityName, entityValue);
@@ -850,11 +862,11 @@ SAXParser.prototype.scanEntityDecl = function() {
                 }
             }
         } else {
-            var entityName = this.nextName();
+            entityName = this.nextName();
             this.nextChar();
             //if already declared, not effective
             if (!this.entities[entityName]) {
-                var externalId = new ExternalId();
+                externalId = new ExternalId();
                 if (this.scanExternalId(externalId)) {
                     if (this.isFollowedBy("NDATA")) {
                         this.nextChar();
@@ -862,7 +874,7 @@ SAXParser.prototype.scanEntityDecl = function() {
                     }
                     this.externalEntities[entityName] = externalId;
                 } else {
-                    var entityValue = this.scanEntityValue();
+                    entityValue = this.scanEntityValue();
                     this.entities[entityName] = entityValue;
                     if (this.declarationHandler) {
                         this.declarationHandler.internalEntityDecl(entityName, entityValue);
@@ -989,7 +1001,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
         if (this.ch === '"' || this.ch === "'") {
             var quote = this.ch;
             this.nextChar(true);
-            var attValue = this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
+            attValue = this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
             //if found a "%" must replace it, PeRef are replaced here but not EntityRef
             while (this.ch === "%") {
                 this.nextChar(true);
@@ -1008,6 +1020,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
     if (this.declarationHandler) {
         this.declarationHandler.attributeDecl(eName, aName, type, mode, attValue);
     }
+    return true;
 };
 
 /*
@@ -1027,9 +1040,10 @@ SAXParser.prototype.scanAttDef = function(eName) {
 */
 SAXParser.prototype.scanAttType = function() {
     //Enumeration
+    var type;
     if (this.ch === "(") {
         this.nextChar(true);
-        var type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
+        type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
         while (this.ch === "|") {
             //for the moment concatenates into type the enumeration
             type += this.ch + this.nextCharRegExp(NOT_START_OR_END_CHAR);
@@ -1041,13 +1055,13 @@ SAXParser.prototype.scanAttType = function() {
         this.nextChar();
         return type;
     } else {
-        var type = this.nextCharRegExp(WS);
+        type = this.nextCharRegExp(WS);
         if (!/^CDATA$|^ID$|^IDREF$|^IDREFS$|^ENTITY$|^ENTITIES$|^NMTOKEN$|^NMTOKENS$/.test(type)) {
             this.fireError("Invalid type : [" + type + "] defined in ATTLIST", ERROR);
         }
         return type;
     }
-}
+};
 
 /*
  [39] element ::= EmptyElemTag | STag content ETag
@@ -1093,6 +1107,7 @@ SAXParser.prototype.scanElement = function(qName) {
     } catch(e) {
         //should be a PrefixNotFoundException but not specified so no hypothesis
         this.fireError("namespace of element : [" + qName.qName + "] not found", ERROR);
+        return false;
     }
     this.contentHandler.startElement(namespaceURI, qName.localName, qName.qName, atts);
     this.skipWhiteSpaces();
@@ -1106,6 +1121,7 @@ SAXParser.prototype.scanElement = function(qName) {
             return false;
         }
     }
+    return true;
 };
 
 SAXParser.prototype.scanAttributes = function(qName) {
@@ -1191,11 +1207,11 @@ SAXParser.prototype.scanAttValue = function() {
                 try {
                     var ref = this.scanRef();
                     attValue += ref;
-                } catch (e) {
-                    if (e instanceof InternalEntityNotFoundException) {
-                        this.fireError("entity reference : [" + e.entityName + "] not declared, ignoring it", ERROR);
+                } catch (e2) {
+                    if (e2 instanceof InternalEntityNotFoundException) {
+                        this.fireError("entity reference : [" + e2.entityName + "] not declared, ignoring it", ERROR);
                     } else {
-                        throw e;
+                        throw e2;
                     }
                 }
                 attValue += this.nextCharRegExp(new RegExp("[" + quote + "<&]"));
@@ -1344,7 +1360,7 @@ SAXParser.prototype.endMarkup = function(namespaceURI, qName) {
 
 /*
 if dontSkipWhiteSpace is not passed, then it is false so skipWhiteSpaces is default
-if end of document, char is  ''
+if end of document, char is ''
 */
 SAXParser.prototype.nextChar = function(dontSkipWhiteSpace) {
     this.index++;
@@ -1358,7 +1374,7 @@ SAXParser.prototype.nextChar = function(dontSkipWhiteSpace) {
 };
 
 SAXParser.prototype.skipWhiteSpaces = function() {
-    while (ALL_WS.test(this.ch)) {
+    while (WS.test(this.ch)) {
         this.index++;
         if (this.index >= this.length) {
             throw new EndOfInputException();

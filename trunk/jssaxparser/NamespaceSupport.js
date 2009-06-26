@@ -1,3 +1,4 @@
+/*global SAXNotSupportedException */
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
@@ -7,27 +8,27 @@ This software is a computer program whose purpose is to parse XML
 files respecting SAX2 specifications.
 
 This software is governed by the CeCILL license under French law and
-abiding by the rules of distribution of free software.  You can  use, 
+abiding by the rules of distribution of free software. You can use,
 modify and/ or redistribute the software under the terms of the CeCILL
 license as circulated by CEA, CNRS and INRIA at the following URL
-"http://www.cecill.info". 
+"http://www.cecill.info".
 
-As a counterpart to the access to the source code and  rights to copy,
+As a counterpart to the access to the source code and rights to copy,
 modify and redistribute granted by the license, users are provided only
-with a limited warranty  and the software's author,  the holder of the
-economic rights,  and the successive licensors  have only  limited
-liability. 
+with a limited warranty and the software's author, the holder of the
+economic rights, and the successive licensors have only limited
+liability.
 
 In this respect, the user's attention is drawn to the risks associated
-with loading,  using,  modifying and/or developing or reproducing the
+with loading, using, modifying and/or developing or reproducing the
 software by the user in light of its specific status of free software,
-that may mean  that it is complicated to manipulate,  and  that  also
-therefore means  that it is reserved for developers  and  experienced
+that may mean that it is complicated to manipulate, and that also
+therefore means that it is reserved for developers and experienced
 professionals having in-depth computer knowledge. Users are therefore
 encouraged to load and test the software's suitability as regards their
-requirements in conditions enabling the security of their systems and/or 
-data to be ensured and,  more generally, to use and operate it in the 
-same conditions as regards security. 
+requirements in conditions enabling the security of their systems and/or
+data to be ensured and, more generally, to use and operate it in the
+same conditions as regards security.
 
 The fact that you are presently reading this means that you have had
 knowledge of the CeCILL license and that you accept its terms.
@@ -79,8 +80,6 @@ function PrefixNotFoundException(prefix) { // java.lang.Exception
 // Note: Try to adapt for internal use, as well as offer for external app
 // http://www.saxproject.org/apidoc/org/xml/sax/helpers/NamespaceSupport.html
 function NamespaceSupport () {
-    //this.NSDECL;
-    this.XMLNS = "http://www.w3.org/XML/1998/namespace";
 }
 
 NamespaceSupport.prototype.declarePrefix = function (prefix, uri) {
@@ -110,10 +109,10 @@ NamespaceSupport.prototype.getPrefix = function (uri) {
     return null;
 };
 NamespaceSupport.prototype.getPrefixes = function () {
-    throw SAXNotSupportedException("NamespaceSupport.getPrefixes()");
+    throw new SAXNotSupportedException("NamespaceSupport.getPrefixes()");
 };
 NamespaceSupport.prototype.getPrefixes = function (uri) {
-    throw SAXNotSupportedException("NamespaceSupport.getPrefixes(uri)");
+    throw new SAXNotSupportedException("NamespaceSupport.getPrefixes(uri)");
 };
 NamespaceSupport.prototype.getURI = function (prefix) {
     // if attribute, prefix may be null, then namespaceURI is null
@@ -135,13 +134,13 @@ NamespaceSupport.prototype.getURI = function (prefix) {
 };
 
 NamespaceSupport.prototype.isNamespaceDeclUris = function () {
-    throw SAXNotSupportedException("NamespaceSupport.isNamespaceDeclUris()");
+    throw new SAXNotSupportedException("NamespaceSupport.isNamespaceDeclUris()");
 };
 NamespaceSupport.prototype.popContext = function () {
     return this.namespaces.pop();
 };
 NamespaceSupport.prototype.processName = function (qName, parts, isAttribute) {
-    throw SAXNotSupportedException("NamespaceSupport.processName(qName, parts, isAttribute)");
+    throw new SAXNotSupportedException("NamespaceSupport.processName(qName, parts, isAttribute)");
 };
 NamespaceSupport.prototype.pushContext = function () {
     var namespacesOfThatLevel = {};
@@ -151,14 +150,14 @@ NamespaceSupport.prototype.reset = function () {
     /* for each depth, a map of namespaces */
     this.namespaces = [];
     var xmlNamespace = {};
-    xmlNamespace["xml"] = this.XMLNS;
+    xmlNamespace.xml = NamespaceSupport.XMLNS;
     this.namespaces.push(xmlNamespace);
-
 };
 NamespaceSupport.prototype.setNamespaceDeclUris = function (value) {
-    throw SAXNotSupportedException("NamespaceSupport.setNamespaceDeclUris(value)");
+    throw new SAXNotSupportedException("NamespaceSupport.setNamespaceDeclUris(value)");
 };
-
+NamespaceSupport.NSDECL = 'http://www.w3.org/xmlns/2000/'; // NS of xmlns, xmlns:html, etc.
+NamespaceSupport.XMLNS = 'http://www.w3.org/XML/1998/namespace'; // e.g., NS for xml:lang, etc.
 
 this.NamespaceSupport = NamespaceSupport;
 
