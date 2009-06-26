@@ -67,18 +67,18 @@
             } catch(e) {
                 //e may be the jsunit exception
                 if (e instanceof SAXException) {
-                    output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>" + e.message + "</td></tr>";
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
                 } else {
                     if (isAssumedNotConformant(uri)) {
-                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "</td><td>" + testLabel + "</td><td>NOT SUPPORTED</td></tr>";
+                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                     } else {
-                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                     }
                 }
             }
         } else if (type === "invalid") {
             try {
-                output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td>";
+                output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td>";
                 saxParser2.parseString(xmlAsString);
                 throwNotFatalException(saxParser2.errorHandler);
                 //should have been exceptions
@@ -86,21 +86,21 @@
             } catch(e) {
                 //e may be the jsunit exception
                 if (e instanceof SAXException) {
-                    output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>" + e.message + "</td></tr>";
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
                 } else {
-                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                 }
             }
         } else if (type === "valid") {
             try {
                 saxParser2.parseString(xmlAsString);
                 throwNotFatalException(saxParser2.errorHandler);
-                output.innerHTML += "<tr><td>" + uri + "</td><td>" + testLabel + "</td><td>valid</td></tr>";
+                output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>valid<\/td><\/tr>";
             } catch(e) {
                 if (isAssumedNotConformant(uri)) {
-                    output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "</td><td>" + testLabel + "</td><td>NOT SUPPORTED</td></tr>";
+                    output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                 } else {
-                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "</td><td>" + testLabel + "</td><td>FAILED</td></tr>";
+                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                 }
             }
         }
