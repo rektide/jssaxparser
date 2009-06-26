@@ -34,36 +34,6 @@ The fact that you are presently reading this means that you have had
 knowledge of the CeCILL license and that you accept its terms.
 
 */
-/* sax 2 methods
- void 	attributeDecl(java.lang.String eName, java.lang.String aName, java.lang.String type, java.lang.String mode, java.lang.String value)
-          Report an attribute type declaration.
- void 	comment(char[] ch, int start, int length)
-          Report an XML comment anywhere in the document.
- void 	elementDecl(java.lang.String name, java.lang.String model)
-          Report an element type declaration.
- void 	endCDATA()
-          Report the end of a CDATA section.
- void 	endDTD()
-          Report the end of DTD declarations.
- void 	endEntity(java.lang.String name)
-          Report the end of an entity.
- void 	externalEntityDecl(java.lang.String name, java.lang.String publicId, java.lang.String systemId)
-          Report a parsed external entity declaration.
- InputSource 	getExternalSubset(java.lang.String name, java.lang.String baseURI)
-          Tells the parser that if no external subset has been declared in the document text, none should be used.
- void 	internalEntityDecl(java.lang.String name, java.lang.String value)
-          Report an internal entity declaration.
- InputSource 	resolveEntity(java.lang.String publicId, java.lang.String systemId)
-          Invokes EntityResolver2.resolveEntity() with null entity name and base URI.
- InputSource 	resolveEntity(java.lang.String name, java.lang.String publicId, java.lang.String baseURI, java.lang.String systemId)
-          Tells the parser to resolve the systemId against the baseURI and read the entity text from that resulting absolute URI.
- void 	startCDATA()
-          Report the start of a CDATA section.
- void 	startDTD(java.lang.String name, java.lang.String publicId, java.lang.String systemId)
-          Report the start of DTD declarations, if any.
- void 	startEntity(java.lang.String name)
-          Report the beginning of some internal and external XML entities.
-*/
 
 function loadXMLDoc(fname) {
     var xmlDoc;
