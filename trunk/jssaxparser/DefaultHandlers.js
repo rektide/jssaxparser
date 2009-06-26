@@ -42,7 +42,7 @@ knowledge of the CeCILL license and that you accept its terms.
 
 // http://www.saxproject.org/apidoc/org/xml/sax/helpers/DefaultHandler.html
 function DefaultHandler () {
-
+    this.saxParseExceptions = [];
 }
 // INTERFACE: ContentHandler: http://www.saxproject.org/apidoc/org/xml/sax/ContentHandler.html
 DefaultHandler.prototype.startDocument = function() {
@@ -91,16 +91,19 @@ DefaultHandler.prototype.unparsedEntityDecl = function (name, publicId, systemId
 
 // INTERFACE: ErrorHandler: http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
 DefaultHandler.prototype.warning = function(saxParseException) {
+    this.saxParseExceptions.push(saxParseException);
 };
 DefaultHandler.prototype.error = function(saxParseException) {
+    this.saxParseExceptions.push(saxParseException);
 };
 DefaultHandler.prototype.fatalError = function(saxParseException) {
-    throw new SAXParseException();
+    throw saxParseException;
 };
 
 
 // http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
 function DefaultHandler2 () {
+    DefaultHandler.call(this);
 }
 DefaultHandler2.prototype = new DefaultHandler();
 

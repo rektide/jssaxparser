@@ -49,7 +49,7 @@ var that = this; // probably window object
 
 /* XML Name regular expressions */
 var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF
-var NOT_VALID_START_CHAR_REGEXP = new RegExp("[^" + NAME_START_CHAR + "]");
+var NOT_START_CHAR = new RegExp("[^" + NAME_START_CHAR + "]");
 var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
 
@@ -60,6 +60,8 @@ var CHAR_DATA_REGEXP = /[<&\]]/;
 
 var WS = /[\t\n\r ]/; // \s is too inclusive
 var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
+
+var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
 
 /* Scanner states */
 var STATE_XML_DECL                  =  0;
@@ -694,7 +696,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
-    this.contentHandler.processingInstruction(this.nextName(), this.nextEndPI());
+    this.contentHandler.processingInstruction(this.scanName(), this.nextEndPI());
     return true;
 };
 
@@ -798,7 +800,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
             this.nextChar(true);
             if (!this.scanComment()) {
                 if (!this.scanEntityDecl() && !this.scanElementDecl() &&
-                        !this.scanAttlistDecl()) {
+                        !this.scanAttlistDecl() && !this.scanNotationDecl()) {
                     //no present support for other declarations
                     this.nextCharRegExp(/>/);
                 }
@@ -826,7 +828,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         //white spaces are not significant here
         this.skipWhiteSpaces();
     } else {
-        this.fireError("invalid character in internal subset of doctype declaration : " + this.ch, FATAL);
+        this.fireError("invalid character in internal subset of doctype declaration : [" + this.ch + "]", FATAL);
     }
 };
 
@@ -846,7 +848,7 @@ SAXParser.prototype.scanEntityDecl = function() {
         this.nextChar();
         if (this.ch === "%") {
             this.nextChar();
-            entityName = this.nextName();
+            entityName = this.scanName();
             this.nextChar();
             //if already declared, not effective
             if (!this.entities[entityName]) {
@@ -862,7 +864,7 @@ SAXParser.prototype.scanEntityDecl = function() {
                 }
             }
         } else {
-            entityName = this.nextName();
+            entityName = this.scanName();
             this.nextChar();
             //if already declared, not effective
             if (!this.entities[entityName]) {
@@ -870,7 +872,7 @@ SAXParser.prototype.scanEntityDecl = function() {
                 if (this.scanExternalId(externalId)) {
                     if (this.isFollowedBy("NDATA")) {
                         this.nextChar();
-                        var ndataName = this.nextName();
+                        var ndataName = this.scanName();
                     }
                     this.externalEntities[entityName] = externalId;
                 } else {
@@ -922,7 +924,7 @@ SAXParser.prototype.scanPeRef = function() {
         if (replacement) {
             return replacement;
         }
-        this.fireError("parameter entity reference " + ref + "has not been declared, no replacement found", ERROR);
+        this.fireError("parameter entity reference : [" + ref + "] has not been declared, no replacement found", ERROR);
         return "";
     //adding a message in that case
     } catch(e) {
@@ -945,7 +947,7 @@ SAXParser.prototype.scanPeRef = function() {
 SAXParser.prototype.scanElementDecl = function() {
     if (this.isFollowedBy("ELEMENT")) {
         this.nextChar();
-        var name = this.nextName();
+        var name = this.scanName();
         this.nextChar();
         /*
         The content model will consist of the string "EMPTY", the string "ANY", or a parenthesised group, optionally followed by an occurrence indicator. The model will be normalized so that all parameter entities are fully resolved and all whitespace is removed,and will include the enclosing parentheses. Other normalization (such as removing redundant parentheses or simplifying occurrence indicators) is at the discretion of the parser.
@@ -965,7 +967,7 @@ SAXParser.prototype.scanElementDecl = function() {
 SAXParser.prototype.scanAttlistDecl = function() {
     if (this.isFollowedBy("ATTLIST")) {
         this.nextChar();
-        var eName = this.nextName();
+        var eName = this.scanName();
         //initializes the attributesType map
         this.attributesType[eName] = {};
         this.nextChar();
@@ -983,7 +985,7 @@ SAXParser.prototype.scanAttlistDecl = function() {
 			| (('#FIXED' S)? AttValue)
 */
 SAXParser.prototype.scanAttDef = function(eName) {
-    var aName = this.nextName();
+    var aName = this.scanName();
     this.skipWhiteSpaces();
     var type = this.scanAttType();
     //stores the declared type of that attribute for method getType() of AttributesImpl
@@ -1020,7 +1022,6 @@ SAXParser.prototype.scanAttDef = function(eName) {
     if (this.declarationHandler) {
         this.declarationHandler.attributeDecl(eName, aName, type, mode, attValue);
     }
-    return true;
 };
 
 /*
@@ -1039,28 +1040,70 @@ SAXParser.prototype.scanAttDef = function(eName) {
 [7]   	           Nmtoken	   ::=   	(NameChar)+
 */
 SAXParser.prototype.scanAttType = function() {
-    //Enumeration
     var type;
+    //Enumeration
     if (this.ch === "(") {
-        this.nextChar(true);
+        this.nextChar();
         type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
-        while (this.ch === "|") {
-            //for the moment concatenates into type the enumeration
-            type += this.ch + this.nextCharRegExp(NOT_START_OR_END_CHAR);
-        }
+        this.skipWhiteSpaces();
         if (this.ch !== ")") {
             this.fireError("Invalid character : [" + this.ch + "] in ATTLIST enumeration", ERROR);
             type += this.ch + this.nextCharRegExp(WS);
         }
         this.nextChar();
-        return type;
+    //NotationType
+    } else if (this.isFollowedBy("NOTATION")) {
+        this.skipWhiteSpaces();
+        if (this.ch === "(") {
+            this.nextChar();
+            type = this.scanName();
+            this.skipWhiteSpaces();
+            if (this.ch !== ")") {
+                this.fireError("Invalid character : [" + this.ch + "] in ATTLIST enumeration", ERROR);
+            }
+            this.nextChar();
+        } else {
+            this.fireError("Invalid NOTATION, must be followed by '('", ERROR);
+            this.nextCharRegExp(/>/);
+        }
+    // StringType | TokenizedType
     } else {
         type = this.nextCharRegExp(WS);
         if (!/^CDATA$|^ID$|^IDREF$|^IDREFS$|^ENTITY$|^ENTITIES$|^NMTOKEN$|^NMTOKENS$/.test(type)) {
             this.fireError("Invalid type : [" + type + "] defined in ATTLIST", ERROR);
         }
-        return type;
     }
+    return type;
+};
+
+/*
+[82]   	NotationDecl	   ::=   	'<!NOTATION' S  Name  S (ExternalID | PublicID) S? '>'
+[83]   	PublicID	   ::=   	'PUBLIC' S  PubidLiteral  
+*/
+SAXParser.prototype.scanNotationDecl = function() {
+    if (this.isFollowedBy("NOTATION")) {
+        this.skipWhiteSpaces();
+        var name = this.scanName();
+        this.skipWhiteSpaces();
+        var externalId = new ExternalId();
+        // here there may be only PubidLiteral after PUBLIC so can not use directly scanExternalId
+        if (this.isFollowedBy("PUBLIC")) {
+            this.skipWhiteSpaces();
+            externalId.publicId = this.scanPubIdLiteral();
+            this.skipWhiteSpaces();
+            if (this.ch !== ">") {
+                externalId.systemId = this.scanSystemLiteral();
+                this.skipWhiteSpaces();
+            }
+        } else {
+            this.scanExternalId(externalId);
+        }
+        if (this.declarationHandler) {
+            this.declarationHandler.notationDecl(name, externalId.publicId, externalId.systemId);
+        }
+        return true;
+    }
+    return false;
 };
 
 /*
@@ -1089,7 +1132,7 @@ if called from an element parsing defaultPrefix would be ""
 if called from an attribute parsing defaultPrefix would be null
 */
 SAXParser.prototype.getQName = function(defaultPrefix) {
-    var name = this.nextName();
+    var name = this.scanName();
     var localName = name;
     if (name.indexOf(":") !== -1) {
         var splitResult = name.split(":");
@@ -1294,7 +1337,7 @@ may return undefined, has to be managed differently depending on
 */
 SAXParser.prototype.scanEntityRef = function() {
     try {
-        var ref = this.nextName();
+        var ref = this.scanName();
         //current char must be ';'
         if (this.ch !== ";") {
             this.fireError("entity : [" + ref + "] contains an invalid character : [" + this.ch + "], or it is not ended by ;", ERROR);
@@ -1304,6 +1347,10 @@ SAXParser.prototype.scanEntityRef = function() {
         if (this.lexicalHandler) {
             this.lexicalHandler.startEntity(ref);
             this.lexicalHandler.endEntity(ref);
+        }
+        // well-formed documents need not declare any of the following entities: amp, lt, gt, apos, quot.
+        if (NOT_REPLACED_ENTITIES.test(ref)) {
+            return "&" + ref + ";";
         }
         var replacement = this.entities[ref];
         if (replacement === undefined) {
@@ -1438,8 +1485,8 @@ SAXParser.prototype.isFollowedBy = function(str) {
 [4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 [5]   	Name	   ::=   	NameStartChar (NameChar)*
 */
-SAXParser.prototype.nextName = function() {
-    if (NOT_VALID_START_CHAR_REGEXP.test(this.ch)) {
+SAXParser.prototype.scanName = function() {
+    if (NOT_START_CHAR.test(this.ch)) {
         this.fireError("invalid starting character in Name : [" + this.ch + "]", FATAL);
         return "";
     }
@@ -1484,7 +1531,7 @@ SAXParser.prototype.fireError = function(message, gravity) {
     } else if (gravity === ERROR) {
         this.errorHandler.error(saxParseException);
     } else if (gravity === FATAL) {
-        throw(saxParseException);
+        this.errorHandler.fatalError(saxParseException);
     }
 };
 
