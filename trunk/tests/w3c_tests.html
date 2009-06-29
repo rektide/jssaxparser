@@ -15,7 +15,7 @@
     <script type="text/javascript" src="applyXslt.js"></script>
     <script type="text/javascript"><!--//--><![CDATA[//><!--
 
-    /*global assertTrue, assertXmlEquals, createDocumentFromText, DomContentHandler, SAXParser, loadFile, loadXml, loadXml2, loadXml3, loadRelaxng, loadRelaxng2,loadRelaxng3, JsUnitException */
+    /*global assertTrue, DomContentHandler, SAXParser, loadFile, JsUnitException , DefaultHandler2, SAXException, textContent*/
 	// (Note: change reference to SAXParser above if change name)
     var output;
     //keeps it global, used in all tests
@@ -24,6 +24,35 @@
     function setUp() {
         output = document.getElementById("output");
     }
+    
+    function throwNotFatalException(errorHandler) {
+        if (errorHandler.saxParseExceptions.length > 0) {
+            throw errorHandler.saxParseExceptions[0];
+        }
+    }
+    
+    function isAssumedNotConformant(uri) {
+        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
+        switch (uri) {
+            case "not-wf/sa/030.xml":
+            case "not-wf/sa/031.xml":
+            case "not-wf/sa/032.xml":
+            case "not-wf/sa/033.xml":
+            case "valid/sa/012.xml":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    function parseTestCase(uri) {
+        var xmlAsString = loadFile("xmlconf/xmltest/" + uri);
+        var contentHandler2 = new DefaultHandler2();
+        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
+        saxParser2.parseString(xmlAsString);
+        throwNotFatalException(saxParser2.errorHandler);
+    }
+
     
     function testParse_xmlconf() {
         var contentHandler = new DomContentHandler();
@@ -43,7 +72,7 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
-        var i = tests.length;
+        
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
             var type = test.getAttribute("TYPE");
@@ -69,7 +98,7 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
-        var i = tests.length;
+        
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
             var type = test.getAttribute("TYPE");
@@ -101,7 +130,7 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
-        var i = tests.length;
+        
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
             var type = test.getAttribute("TYPE");
@@ -128,38 +157,10 @@
         }
     }
     
-    function parseTestCase(uri) {
-        var xmlAsString = loadFile("xmlconf/xmltest/" + uri);
-        var contentHandler2 = new DefaultHandler2();
-        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
-        saxParser2.parseString(xmlAsString);
-        throwNotFatalException(saxParser2.errorHandler);
-    }
-    
-    function throwNotFatalException(errorHandler) {
-        if (errorHandler.saxParseExceptions.length > 0) {
-            throw errorHandler.saxParseExceptions[0];
-        }
-    }
-    
-    function isAssumedNotConformant(uri) {
-        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
-        switch (uri) {
-            case "not-wf/sa/030.xml":
-            case "not-wf/sa/031.xml":
-            case "not-wf/sa/032.xml":
-            case "not-wf/sa/033.xml":
-            case "valid/sa/012.xml":
-                return true;
-            default:
-                return false;
-        }
-    }
-    
     function testParseIndividual() {
         var xmlAsString = loadFile("xmlconf/xmltest/valid/sa/069.xml");
-        contentHandler = new DomContentHandler();
-        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        var contentHandler = new DomContentHandler();
+        var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         try {
             saxParser.parseString(xmlAsString);
             throwNotFatalException(saxParser.errorHandler);
