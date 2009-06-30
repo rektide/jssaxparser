@@ -373,8 +373,11 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
                 this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
             } else {
                 try {
+                    //maybe validation exceptions
                     this.contentHandler.endDocument();
-                } catch(e2) {}
+                } catch(e2) {
+                    throw e2;
+                }
             }
         } else {
             throw e;

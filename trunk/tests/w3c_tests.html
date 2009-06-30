@@ -68,6 +68,9 @@
     }
     
     function testParse_jclark_xmltest_valid() {
+        if (!xmlConf) {
+            testParse_xmlconf();
+        }
         var testcases = xmlConf.getElementsByTagName("TESTCASES");
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
@@ -94,6 +97,9 @@
     }
     
     function testParse_jclark_xmltest_invalid() {
+        if (!xmlConf) {
+            testParse_xmlconf();
+        }
         var testcases = xmlConf.getElementsByTagName("TESTCASES");
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
@@ -126,6 +132,9 @@
     }
     
     function testParse_jclark_xmltest_not_wf() {
+        if (!xmlConf) {
+            testParse_xmlconf();
+        }
         var testcases = xmlConf.getElementsByTagName("TESTCASES");
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
