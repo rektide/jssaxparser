@@ -58,7 +58,11 @@ var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + 
 //var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
 var CHAR_DATA_REGEXP = /[<&\]]/;
 
-var WS = /[\t\n\r ]/; // \s is too inclusive
+var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
+var WS = new RegExp(WS_STR);
+
+var XML_DECL = new RegExp("\\?xml"+WS_STR);
+
 var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
 
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
@@ -441,7 +445,6 @@ SAXParser.prototype.scanLT = function() {
                 }
             }
         } else if (this.ch === "?") {
-            this.nextChar(true);
             //in case it is not a valid processing instruction
             //scanPI will throw the exception itself, with a better message
             this.scanPI();
@@ -461,7 +464,6 @@ SAXParser.prototype.scanLT = function() {
                 }
             }
         } else if (this.ch === "?") {
-            this.nextChar(true);
             //in case it is not a valid processing instruction
             //scanPI will throw the exception itself, with a better message
             this.scanPI();
@@ -490,7 +492,6 @@ SAXParser.prototype.scanLT = function() {
                 }
             }
         } else if (this.ch === "?") {
-            this.nextChar();
             //in case it is not a valid processing instruction
             //scanPI will throw the exception itself, with a better message
             this.scanPI();
@@ -513,7 +514,6 @@ SAXParser.prototype.scanLT = function() {
                 this.fireError("end of document, only comments or processing instructions are allowed", FATAL);
             }
         } else if (this.ch === "?") {
-            this.nextChar();
             if (!this.scanPI()) {
                 this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
             }
@@ -686,7 +686,7 @@ SAXParser.prototype.scanComment = function() {
 //
 // [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
 SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
-    if (this.xml.substr(this.index, 5) === "?xml ") {
+    if ((XML_DECL).test(this.xml.substr(this.index, 5))) {
         // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
         this.nextGT();
         return true;
@@ -699,6 +699,11 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
+    if ((XML_DECL).test(this.xml.substr(this.index, 5))) {
+        this.fireError("XML Declaration cannot occur past the very beginning of the document.", FATAL);
+        return false;
+    }
+    this.nextChar(true);
     this.contentHandler.processingInstruction(this.scanName(), this.nextEndPI());
     return true;
 };
@@ -795,7 +800,6 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
     if (this.ch === "<") {
         this.nextChar(true);
         if (this.ch === "?") {
-            this.nextChar();
             if (!this.scanPI()) {
                 this.fireError("invalid processing instruction inside doctype declaration", FATAL);
             }
