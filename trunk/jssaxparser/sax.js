@@ -61,7 +61,7 @@ var CHAR_DATA_REGEXP = /[<&\]]/;
 var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
 var WS = new RegExp(WS_STR);
 
-var XML_DECL = new RegExp("\\?xml"+WS_STR);
+var XML_DECL_BEGIN = new RegExp("\\?xml"+WS_STR);
 
 var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
 
@@ -686,7 +686,7 @@ SAXParser.prototype.scanComment = function() {
 //
 // [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
 SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
-    if ((XML_DECL).test(this.xml.substr(this.index, 5))) {
+    if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 5))) {
         // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
         this.nextGT();
         return true;
@@ -699,7 +699,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
-    if ((XML_DECL).test(this.xml.substr(this.index, 5))) {
+    if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 5))) {
         this.fireError("XML Declaration cannot occur past the very beginning of the document.", FATAL);
         return false;
     }
