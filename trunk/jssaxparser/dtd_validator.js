@@ -1,4 +1,4 @@
-/*global SAXParseException */
+/*global SAXParseException, AnyName, Attribute, AttributeNode, Choice, Context, DatatypeLibrary, Element, ElementNode, Empty, Group, Name, NotAllowed, OneOrMore, QName, SAXException, Text, TextNode, ValidatorFunctions */
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
@@ -47,11 +47,11 @@ DtdValidator.prototype.startDocument = function() {
 };
 
 DtdValidator.prototype.startElement = function(namespaceURI, localName, qName, atts) {
-    var attributeNodes = new Array();
+    var attributeNodes = [];
     for (var i = 0 ; i < atts.getLength() ; i++) {
         attributeNodes.push(new AttributeNode(new QName(atts.getURI(i), atts.getLocalName(i)), atts.getValue(i)));
     }
-    var newElement = new ElementNode(new QName(namespaceURI, localName), this.instanceContext, attributeNodes, new Array());
+    var newElement = new ElementNode(new QName(namespaceURI, localName), this.instanceContext, attributeNodes, []);
     //this.childNode must be an ElementNode
     if (!this.childNode) {
         this.childNode = this.currentElementNode = newElement;
@@ -93,7 +93,7 @@ DtdValidator.prototype.endDocument = function() {
     if (this.pattern) {
         var datatypeLibrary = new DatatypeLibrary();
         this.debug = false;
-        this.validatorFunctions = new ValidatorFunctions(this, datatypeLibrary)
+        this.validatorFunctions = new ValidatorFunctions(this, datatypeLibrary);
         this.resultPattern = this.validatorFunctions.childDeriv(this.context, this.pattern, this.childNode);
         if (this.resultPattern instanceof NotAllowed) {
             throw new SAXException("document not valid, message is : [" + this.resultPattern.message + "], expected was : [" + this.resultPattern.pattern.toHTML() + "], found is : [" + this.resultPattern.childNode.toHTML() + "]");
@@ -157,7 +157,7 @@ DtdValidator.prototype.getPatternFromModel = function(model) {
         }
         return returned;
     }
-}
+};
 
 /*
 [51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
@@ -185,7 +185,7 @@ DtdValidator.prototype.getPatternFromMixed = function(model) {
         return textNode;
     }
     return new Group(textNode, returned);
-}
+};
 
 /*
 [47]   	children	   ::=   	(choice | seq) ('?' | '*' | '+')?
@@ -227,7 +227,7 @@ DtdValidator.prototype.getPatternFromChildren = function(model) {
     } else {
         return pattern1;
     }
-}
+};
 
 DtdValidator.prototype.elementDecl = function(name, model) {
     var pattern = this.getPatternFromModel(model);
@@ -263,7 +263,7 @@ DtdValidator.prototype.startCDATA = function() {
 
 DtdValidator.prototype.startDTD = function(name, publicId, systemId) {
     this.pattern = this.elements[name] = new Element(new Name(null, name));
-    this.context = new Context(publicId, new Array());
+    this.context = new Context(publicId, []);
 };
 
 DtdValidator.prototype.startEntity = function(name) {

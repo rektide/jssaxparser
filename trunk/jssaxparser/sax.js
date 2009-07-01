@@ -1025,6 +1025,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
     if (this.declarationHandler) {
         this.declarationHandler.attributeDecl(eName, aName, type, mode, attValue);
     }
+    return true;
 };
 
 /*

@@ -18,7 +18,7 @@
     <script type="text/javascript" src="applyXslt.js"></script>
     <script type="text/javascript"><!--//--><![CDATA[//><!--
 
-    /*global assertTrue, assertXmlEquals, createDocumentFromText, DtdValidator, SAXParser, loadFile, JsUnitException */
+    /*global assertTrue, DtdValidator, SAXParser, loadFile, JsUnitException */
 	// (Note: change reference to SAXParser above if change name)
     var contentHandler;
     var saxParser;
@@ -54,7 +54,7 @@
 	JsUnitException.prototype.toString = function () {
 		return this.jsUnitMessage;
 	};
-    </script>
+    //--><!]]></script>
   </head>
   <body onload="runAllTests()">
     <p>This is a Test Page for sax.js</p>

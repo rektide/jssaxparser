@@ -45,7 +45,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         if (this.relaxNGValidator.debug) {
             recordStep(message, pattern, childNode);
         }
-    }
+    };
     
     
     /*
@@ -71,7 +71,8 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else if (nameClass instanceof NameClassChoice) {
             return this.contains(nameClass.nameClass1, qName) || this.contains(nameClass.nameClass2, qName);
         }
-    }
+        throw new Error('Unexpected result for ValidatorFunctions.contains()');
+    };
 
     /*
     nullable:: Pattern -> Bool
@@ -120,7 +121,8 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else if (pattern instanceof After) {
             return false;
         }
-    }
+        throw new Error('Unexpected result for ValidatorFunctions.nullable()');
+    };
     
     /*
     childDeriv :: Context -> Pattern -> ChildNode -> Pattern
@@ -148,7 +150,8 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
             this.debug("end of validation", p4, childNode);
             return this.endTagDeriv(p4, childNode);
         }
-    }
+        throw new Error('Unexpected result for ValidatorFunctions.childDeriv()');
+    };
 
     /*
     textDeriv :: Context -> Pattern -> String -> Pattern
@@ -171,19 +174,20 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     textDeriv _ _ _ = NotAllowed
     */
     this.textDeriv = function(context, pattern, string, childNode) {
+        var choice1, choice2, group1;
         if (pattern instanceof Choice) {
-            var choice1 = this.textDeriv(context, pattern.pattern1, string, childNode);
-            var choice2 = this.textDeriv(context, pattern.pattern2, string, childNode);
+            choice1 = this.textDeriv(context, pattern.pattern1, string, childNode);
+            choice2 = this.textDeriv(context, pattern.pattern2, string, childNode);
             return this.choice(choice1, choice2);
         } else if (pattern instanceof Interleave) {
-            var choice1 = this.interleave(this.textDeriv(context, pattern.pattern1, string, childNode), pattern.pattern2);
-            var choice2 = this.interleave(pattern.pattern1, this.textDeriv(context, pattern.pattern2, string, childNode));
+            choice1 = this.interleave(this.textDeriv(context, pattern.pattern1, string, childNode), pattern.pattern2);
+            choice2 = this.interleave(pattern.pattern1, this.textDeriv(context, pattern.pattern2, string, childNode));
             return this.choice(choice1, choice2);
         } else if (pattern instanceof Group) {
-            var group1 = this.textDeriv(context, pattern.pattern1, string, childNode);
+            group1 = this.textDeriv(context, pattern.pattern1, string, childNode);
             var p = this.group(group1, pattern.pattern2);
             if (this.nullable(pattern.pattern1)) {
-                var choice2 = this.textDeriv(context, pattern.pattern1, string, childNode);
+                choice2 = this.textDeriv(context, pattern.pattern1, string, childNode);
                 return this.choice(p, choice2);
             } else {
                 return p;
@@ -192,7 +196,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
             var after1 = this.textDeriv(context, pattern.pattern1, string, childNode);
             return this.after(after1, pattern.pattern2);
         } else if (pattern instanceof OneOrMore) {
-            var group1 = this.textDeriv(context, pattern.pattern, string, childNode);
+            group1 = this.textDeriv(context, pattern.pattern, string, childNode);
             var group2 = this.choice(pattern, new Empty());
             return this.group(group1, group2);
         } else if (pattern instanceof Text) {
@@ -220,13 +224,13 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new NotAllowed("invalid pattern", pattern, childNode);
         }
-    }
+    };
     /*
     reverse the order of the array in order to use the function pop()
     */
     this.words = function(string) {
         return string.split(/\s+/).reverse();
-    }
+    };
 
     /*
     listDeriv :: Context -> Pattern -> [String] -> Pattern
@@ -234,12 +238,12 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     listDeriv cx p (h:t) = listDeriv cx (textDeriv cx p h) t
     */
     this.listDeriv = function(context, pattern, strings, childNode) {
-        if (strings.length == 0) {
+        if (strings.length === 0) {
             return pattern;
         } else {
             return this.listDeriv(context, this.textDeriv(context, pattern, strings.pop(), childNode), strings);
         }
-    }
+    };
 
     /*
     choice :: Pattern -> Pattern -> Pattern
@@ -266,7 +270,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new Choice(pattern1, pattern2);
         }
-    }
+    };
 
     /*
     group :: Pattern -> Pattern -> Pattern
@@ -288,7 +292,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new Group(pattern1, pattern2);
         }
-    }
+    };
 
     /*
     interleave :: Pattern -> Pattern -> Pattern
@@ -310,7 +314,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new Interleave(pattern1, pattern2);
         }
-    }
+    };
 
     /*
     after :: Pattern -> Pattern -> Pattern
@@ -326,7 +330,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new After(pattern1, pattern2);
         }
-    }
+    };
 
     /*
     datatypeAllows :: Datatype -> ParamList -> String -> Context -> Bool
@@ -335,9 +339,9 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     */
     this.datatypeAllows = function(datatype, paramList, string, context) {
         if (datatype.uri == "") {
-            if (datatype.localName == "string" && paramList.length == 0) {
+            if (datatype.localName === "string" && paramList.length === 0) {
                 return new Empty();
-            } else if (datatype.localName == "token" && paramList.length == 0) {
+            } else if (datatype.localName === "token" && paramList.length === 0) {
                 return new Empty();
             } else {
                 return new NotAllowed("datatype uri is not specified", datatype, string);
@@ -347,7 +351,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return this.datatypeLibrary.datatypeAllows(datatype, paramList, string, context);
         }
-    }
+    };
 
     /*
     datatypeEqual :: Datatype -> String -> Context -> String -> Context -> Bool
@@ -371,10 +375,9 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
             }
         } else if (!this.datatypeLibrary) {
             return new Empty();
-        } else {
-            return this.datatypeLibrary.datatypeEqual(datatype, string1, context1, string2, context2);
         }
-    }
+        return this.datatypeLibrary.datatypeEqual(datatype, string1, context1, string2, context2);
+    };
 
     /*
     normalizeWhitespace :: String -> String
@@ -382,7 +385,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     */
     this.normalizeWhitespace = function(string) {
         return string.split(/\s+/).join(" ");
-    }
+    };
 
     /*
     applyAfter :: (Pattern -> Pattern) -> Pattern -> Pattern
@@ -398,7 +401,8 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else if (pattern instanceof NotAllowed) {
             return pattern;
         }
-    }
+        throw new Error('Unexpected result for ValidatorFunctions.applyAfter()');
+    };
 
     /*
     startTagOpenDeriv :: Pattern -> QName -> Pattern
@@ -422,9 +426,10 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     startTagOpenDeriv _ qn = NotAllowed
     */
     this.startTagOpenDeriv = function(pattern, qName, childNode) {
+        var choice1, choice2, p1Deriv, p2Deriv;
         if (pattern instanceof Choice) {
-            var choice1 = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);
-            var choice2 = this.startTagOpenDeriv(pattern.pattern2, qName, childNode);
+            choice1 = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);
+            choice2 = this.startTagOpenDeriv(pattern.pattern2, qName, childNode);
             return this.choice(choice1, choice2);
         } else if (pattern instanceof Element) {
             if (this.contains(pattern.nameClass, qName)) {
@@ -433,32 +438,32 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
                 return new NotAllowed("invalid tag name", pattern.nameClass, qName);
             }
         } else if (pattern instanceof Interleave) {
-            var p1Deriv = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);
-            var choice1 = this.applyAfter(new this.flip(this.interleave, pattern.pattern2), p1Deriv);
-            var p2Deriv = this.startTagOpenDeriv(pattern.pattern2, qName, childNode);
-            var choice2 = this.applyAfter(new this.notFlip(this.interleave, pattern.pattern1), p2Deriv);
+            p1Deriv = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);
+            choice1 = this.applyAfter(new this.flip(this.interleave, pattern.pattern2), p1Deriv);
+            p2Deriv = this.startTagOpenDeriv(pattern.pattern2, qName, childNode);
+            choice2 = this.applyAfter(new this.notFlip(this.interleave, pattern.pattern1), p2Deriv);
             return this.choice(choice1, choice2);
         } else if (pattern instanceof OneOrMore) {
             var pDeriv = this.startTagOpenDeriv(pattern.pattern, qName, childNode);
             return this.applyAfter(new this.flip(this.group, this.choice(pattern, new Empty())), pDeriv);
         } else if (pattern instanceof Group) {
-            var p1Deriv = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);
+            p1Deriv = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);
             var x = this.applyAfter(new this.flip(this.group, pattern.pattern2), p1Deriv);
             if (this.nullable(pattern.pattern1)) {
-                var p2Deriv = this.startTagOpenDeriv(pattern.pattern2, qName, childNode);
+                p2Deriv = this.startTagOpenDeriv(pattern.pattern2, qName, childNode);
                 return this.choice(x, p2Deriv);
             } else {
                 return x;
             }
         } else if (pattern instanceof After) {
-            var p1Deriv = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);		
+            p1Deriv = this.startTagOpenDeriv(pattern.pattern1, qName, childNode);		
             return this.applyAfter(new this.flip(this.after, pattern.pattern2), p1Deriv);
         } else if (pattern instanceof NotAllowed) {
             return pattern;
         } else {
             return new NotAllowed("invalid pattern", pattern, childNode);
         }
-    }
+    };
 
     /*
     We make use of the standard Haskell function flip  which flips the order of the arguments of a function of two arguments. Thus,  flip applied to a function of two arguments f and an argument x returns a function of one argument g such that g(y) = f(y,  x). 
@@ -468,16 +473,16 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         this.arg2 = arg2;
         this.apply = function(arg1) {
             return this.funct(arg1, this.arg2);
-        }
-    }
+        };
+    };
 
     this.notFlip = function(funct, arg1) {
         this.funct = funct;
         this.arg1 = arg1;
         this.apply = function(arg2) {
             return this.funct(this.arg1, arg2);
-        }
-    }
+        };
+    };
 
     /*
     attsDeriv :: Context -> Pattern -> [AttributeNode] -> Pattern
@@ -485,14 +490,14 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     attsDeriv cx p ((AttributeNode qn s):t) = attsDeriv cx (attDeriv cx p (AttributeNode qn s)) t
     */
     this.attsDeriv = function(context, pattern, attributeNodes) {
-        if (attributeNodes.length == 0) {
+        if (attributeNodes.length === 0) {
             return pattern;
         } else {
             var attDerivResult = this.attDeriv(context, pattern, attributeNodes.pop());
             var attsDerivResult = this.attsDeriv(context, attDerivResult, attributeNodes);
             return attsDerivResult;
         }
-    }
+    };
 
     /*
     attDeriv :: Context -> Pattern -> AttributeNode -> Pattern
@@ -513,27 +518,28 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     attDeriv _ _ _ = NotAllowed
     */
     this.attDeriv = function(context, pattern, attributeNode) {
+        var choice1, choice2, attDeriv1, attDeriv2;
         if (pattern instanceof After) {
             var attDerivResult = this.attDeriv(context, pattern.pattern1, attributeNode);
             return this.after(attDerivResult, pattern.pattern2);
         } else if (pattern instanceof Choice) {
-            var choice1 = this.attDeriv(context, pattern.pattern1, attributeNode);
-            var choice2 = this.attDeriv(context, pattern.pattern2, attributeNode);
+            choice1 = this.attDeriv(context, pattern.pattern1, attributeNode);
+            choice2 = this.attDeriv(context, pattern.pattern2, attributeNode);
             return this.choice(choice1, choice2);
         } else if (pattern instanceof Group) {
-            var attDeriv1 = this.attDeriv(context, pattern.pattern1, attributeNode);
-            var choice1 = this.group(attDeriv1, pattern.pattern2);
-            var attDeriv2 = this.attDeriv(context, pattern.pattern2, attributeNode);
-            var choice2 = this.group(pattern.pattern1, attDeriv2);
+            attDeriv1 = this.attDeriv(context, pattern.pattern1, attributeNode);
+            choice1 = this.group(attDeriv1, pattern.pattern2);
+            attDeriv2 = this.attDeriv(context, pattern.pattern2, attributeNode);
+            choice2 = this.group(pattern.pattern1, attDeriv2);
             return this.choice(choice1, choice2);
         } else if (pattern instanceof Interleave) {
-            var attDeriv1 = this.attDeriv(context, pattern.pattern1, attributeNode);
-            var choice1 = this.interleave(attDeriv1, pattern.pattern2);
-            var attDeriv2 = this.attDeriv(context, pattern.pattern2, attributeNode);
-            var choice2 = this.interleave(pattern.pattern1, attDeriv2);
+            attDeriv1 = this.attDeriv(context, pattern.pattern1, attributeNode);
+            choice1 = this.interleave(attDeriv1, pattern.pattern2);
+            attDeriv2 = this.attDeriv(context, pattern.pattern2, attributeNode);
+            choice2 = this.interleave(pattern.pattern1, attDeriv2);
             return this.choice(choice1, choice2);
         } else if (pattern instanceof OneOrMore) {
-            var attDerivResult = this.attDeriv(context, pattern.pattern, attributeNode);
+            attDerivResult = this.attDeriv(context, pattern.pattern, attributeNode);
             return this.group(attDerivResult, this.choice(pattern.pattern, new Empty()));
         } else if (pattern instanceof Attribute) {
             var attributeNameCheck = this.contains(pattern.nameClass, attributeNode.qName);
@@ -548,7 +554,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new NotAllowed("invalid attributeNode", pattern, attributeNode);
         }
-    }
+    };
 
     /*
     valueMatch :: Context -> Pattern -> String -> Bool
@@ -567,7 +573,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return textDerivResult;
         }
-    }
+    };
 
     /*
     startTagCloseDeriv :: Pattern -> Pattern
@@ -606,7 +612,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return pattern;
         }
-    }
+    };
 
     /*
     oneOrMore :: Pattern -> Pattern
@@ -619,7 +625,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new OneOrMore(pattern);
         }
-    }
+    };
     
     /*
     childrenDeriv :: Context -> Pattern -> [ChildNode] -> Pattern
@@ -630,9 +636,9 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     childrenDeriv cx p children = stripChildrenDeriv cx p children
     */
     this.childrenDeriv = function(context, pattern, childNodes) {
-        if (childNodes.length == 0) {
+        if (childNodes.length === 0) {
             return pattern;
-        } else if (childNodes.length == 1 && childNodes[0] instanceof TextNode) {
+        } else if (childNodes.length === 1 && childNodes[0] instanceof TextNode) {
             var p1 = this.childDeriv(context, pattern, childNodes[0]);
             if (this.whitespace(childNodes[0].string)) {
                 return this.choice(pattern, p1);
@@ -643,7 +649,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
             //in order to use pop(), reverse the order of the children
             return this.stripChildrenDeriv(context, pattern, childNodes.reverse());
         }
-    }
+    };
 
     /*
     stripChildrenDeriv :: Context -> Pattern -> [ChildNode] -> Pattern
@@ -651,7 +657,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     stripChildrenDeriv cx p (h:t) = stripChildrenDeriv cx (if strip h then p else (childDeriv cx p h)) t
     */
     this.stripChildrenDeriv = function(context, pattern, childNodes) {
-        if (childNodes.length == 0) {
+        if (childNodes.length === 0) {
             return pattern;
         } else {
             var p = pattern;
@@ -662,7 +668,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
             }
             return this.stripChildrenDeriv(context, p, childNodesCloned);
         }
-    }
+    };
     
     /*
     strip :: ChildNode -> Bool
@@ -675,7 +681,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return false;
         }
-    }
+    };
     
     /*
     whitespace :: String -> Bool
@@ -683,7 +689,7 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
     */
     this.whitespace = function(string) {
         return !(/[^\t\n\r ]/.test(string));
-    }
+    };
 
     /*
     endTagDeriv :: Pattern -> Pattern
@@ -707,6 +713,6 @@ function ValidatorFunctions(relaxNGValidator, datatypeLibrary) {
         } else {
             return new NotAllowed("invalid pattern", pattern, childNode);
         }
-    }
+    };
     
 }
