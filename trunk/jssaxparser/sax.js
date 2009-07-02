@@ -282,7 +282,17 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
-    throw 'Not implemented: at present you must use our non-SAX parseString() method';
+    if (inputOrSystemId.publicId) {
+        var xmlAsString = this.loadFile(inputOrSystemId.publicId);
+        //get the path to the file
+        var path = inputOrSystemId.publicId.substring(0, inputOrSystemId.publicId.lastIndexOf("/") + 1);
+        this.baseURI = path;
+        this.parseString(xmlAsString);
+    } else if (typeof inputOrSystemId == "string") {
+        this.parseString(inputOrSystemId);
+    } else {
+        throw 'Not implemented: at present you must use our non-SAX parseString() method';
+    }
 };
 SAXParser.prototype.setContentHandler = function (handler) { // (ContentHandler)
     // Allow an application to register a content event handler (void).
@@ -549,9 +559,7 @@ SAXParser.prototype.scanText = function() {
                 this.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", ERROR);
             } else {
                 try {
-                    var relativeBaseUri = this.getRelativeBaseUri();
-                    var externalContent = this.resolveEntity(e.entityName, externalId.publicId, relativeBaseUri, externalId.systemId);
-                    this.includeEntity(entityStart, externalContent);
+                    this.includeEntity(e.entityName, entityStart, externalId);
                     //there may need another state or just parse xml declaration here.
                     this.state = STATE_XML_DECL;
                 } catch (e2) {}
@@ -617,8 +625,14 @@ SAXParser.prototype.getRelativeBaseUri = function() {
 
 /*
  entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
+ entityName is only used in order to be SAX compliant with resolveEntity
  */
-SAXParser.prototype.includeEntity = function(entityStartIndex, replacement) {
+SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, replacement) {
+    //if it is an externalId, have to include the external content
+    if (replacement instanceof ExternalId) {
+        var relativeBaseUri = this.getRelativeBaseUri();
+        replacement = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
+    }
    // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
     this.xml = this.xml.substring(0, entityStartIndex).concat(replacement, this.xml.substr(this.index));
     this.length = this.xml.length;
@@ -744,6 +758,9 @@ function ExternalId() {
     this.publicId = null;
     this.systemId = null;
 }
+ExternalId.prototype.toString = function() {
+    return "ExternalId";
+};
 
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
 //			| 'PUBLIC' S PubidLiteral S SystemLiteral 
@@ -820,11 +837,12 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
     } else if (this.ch === "%") {
         var entityStart = this.index;
         this.nextChar(true);
-        var ref = this.scanPeRef();
+        var entityName = this.nextCharRegExp(/;/);
+        var replacement = this.scanPeRef(entityName);
         //current char is ending quote
         this.nextChar(true);
         // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
-        this.includeEntity(entityStart, ref);
+        this.includeEntity(entityName, entityStart, replacement);
         //white spaces are not significant here
         this.skipWhiteSpaces();
     } else {
@@ -860,7 +878,7 @@ SAXParser.prototype.scanEntityDecl = function() {
                         this.declarationHandler.internalEntityDecl("%" + entityName, entityValue);
                     }
                 } else {
-                    this.externalEntities[entityName] = externalId;
+                    this.parameterEntities[entityName] = externalId;
                 }
             }
         } else {
@@ -915,15 +933,21 @@ SAXParser.prototype.scanEntityValue = function() {
     }
 };
 
-SAXParser.prototype.scanPeRef = function() {
+/*
+[69]   	PEReference	   ::=   	'%' Name ';'
+for use in scanDoctypeDeclIntSubset where we need the original entityName, it may have already been parsed
+*/
+SAXParser.prototype.scanPeRef = function(entityName) {
     try {
-        var ref = this.nextCharRegExp(/;/);
+        if (entityName === undefined) {
+            entityName = this.nextCharRegExp(/;/);
+        }
         //tries to replace it by its value if declared internally in doctype declaration
-        var replacement = this.parameterEntities[ref];
+        var replacement = this.parameterEntities[entityName];
         if (replacement) {
             return replacement;
         }
-        this.fireError("parameter entity reference : [" + ref + "] has not been declared, no replacement found", ERROR);
+        this.fireError("parameter entity reference : [" + entityName + "] has not been declared, no replacement found", ERROR);
         return "";
     //adding a message in that case
     } catch(e) {

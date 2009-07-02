@@ -46,10 +46,9 @@
     }
 
     function parseTestCase(uri) {
-        var xmlAsString = loadFile("xmlconf/xmltest/" + uri);
         var contentHandler2 = new DefaultHandler2();
         var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
-        saxParser2.parseString(xmlAsString);
+        saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
         throwNotFatalException(saxParser2.errorHandler);
     }
 
@@ -57,10 +56,8 @@
     function testParse_xmlconf() {
         var contentHandler = new DomContentHandler();
         var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
-        var fileAsText = loadFile("xmlconf/xmlconf.xml");
-        saxParser.baseURI = "xmlconf/";
         try {
-            saxParser.parseString(fileAsText);
+            saxParser.parse(new InputSource("xmlconf/xmlconf.xml"));
         } catch(e) {
             assertTrue(e.message, false);
         }
@@ -167,11 +164,10 @@
     }
     
     function testParseIndividual() {
-        var xmlAsString = loadFile("xmlconf/xmltest/valid/sa/069.xml");
         var contentHandler = new DomContentHandler();
         var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         try {
-            saxParser.parseString(xmlAsString);
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/097.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);
@@ -180,9 +176,13 @@
         var a = "A";
     }
     
+    function InputSource(publicId) {
+        this.publicId = publicId;
+    }
+    
     function runAllTests () {
         setUp();
-        //testParseIndividual();
+        testParseIndividual();
         
         testParse_xmlconf();
         testParse_jclark_xmltest_valid();
