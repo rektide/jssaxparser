@@ -234,10 +234,10 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
-    this.properties['http://xml.org/sax/properties/document-xml-version'] = this.documentXmlVersion = null;
+    this.properties['http://xml.org/sax/properties/document-xml-version'] = null;
     this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode;
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
-    this.properties['http://xml.org/sax/properties/xml-string'] = this.xmlString = null;
+    this.properties['http://xml.org/sax/properties/xml-string'] = null;
 }
 
 // BEGIN SAX2 XMLReader INTERFACE
@@ -362,7 +362,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.contentHandler.startDocument();
     //if all whitespaces, w3c test case xmlconf/xmltest/not-wf/sa/050.xml
     if (!(/[^\t\n\r ]/.test(this.xml))) {
-        this.fireError("empty document", FATAL);
+        return this.fireError("empty document", FATAL);
     }
     try {
         while (this.index < this.length) {
@@ -374,7 +374,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
             this.errorHandler.fatalError(e);
         } else if (e instanceof EndOfInputException) {
             if (this.elementsStack.length > 0) {
-                this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
+                return this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
             } else {
                 try {
                     //maybe validation exceptions
@@ -400,7 +400,7 @@ SAXParser.prototype.next = function() {
         this.scanText();
     //if elementsStack is empty it is text misplaced
     } else {
-        this.fireError("can not have text at root level of the XML", FATAL);
+        return this.fireError("can not have text at root level of the XML", FATAL);
     }
 };
 
@@ -458,9 +458,9 @@ SAXParser.prototype.scanLT = function() {
             this.nextChar(true);
             if (!this.scanComment()) {
                 if (this.isFollowedBy("DOCTYPE")) {
-                    this.fireError("can not have two doctype declarations", FATAL);
+                    return this.fireError("can not have two doctype declarations", FATAL);
                 } else {
-                    this.fireError("invalid declaration, only a comment is allowed here after &lt;!", FATAL);
+                    return this.fireError("invalid declaration, only a comment is allowed here after &lt;!", FATAL);
                 }
             }
         } else if (this.ch === "?") {
@@ -481,14 +481,14 @@ SAXParser.prototype.scanLT = function() {
                 this.state = STATE_TRAILING_MISC;
             }
         } else {
-            this.fireError("document is empty, no root element detected", FATAL);
+            return this.fireError("document is empty, no root element detected", FATAL);
         }
     } else if (this.state === STATE_CONTENT) {
         if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
                 if (!this.scanCData()) {
-                    this.fireError("neither comment nor CDATA after &lt;!", FATAL);
+                    return this.fireError("neither comment nor CDATA after &lt;!", FATAL);
                 }
             }
         } else if (this.ch === "?") {
@@ -511,16 +511,16 @@ SAXParser.prototype.scanLT = function() {
         if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
-                this.fireError("end of document, only comments or processing instructions are allowed", FATAL);
+                return this.fireError("end of document, only comments or processing instructions are allowed", FATAL);
             }
         } else if (this.ch === "?") {
             if (!this.scanPI()) {
-                this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
+                return this.fireError("end of document, only comment or processing instruction are allowed", FATAL);
             }
         } else if (this.ch === "/") {
-            this.fireError("invalid ending tag at root of the document", FATAL);
+            return this.fireError("invalid ending tag at root of the document", FATAL);
         } else {
-            this.fireError("only one document element is allowed", FATAL);
+            return this.fireError("only one document element is allowed", FATAL);
         }
     }
 };
@@ -663,12 +663,10 @@ SAXParser.prototype.scanComment = function() {
                 this.nextChar(true);
                 return true;
             } else {
-                this.fireError("end of comment not valid, must be --&gt;", FATAL);
-                return false;
+                return this.fireError("end of comment not valid, must be --&gt;", FATAL);
             }
         } else {
-            this.fireError("beginning comment markup is invalid, must be &lt;!--", FATAL);
-            return false;
+            return this.fireError("beginning comment markup is invalid, must be &lt;!--", FATAL);
         }
     } else {
         // can be a doctype
@@ -700,8 +698,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
     if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 5))) {
-        this.fireError("XML Declaration cannot occur past the very beginning of the document.", FATAL);
-        return false;
+        return this.fireError("XML Declaration cannot occur past the very beginning of the document.", FATAL);
     }
     this.nextChar(true);
     this.contentHandler.processingInstruction(this.scanName(), this.nextEndPI());
@@ -729,16 +726,14 @@ SAXParser.prototype.scanDoctypeDecl = function() {
             this.nextChar();
         }
         if (this.ch !== ">") {
-            this.fireError("invalid content in doctype declaration", FATAL);
-            return false;
+            return this.fireError("invalid content in doctype declaration", FATAL);
         }
         if (this.lexicalHandler) {
             this.lexicalHandler.endDTD();
         }
         return true;
     } else {
-        this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
-        return false;
+        return this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
     }
 };
 
@@ -773,8 +768,7 @@ SAXParser.prototype.scanExternalId = function(externalId) {
 //[11]   	SystemLiteral	   ::=   	('"' [^"]* '"') | ("'" [^']* "'")
 SAXParser.prototype.scanSystemLiteral = function(externalId) {
     if (this.ch !== "'" && this.ch !== '"') {
-        this.fireError("invalid sytem Id declaration, should begin with a quote", FATAL);
-        return false;
+        return this.fireError("invalid sytem Id declaration, should begin with a quote", FATAL);
     }
     return this.quoteContent();
 };
@@ -784,8 +778,7 @@ SAXParser.prototype.scanSystemLiteral = function(externalId) {
 //[13]   	PubidChar	   ::=   	#x20 | #xD | #xA | [a-zA-Z0-9] | [-'()+,./:=?;!*#@$_%]
 SAXParser.prototype.scanPubIdLiteral = function(externalId) {
     if (this.ch !== "'" && this.ch !== '"') {
-        this.fireError("invalid Public Id declaration, should begin with a quote", FATAL);
-        return false;
+        return this.fireError("invalid Public Id declaration, should begin with a quote", FATAL);
     }
     return this.quoteContent();
 };
@@ -801,7 +794,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         this.nextChar(true);
         if (this.ch === "?") {
             if (!this.scanPI()) {
-                this.fireError("invalid processing instruction inside doctype declaration", FATAL);
+                return this.fireError("invalid processing instruction inside doctype declaration", FATAL);
             }
         } else if (this.ch === "!") {
             this.nextChar(true);
@@ -813,7 +806,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
                 }
                 this.skipWhiteSpaces();
                 if (this.ch !== ">") {
-                    this.fireError("invalid markup declaration inside doctype declaration, must end with &gt;", FATAL);
+                    return this.fireError("invalid markup declaration inside doctype declaration, must end with &gt;", FATAL);
                 }
                 this.nextChar();
             } else {
@@ -835,7 +828,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
         //white spaces are not significant here
         this.skipWhiteSpaces();
     } else {
-        this.fireError("invalid character in internal subset of doctype declaration : [" + this.ch + "]", FATAL);
+        return this.fireError("invalid character in internal subset of doctype declaration : [" + this.ch + "]", FATAL);
     }
 };
 
@@ -918,8 +911,7 @@ SAXParser.prototype.scanEntityValue = function() {
         this.nextChar();
         return entityValue;
     } else {
-        this.fireError("invalid entity value declaration, must begin with a quote", ERROR);
-        return false;
+        return this.fireError("invalid entity value declaration, must begin with a quote", ERROR);
     }
 };
 
@@ -936,8 +928,7 @@ SAXParser.prototype.scanPeRef = function() {
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
-            this.fireError("document incomplete, parameter entity reference must end with ;", FATAL);
-            return false;
+            return this.fireError("document incomplete, parameter entity reference must end with ;", FATAL);
         } else {
             throw e;
         }
@@ -1019,8 +1010,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
                 attValue += this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
             }
             if (this.ch === "<") {
-                this.fireError("invalid attribute value, must not contain &lt;", FATAL);
-                return false;
+                return this.fireError("invalid attribute value, must not contain &lt;", FATAL);
             }
             //current char is ending quote
             this.nextChar();
@@ -1168,8 +1158,7 @@ SAXParser.prototype.scanElement = function(qName) {
             this.elementsStack.pop();
             this.endMarkup(namespaceURI, qName);
         } else {
-            this.fireError("invalid empty markup, must finish with /&gt;", FATAL);
-            return false;
+            return this.fireError("invalid empty markup, must finish with /&gt;", FATAL);
         }
     }
     return true;
@@ -1240,7 +1229,7 @@ SAXParser.prototype.scanAttribute = function(qName, atts) {
             }
             this.scanAttribute(qName, atts);
         } else {
-            this.fireError("invalid attribute, must contain = between name and value", FATAL);
+            return this.fireError("invalid attribute, must contain = between name and value", FATAL);
         }
     }
 };
@@ -1268,24 +1257,21 @@ SAXParser.prototype.scanAttValue = function() {
                 attValue += this.nextCharRegExp(new RegExp("[" + quote + "<&]"));
             }
             if (this.ch === "<") {
-                this.fireError("invalid attribute value, must not contain &lt;", FATAL);
-                return false;
+                return this.fireError("invalid attribute value, must not contain &lt;", FATAL);
             }
             //current char is ending quote
             this.nextChar();
         //adding a message in that case
         } catch(e) {
             if (e instanceof EndOfInputException) {
-                this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
-                return false;
+                return this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
             } else {
                 throw e;
             }
         }
         return attValue;
     } else {
-        this.fireError("invalid attribute value declaration, must begin with a quote", FATAL);
-        return false;
+        return this.fireError("invalid attribute value declaration, must begin with a quote", FATAL);
     }
 };
 
@@ -1368,8 +1354,7 @@ SAXParser.prototype.scanEntityRef = function() {
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
-            this.fireError("document incomplete, entity reference must end with ;", FATAL);
-            return false;
+            return this.fireError("document incomplete, entity reference must end with ;", FATAL);
         } else {
             throw e;
         }
@@ -1393,12 +1378,10 @@ SAXParser.prototype.scanEndingTag = function() {
             this.nextChar(true);
             return true;
         } else {
-            this.fireError("invalid ending markup, does not finish with &gt;", FATAL);
-            return false;
+            return this.fireError("invalid ending markup, does not finish with &gt;", FATAL);
         }
     } else {
-        this.fireError("invalid ending markup : [" + qName.qName + "], markup name does not match current one : [" + currentElement + "]", FATAL);
-        return false;
+        return this.fireError("invalid ending markup : [" + qName.qName + "], markup name does not match current one : [" + currentElement + "]", FATAL);
     }
 };
 
@@ -1540,6 +1523,7 @@ SAXParser.prototype.fireError = function(message, gravity) {
         this.errorHandler.error(saxParseException);
     } else if (gravity === FATAL) {
         this.errorHandler.fatalError(saxParseException);
+        return false;
     }
 };
 
