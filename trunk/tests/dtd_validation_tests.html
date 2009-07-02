@@ -39,14 +39,30 @@
 		contentHandler.saxParseExceptions.length === 0);
     }
     
-    function testParse_catalog_dtd_simple() {
+    function parse_invalid(xml) {
+        try {
+            saxParser.parseString(xml);
+            assertTrue("there should have been a validation exception thrown", false);
+        } catch(e) {
+            document.getElementById("output").innerHTML += e.message;
+        }
+    }
+    
+    function testParse_catalog_dtd_invalid_markup() {
+        var fileAsText = loadFile("test_files/catalog_dtd_invalid_markup.xml");
+        parse_invalid(fileAsText);
+    }
+    
+    function testParse_catalog_dtd() {
         var fileAsText = loadFile("test_files/catalog_dtd.xml");
         parse(fileAsText);
     }
     
 	function runAllTests () {
         setUp();
-        testParse_catalog_dtd_simple();
+        testParse_catalog_dtd();
+        setUp();
+        testParse_catalog_dtd_invalid_markup();
         alert('done!');
 	}
 	
