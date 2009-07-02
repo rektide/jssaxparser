@@ -558,11 +558,14 @@ SAXParser.prototype.scanText = function() {
             if (externalId === undefined) {
                 this.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", ERROR);
             } else {
+                //if it is not a SAXException then security issue so ignores it
                 try {
                     this.includeEntity(e.entityName, entityStart, externalId);
-                    //there may need another state or just parse xml declaration here.
-                    this.state = STATE_XML_DECL;
-                } catch (e2) {}
+                } catch (e2) {
+                    if (e2 instanceof SAXException) {
+                        throw e2;
+                    }
+                }
             }
         } else {
             throw e;
@@ -625,13 +628,19 @@ SAXParser.prototype.getRelativeBaseUri = function() {
 
 /*
  entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
- entityName is only used in order to be SAX compliant with resolveEntity
+ entityName is used for SAX compliance with resolveEntity and recursion detection
  */
 SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, replacement) {
     //if it is an externalId, have to include the external content
     if (replacement instanceof ExternalId) {
         var relativeBaseUri = this.getRelativeBaseUri();
         replacement = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
+        //check for no recursion
+        if (new RegExp("&" + entityName + ";").test(replacement)) {
+            return this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
+        }
+        //there may be another xml declaration at beginning of external entity, not yet taken in account.
+        replacement = replacement.replace(/^<\?xml[^>]*>/, ""); 
     }
    // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
     this.xml = this.xml.substring(0, entityStartIndex).concat(replacement, this.xml.substr(this.index));

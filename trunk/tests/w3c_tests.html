@@ -167,7 +167,7 @@
         var contentHandler = new DomContentHandler();
         var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/097.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/not-sa/012.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);
@@ -182,7 +182,7 @@
     
     function runAllTests () {
         setUp();
-        testParseIndividual();
+        //testParseIndividual();
         
         testParse_xmlconf();
         testParse_jclark_xmltest_valid();
