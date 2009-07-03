@@ -282,10 +282,10 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
-    if (inputOrSystemId.publicId) {
-        var xmlAsString = this.loadFile(inputOrSystemId.publicId);
+    if (inputOrSystemId.systemId) {
+        var xmlAsString = this.loadFile(inputOrSystemId.systemId);
         //get the path to the file
-        var path = inputOrSystemId.publicId.substring(0, inputOrSystemId.publicId.lastIndexOf("/") + 1);
+        var path = inputOrSystemId.systemId.substring(0, inputOrSystemId.systemId.lastIndexOf("/") + 1);
         this.baseURI = path;
         this.parseString(xmlAsString);
     } else if (typeof inputOrSystemId == "string") {

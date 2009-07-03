@@ -164,9 +164,12 @@ Locator2Impl.prototype.getXMLVersion = function () {
  **/
 Locator2Impl.prototype.setEncoding = function (encoding) {
     this.encoding = encoding;
+    // A DOM version cannot set the xmlEncoding property on the document in the contentHandler as it is read-only
 };
 Locator2Impl.prototype.setXMLVersion = function (version) {
     this.version = version;
+    // A DOM version may wish to set the xmlVersion property on the document in the contentHandler (could use getContentHandler())
+    // the standAlone property on the contentHandler document (also related to the XML Declaration) may be set after determining the value from a call to the contentHandler's getFeature('http://xml.org/sax/features/is-standalone')
 };
 
 
