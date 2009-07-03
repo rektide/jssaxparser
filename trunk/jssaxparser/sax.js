@@ -48,9 +48,9 @@ var that = this; // probably window object
 /* Private static variables (constant) */
 
 var XML_VERSIONS = ['1.0', '1.1']; // All existing versions of XML; will check this.features['http://xml.org/sax/features/xml-1.1'] if parser supports XML 1.1
-var XML_VERSION = /1\.\d+/;
-var ENCODING = /[A-Za-z]([A-Za-z0-9._]|-)*/;
-var STANDALONE = /yes|no/;
+var XML_VERSION = /^1\.\d+$/;
+var ENCODING = /^[A-Za-z]([A-Za-z0-9._]|-)*$/;
+var STANDALONE = /^yes|no$/;
 
 /* XML Name regular expressions */
 var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF
