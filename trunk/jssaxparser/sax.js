@@ -47,6 +47,11 @@ var that = this; // probably window object
 
 /* Private static variables (constant) */
 
+var XML_VERSIONS = ['1.0', '1.1']; // All existing versions of XML; will check this.features['http://xml.org/sax/features/xml-1.1'] if parser supports XML 1.1
+var XML_VERSION = /1\.\d+/;
+var ENCODING = /[A-Za-z]([A-Za-z0-9._]|-)*/;
+var STANDALONE = /yes|no/;
+
 /* XML Name regular expressions */
 var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF
 var NOT_START_CHAR = new RegExp("[^" + NAME_START_CHAR + "]");
@@ -60,11 +65,8 @@ var CHAR_DATA_REGEXP = /[<&\]]/;
 
 var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
 var WS = new RegExp(WS_STR);
-
 var XML_DECL_BEGIN = new RegExp("\\?xml"+WS_STR);
-
 var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
-
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
 
 /* Scanner states */
@@ -161,7 +163,7 @@ Sax_QName.prototype.equals = function(qName) {
 //   implement them; however, we've added defaults, two of which (on namespaces) are required to be
 //   supported (though they don't need to support both true and false options).
 // FURTHER NOTES:
-// 1) the only meaningful methods at the moment are: 
+// 1) the only meaningful methods at the moment are:
 //  getProperty(), setProperty() (presently only for declarationHandler and lexicalHandler),
 //  getContentHandler(), setContentHandler(),
 //  getErrorHandler(), setErrorHandler(), and
@@ -198,13 +200,13 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.dtdHandler = dtdHandler;
     this.errorHandler = errorHandler;
     this.entityResolver = null;
-    
+
     try {
         this.namespaceSupport = new NamespaceSupport();
     } catch(e2) {
         throw new SAXException("you must import an implementation of NamespaceSupport, like NamespaceSupport.js, in the html", e2);
     }
-    
+
     this.disallowedGetProperty = [];
     this.disallowedGetFeature = [];
     this.disallowedSetProperty = [];
@@ -353,13 +355,13 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.state = STATE_XML_DECL;
     this.elementsStack = [];
     this.namespaceSupport.reset();
-    
+
     /* map between entity names and values */
     this.entities = {};
     /* map between parameter entity names and values
             the parameter entites are used inside the DTD */
     this.parameterEntities = {};
-    /* map between external entity names and URIs  */    
+    /* map between external entity names and URIs  */
     this.externalEntities = {};
     /* As an attribute is declared for an element, that should
                 contain a map between element name and a map between
@@ -550,7 +552,7 @@ SAXParser.prototype.scanText = function() {
             entityStart = this.index;
             this.nextChar(true);
             var ref = this.scanRef();
-            content += ref;            
+            content += ref;
             content += this.scanCharData();
         }
     } catch (e) {
@@ -642,7 +644,7 @@ SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, repla
             return this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
         }
         //there may be another xml declaration at beginning of external entity, not yet taken in account.
-        replacement = replacement.replace(/^<\?xml[^>]*>/, ""); 
+        replacement = replacement.replace(/^<\?xml[^>]*>/, "");
     }
    // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
     this.xml = this.xml.substring(0, entityStartIndex).concat(replacement, this.xml.substr(this.index));
@@ -700,6 +702,72 @@ SAXParser.prototype.scanComment = function() {
 };
 
 
+SAXParser.prototype.setEncoding = function (encoding) {
+    if (this.locator) {
+        this.locator.setEncoding(encoding);
+    }
+};
+
+SAXParser.prototype.setXMLVersion = function (version) {
+   if (version) {
+        if (XML_VERSIONS.indexOf(version) === -1) {
+            return this.fireError("The specified XML Version is not a presently valid XML version number", FATAL); // e.g. 1.5
+        }
+        else if (version === '1.1' && this.features['http://xml.org/sax/features/xml-1.1'] === false) { // Can remove this block once supporting
+            return this.fireError("The XML text specifies version 1.1, but this parser does not support this version.", FATAL);
+        }
+        this.properties['http://xml.org/sax/properties/document-xml-version'] = version;
+        if (this.locator) {
+            this.locator.setXMLVersion(version);
+        }
+        return true;
+    }
+    return false;
+};
+
+SAXParser.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, allowableValues) {
+    this.skipWhiteSpaces();
+    if (this.ch !== "?") {
+        var attName = this.scanName();
+        var attPos = allowableAtts.indexOf(attName);
+        if (attPos === -1) {
+            if (['version', 'encoding', 'standalone'].indexOf(attName) !== -1) {
+                return this.fireError('The attribute name "'+attName+'" was not expected at this position in an XML or text declaration. It was expected to be: '+allowableAtts.join(', '), FATAL);
+            }
+            return this.fireError('The attribute name "'+attName+'" does not match the allowable names in an XML or text declaration: '+allowableAtts.join(', '), FATAL);
+        }
+        this.skipWhiteSpaces();
+        if (this.ch === "=") {
+            this.nextChar();
+            if (this.ch === '"' || this.ch === "'") {
+                var quote = this.ch;
+                try {
+                    this.nextChar(true);
+                    var attValue = this.nextRegExp("[" + quote + "]");
+                    if (!allowableValues[attPos].test(attValue)) {
+                        return this.fireError('The attribute value "'+attValue+'" does not match the allowable values in an XML or text declaration: '+allowableValues[attPos], FATAL);
+                    }
+                    //current char is ending quote
+                    this.nextChar();
+                //adding a message in that case
+                } catch(e) {
+                    if (e instanceof EndOfInputException) {
+                        return this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
+                    } else {
+                        throw e;
+                    }
+                }
+            } else {
+                return this.fireError("invalid declaration attribute value declaration, must begin with a quote", FATAL);
+            }
+        } else {
+            return this.fireError("invalid declaration attribute, must contain = between name and value", FATAL);
+        }
+        return [attName, attValue];
+    }
+    return false;
+};
+
 // [23] XMLDecl ::= '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
 // [24] VersionInfo ::= S 'version' Eq (' VersionNum ' | " VersionNum ")
 // [80] EncodingDecl ::= S 'encoding' Eq ('"' EncName '"' |  "'" EncName "'" )
@@ -709,11 +777,93 @@ SAXParser.prototype.scanComment = function() {
 //
 // [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
 SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
+    // Fix: need to have conditions to trigger STATE_EXT_ENT somehow
+    // allow scanning of text declaration/external XML entity?
+    var version = null;
+    var encoding = 'UTF-8'; // If no explicit encoding and no byte-order mark
+
+  /* // Incomplete; also need to reconcile with explicit encoding
+    var byteOrderMark = BYTE_ORDER_MARK_START.test(this.xml.substr(this.index, 1));
+    if (/[\u0000\u3C00\u003C\u3C3F\u4C6F]/) {
+    }
+    if (byteOrderMark) { // May also be another encoding
+        switch(this.xml.substr(this.index, 1)) {
+            case '\uFEFF': // UCS-4, unusual octet order or UTF-16BE
+                encoding = 'UCS-4';
+                break;
+            case '\uFFFE': // UCS-4LE or UTF-16LE
+                encoding = 'UCS-4';
+                break;
+            case '\u0000': // UCS-4 unusual octet order
+                encoding = 'UCS-4';
+                break;
+            case '\uEFBB': // UTF-8
+                throw 'Since JavaScript makes characters available two bytes at a time, we cannot accept the three byte byte-order mark for UTF-8';
+            default:
+                throw 'Unexpected byte order mark value';
+        }
+        this.nextChar(true);
+        this.nextChar(true);
+    }
+*/
     if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 5))) {
         // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
-        this.nextGT();
+        this.nextNChar(5);
+        var standalone = false;
+        if (this.state === STATE_XML_DECL) {
+            var versionArr = this.scanXMLDeclOrTextDeclAttribute(['version'], [XML_VERSION]);
+            if (!versionArr) {
+                return this.fireError("An XML Declaration must have version information", FATAL);
+            }
+            version = versionArr[1];
+            this.setXMLVersion(version);
+            var encodingOrStandalone = this.scanXMLDeclOrTextDeclAttribute(['encoding', 'standalone'], [ENCODING, STANDALONE]);
+            if (encodingOrStandalone) {
+                if (encodingOrStandalone[0] === 'encoding') {
+                    encoding = encodingOrStandalone[1];
+                    this.setEncoding(encoding);
+                    
+                    var standaloneArr = this.scanXMLDeclOrTextDeclAttribute(['standalone'], [STANDALONE]);
+                    if (standaloneArr && standaloneArr === 'yes') {
+                        standalone = true;
+                    }
+                }
+            }
+            this.features['http://xml.org/sax/features/is-standalone'] = standalone;
+        }
+        else { // STATE_EXT_ENT
+            var versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['version', 'encoding'], [XML_VERSION, ENCODING]);
+            if (versionOrEncodingArr[0] === 'version') {
+                version = versionArr[1];
+                this.setXMLVersion(version);
+                versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['encoding'], [ENCODING]);
+            }
+            if (!versionOrEncodingArr) {
+                return this.fireError("A text declaration must possess explicit encoding information", FATAL);
+            }
+            encoding = versionOrEncodingArr[1]; // Fix: override that from BOM, etc. previous to this?
+            this.setEncoding(encoding);
+        }
+
+        this.skipWhiteSpaces();
+        if (this.ch !== "?") {
+            return this.fireError("invalid markup, '"+this.ch+"', in XML or text declaration where '?' expected", FATAL);
+        }
+        this.nextChar(true);
+        if (this.ch !== ">") {
+            return this.fireError("invalid markup inside XML or text declaration; must end with &gt;", FATAL);
+        }
         return true;
     } else {
+        if (this.state === STATE_XML_DECL) {
+            this.setXMLVersion('1.0'); // Assumed when no declaration present
+            if (this.locator) {
+//                if (!byteOrderMark) {
+                    this.locator.setEncoding(encoding);
+//                }
+            }
+            this.features['http://xml.org/sax/features/is-standalone'] = false;
+        }
         return false;
     }
 };
@@ -774,7 +924,7 @@ ExternalId.prototype.toString = function() {
 };
 
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
-//			| 'PUBLIC' S PubidLiteral S SystemLiteral 
+//			| 'PUBLIC' S PubidLiteral S SystemLiteral
 SAXParser.prototype.scanExternalId = function(externalId) {
     if (this.isFollowedBy("SYSTEM")) {
         this.nextChar();
@@ -815,7 +965,7 @@ SAXParser.prototype.scanPubIdLiteral = function(externalId) {
 actual char is non whitespace char after '['
 [28a]   	DeclSep	   ::=   	 PEReference | S
 [28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
-[29]   	markupdecl	   ::=   	 elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment  
+[29]   	markupdecl	   ::=   	 elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment
 */
 SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
     if (this.ch === "<") {
@@ -862,14 +1012,14 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
 };
 
 /*
-[70]   	EntityDecl	   ::=   	 GEDecl  | PEDecl  
+[70]   	EntityDecl	   ::=   	 GEDecl  | PEDecl
 [71]   	          GEDecl	   ::=   	'<!ENTITY' S  Name  S  EntityDef  S? '>'
 [72]   	PEDecl	   ::=   	'<!ENTITY' S '%' S Name S PEDef S? '>'
 [73]   	EntityDef	   ::=   	 EntityValue  | (ExternalID  NDataDecl?)
-[74]   	PEDef	   ::=   	EntityValue | ExternalID 
+[74]   	PEDef	   ::=   	EntityValue | ExternalID
 [75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
 			| 'PUBLIC' S PubidLiteral S SystemLiteral
-[76]   	NDataDecl	   ::=   	S 'NDATA' S Name 
+[76]   	NDataDecl	   ::=   	S 'NDATA' S Name
 */
 SAXParser.prototype.scanEntityDecl = function() {
     var entityName, externalId, entityValue;
@@ -921,7 +1071,7 @@ SAXParser.prototype.scanEntityDecl = function() {
 /*
 [9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
 			|  "'" ([^%&'] | PEReference | Reference)* "'"
-[68]   	EntityRef	   ::=   	'&' Name ';'	
+[68]   	EntityRef	   ::=   	'&' Name ';'
 [69]   	PEReference	   ::=   	'%' Name ';'
 */
 SAXParser.prototype.scanEntityValue = function() {
@@ -972,7 +1122,7 @@ SAXParser.prototype.scanPeRef = function(entityName) {
 
 /*
 [45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'
-[46]   	contentspec	   ::=   	'EMPTY' | 'ANY' | Mixed | children 
+[46]   	contentspec	   ::=   	'EMPTY' | 'ANY' | Mixed | children
 [51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
 			| '(' S? '#PCDATA' S? ')'
 [47]   	children	   ::=   	(choice | seq) ('?' | '*' | '+')?
@@ -1013,7 +1163,7 @@ SAXParser.prototype.scanAttlistDecl = function() {
 };
 
 /*
-[53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl 
+[53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl
 [60]   	DefaultDecl	   ::=   	'#REQUIRED' | '#IMPLIED'
 			| (('#FIXED' S)? AttValue)
 */
@@ -1111,7 +1261,7 @@ SAXParser.prototype.scanAttType = function() {
 
 /*
 [82]   	NotationDecl	   ::=   	'<!NOTATION' S  Name  S (ExternalID | PublicID) S? '>'
-[83]   	PublicID	   ::=   	'PUBLIC' S  PubidLiteral  
+[83]   	PublicID	   ::=   	'PUBLIC' S  PubidLiteral
 */
 SAXParser.prototype.scanNotationDecl = function() {
     if (this.isFollowedBy("NOTATION")) {
@@ -1362,7 +1512,7 @@ SAXParser.prototype.scanCharRef = function() {
 
 /*
 [68]  EntityRef ::= '&' Name ';'
-may return undefined, has to be managed differently depending on 
+may return undefined, has to be managed differently depending on
 */
 SAXParser.prototype.scanEntityRef = function() {
     try {
