@@ -158,20 +158,16 @@ Sax_QName.prototype.equals = function(qName) {
     return this.qName === qName.qName;
 };
 
-
-// The official SAX2 parse() method is not implemented (that can either accept an InputSource object or systemId string;
-//    for now the parseString() method can be used (and is more convenient than converting to an InputSource object).
+// NOTE: The following notes might not be perfectly up to date
+// The official SAX2 parse() method is not fully implemented (to accept an InputSource object constructed by a
+//    Reader (like StringReader would probably be best) or InputStream). For now the parseString() method can
+//    be used (and is more convenient than converting to an InputSource object).
 // The feature/property defaults are incomplete, as they really depend on the implementation and how far we
 //   implement them; however, we've added defaults, two of which (on namespaces) are required to be
 //   supported (though they don't need to support both true and false options).
 // FURTHER NOTES:
-// 1) the only meaningful methods at the moment are:
-//  getProperty(), setProperty() (presently only for declarationHandler and lexicalHandler),
-//  getContentHandler(), setContentHandler(),
-//  getErrorHandler(), setErrorHandler(), and
-//  our own parseString().
-// 2) No property should be retrieved or set publicly.
-// 3) The SAXParser constructor currently only works with these arguments: first (partially), second, and fourth (partially)
+// 1) No property should be retrieved or set publicly.
+// 2) The SAXParser constructor currently only works with these arguments: first (partially), second, third, and fourth (partially)
 
 // Currently does not call the following (as does the DefaultHandler2 class)
 // 1) on the contentHandler: ignorableWhitespace(), skippedEntity(), setDocumentLocator() (including with Locator2)
@@ -183,8 +179,8 @@ Sax_QName.prototype.equals = function(qName) {
 // Need to also implement Attributes2 in startElement (rename AttributesImpl to Attributes2Impl and add interface)
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode, locator) {
-    // Implements SAX2 XMLReader interface (except for parse() methods); also add http://www.saxproject.org/apidoc/org/xml/sax/helpers/XMLFilterImpl.html ?
-    // Since SAX2 doesn't specify constructors, this class is able to define its own behavior to accept a contentHandler, etc.
+    // Implements SAX2 XMLReader interface (except for parse() methods)
+    // XMLReader doesn't specify a constructor (though XMLFilterImpl does), so this class is able to define its own behavior to accept a contentHandler, etc.
 
     this.contentHandler = contentHandler;
     this.locator = locator;
@@ -239,9 +235,9 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
     this.properties['http://xml.org/sax/properties/document-xml-version'] = null;
-    this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode;
+    this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode; // Not implemented
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
-    this.properties['http://xml.org/sax/properties/xml-string'] = null;
+    this.properties['http://xml.org/sax/properties/xml-string'] = null; // Not implemented
 }
 
 // BEGIN SAX2 XMLReader INTERFACE
