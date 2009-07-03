@@ -215,6 +215,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
 
     // For official features and properties, see http://www.saxproject.org/apidoc/org/xml/sax/package-summary.html#package_description
     // We can define our own as well
+    // Except where specified, all features and properties should be supported (in at least the default configuration)
     this.features = {}; // Boolean values
     this.features['http://xml.org/sax/features/external-general-entities'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/external-parameter-entities'] = false; // Not supported yet
@@ -235,9 +236,9 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
     this.properties['http://xml.org/sax/properties/document-xml-version'] = null;
-    this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode; // Not implemented
+    this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode; // Not supported yet
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
-    this.properties['http://xml.org/sax/properties/xml-string'] = null; // Not implemented
+    this.properties['http://xml.org/sax/properties/xml-string'] = null; // Not supported yet
 }
 
 // BEGIN SAX2 XMLReader INTERFACE
