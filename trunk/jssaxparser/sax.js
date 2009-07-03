@@ -66,6 +66,8 @@ var CHAR_DATA_REGEXP = /[<&\]]/;
 var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
 var WS = new RegExp(WS_STR);
 var XML_DECL_BEGIN = new RegExp("\\?xml"+WS_STR);
+var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_STR+'|\\?)', 'i');
+
 var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
 
@@ -379,6 +381,13 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
         return this.fireError("empty document", FATAL);
     }
     try {
+        // We must test for the XML Declaration before processing any whitespace
+        if (!this.scanXMLDeclOrTextDecl()) {
+            this.state = STATE_PROLOG;
+        } else {
+            //if it was a XMLDecl (only one XMLDecl is permitted)
+            this.state = STATE_PROLOG;
+        }
         while (this.index < this.length) {
             this.next();
         }
@@ -440,15 +449,7 @@ SAXParser.prototype.next = function() {
 //White Space
 // [3] S ::=(#x20 | #x9 | #xD | #xA)+
 SAXParser.prototype.scanLT = function() {
-    if (this.state === STATE_XML_DECL) {
-        if (!this.scanXMLDeclOrTextDecl()) {
-            this.state = STATE_PROLOG;
-            this.scanLT();
-        } else {
-            //if it was a XMLDecl (only one XMLDecl is permitted)
-            this.state = STATE_PROLOG;
-        }
-    } else if (this.state === STATE_PROLOG) {
+    if (this.state === STATE_PROLOG) {
         if (this.ch === "!") {
             this.nextChar(true);
             if (!this.scanComment()) {
@@ -806,9 +807,9 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
         this.nextChar(true);
     }
 */
-    if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 5))) {
+    if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 6))) {
         // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
-        this.nextNChar(5);
+        this.nextNChar(6);
         var standalone = false;
         if (this.state === STATE_XML_DECL) {
             var versionArr = this.scanXMLDeclOrTextDeclAttribute(['version'], [XML_VERSION]);
@@ -872,7 +873,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
-    if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 5))) {
+    if ((XML_DECL_BEGIN_FALSE).test(this.xml.substr(this.index, 6))) {
         return this.fireError("XML Declaration cannot occur past the very beginning of the document.", FATAL);
     }
     this.nextChar(true);
