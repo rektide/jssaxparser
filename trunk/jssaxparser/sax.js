@@ -714,7 +714,7 @@ SAXParser.prototype.setXMLVersion = function (version) {
         if (XML_VERSIONS.indexOf(version) === -1) {
             return this.fireError("The specified XML Version is not a presently valid XML version number", FATAL); // e.g. 1.5
         }
-        else if (version === '1.1' && this.features['http://xml.org/sax/features/xml-1.1'] === false) { // Can remove this block once supporting
+        else if (version === '1.1' && this.features['http://xml.org/sax/features/xml-1.1'] === false) {
             return this.fireError("The XML text specifies version 1.1, but this parser does not support this version.", FATAL);
         }
         this.properties['http://xml.org/sax/properties/document-xml-version'] = version;
