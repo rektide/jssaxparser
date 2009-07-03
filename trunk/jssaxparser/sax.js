@@ -282,17 +282,19 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
+    var systemId;
     if (inputOrSystemId.systemId) {
-        var xmlAsString = this.loadFile(inputOrSystemId.systemId);
-        //get the path to the file
-        var path = inputOrSystemId.systemId.substring(0, inputOrSystemId.systemId.lastIndexOf("/") + 1);
-        this.baseURI = path;
-        this.parseString(xmlAsString);
-    } else if (typeof inputOrSystemId == "string") {
-        this.parseString(inputOrSystemId);
+        systemId = inputOrSystemId.systemId;
+    } else if (typeof inputOrSystemId === "string") {
+        systemId = inputOrSystemId;
     } else {
         throw 'Not implemented: at present you must use our non-SAX parseString() method';
     }
+    var xmlAsString = this.loadFile(systemId);
+    //get the path to the file
+    var path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
+    this.baseURI = path;
+    this.parseString(xmlAsString);
 };
 SAXParser.prototype.setContentHandler = function (handler) { // (ContentHandler)
     // Allow an application to register a content event handler (void).
