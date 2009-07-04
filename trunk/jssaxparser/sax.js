@@ -238,7 +238,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/xmlns-uris'] = false;
     this.features['http://xml.org/sax/features/xml-1.1'] = false; // Not supported yet
 
-    // Our custom features:
+    // Our custom features (as for other features, retrieve/set publicly via getFeature/setFeature):
     // We are deliberately non-conformant by default (for performance reasons)
     this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict'] = false;
     if (this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict']) {
