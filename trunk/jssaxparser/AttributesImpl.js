@@ -199,10 +199,6 @@ AttributesImpl.prototype.addAttribute = function (uri, localName, qName, type, v
     }
     this.attsArray.push(new Sax_Attribute(uri, prefix, localName, qName, type, value));
 };
-//in order not to parse qname several times, add that convenience method
-AttributesImpl.prototype.addAttribute = function (uri, prefix, localName, qName, type, value) {
-    this.attsArray.push(new Sax_Attribute(uri, prefix, localName, qName, type, value));
-};
 AttributesImpl.prototype.clear = function () {
     this.attsArray = [];
 };
@@ -237,7 +233,11 @@ AttributesImpl.prototype.setURI = function (index, uri) {
 AttributesImpl.prototype.setValue = function (index, value) {
     this.attsArray[index].value = value;
 };
-
+// CUSTOM CONVENIENCE METHODS
+//in order not to parse qname several times
+AttributesImpl.prototype.addPrefixedAttribute = function (uri, prefix, localName, qName, type, value) {
+    this.attsArray.push(new Sax_Attribute(uri, prefix, localName, qName, type, value));
+};
 
 /*
 Attributes2Impl()

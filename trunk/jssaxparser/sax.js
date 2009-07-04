@@ -1430,7 +1430,7 @@ SAXParser.prototype.scanAttribute = function(qName, atts) {
                     this.fireError("multiple declarations for same attribute : [" + attQName.qName + "]", ERROR);
                 } else {
                     //we do not know yet the namespace URI
-                    atts.addAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
+                    atts.addPrefixedAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
                 }
             }
             this.scanAttribute(qName, atts);
