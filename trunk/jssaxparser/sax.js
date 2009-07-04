@@ -800,17 +800,32 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
     }
     if (byteOrderMark) { // May also be another encoding
         switch(this.xml.substr(this.index, 1)) {
-            case '\uFEFF': // UCS-4, unusual octet order or UTF-16BE
-                encoding = 'UCS-4';
+            case '\uFEFF':
+                if (this.xml.substr(this.index+1, 1) === '\u0000') {
+                    encoding = 'UCS-4'; // unusual octet order (3412)
+                }
+                else {
+                    encoding = 'UTF-16'; // big-endian
+                }
                 break;
             case '\uFFFE': // UCS-4LE or UTF-16LE
-                encoding = 'UCS-4';
+                if (this.xml.substr(this.index+1, 1) === '\u0000') {
+                    encoding = 'UCS-4'; // little-endian machine (4321)
+                }
+                else {
+                    encoding = 'UTF-16'; // little-endian
+                }
                 break;
-            case '\u0000': // UCS-4 unusual octet order
-                encoding = 'UCS-4';
+            case '\u0000': // UCS-4 unusual octet order (2143)
+                if (this.xml.substr(this.index+1, 1) === '\uFEFF' || this.xml.substr(this.index+1, 1) === '\uFFFE') { // big-endian machine (1234 order) OR unusual octet order (2143)
+                    encoding = 'UCS-4'; // unusual octet order (3412)
+                }
                 break;
             case '\uEFBB': // UTF-8
-                throw 'Since JavaScript makes characters available two bytes at a time, we cannot accept the three byte byte-order mark for UTF-8';
+                if (this.xml.substr(this.index+1, 1).charCodeAt(0) >> 8 === 0xEF) {
+                    encoding = 'UTF-8'; // explicit
+                }
+                encoding = 'UTF-8'; // assumed
             default:
                 throw 'Unexpected byte order mark value';
         }
