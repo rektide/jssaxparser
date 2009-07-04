@@ -58,10 +58,15 @@ var NOT_START_CHAR = new RegExp("[^" + NAME_START_CHAR + "]");
 var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
 
-//for performance reason I do not want to be conformant here
 //[2]   	Char	   ::=   	#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
-//var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
-var CHAR_DATA_REGEXP = /[<&\]]/;
+//for performance reason I will not be conformant in applying this within the class (see CHAR_DATA_REGEXP)
+var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
+var NOT_CHAR = '[^'+CHAR+']';
+var NOT_A_CHAR = new RegExp(NOT_CHAR);
+var NOT_A_CHAR_ERROR_CB = function () {
+    return this.fireError("invalid XML character, decimal code number '"+this.ch.charCodeAt(0)+"'", FATAL);
+};
+var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB}
 
 var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
 var WS = new RegExp(WS_STR);
@@ -232,6 +237,16 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/validation'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/xmlns-uris'] = false;
     this.features['http://xml.org/sax/features/xml-1.1'] = false; // Not supported yet
+
+    // Our custom features:
+    // We are deliberately non-conformant by default (for performance reasons)
+    this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict'] = false;
+    if (this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict']) {
+        this.CHAR_DATA_REGEXP = new RegExp(NOT_CHAR+'|[<&\\]]');
+    }
+    else {
+        this.CHAR_DATA_REGEXP = /[<&\]]/;
+    }
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
@@ -410,6 +425,9 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
 };
 
 SAXParser.prototype.next = function() {
+    if (this.ll === undefined) {
+        this.ll = 0;
+    }
     this.skipWhiteSpaces();
     if (this.ch === ">") {
         this.nextChar();
@@ -417,6 +435,11 @@ SAXParser.prototype.next = function() {
         this.nextChar();
         this.scanLT();
     } else if (this.elementsStack.length > 0) {
+        this.ll++;
+        if (this.ll > 2645) {
+            alert('over')
+            throw '';
+        }
         this.scanText();
     //if elementsStack is empty it is text misplaced
     } else {
@@ -580,14 +603,14 @@ SAXParser.prototype.scanText = function() {
 
 // 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
 SAXParser.prototype.scanCharData = function() {
-    var content = this.nextCharRegExp(CHAR_DATA_REGEXP);
+    var content = this.nextCharRegExp(this.CHAR_DATA_REGEXP, NOT_A_CHAR_CB_OBJ);
     //if found a "]", must ensure that it is not followed by "]>"
     while (this.ch === "]") {
         this.nextChar(true);
         if (this.isFollowedBy("]>")) {
             this.fireError("Text may not contain a literal ']]&gt;' sequence", ERROR);
         }
-        content += "]" + this.nextCharRegExp(CHAR_DATA_REGEXP);
+        content += "]" + this.nextCharRegExp(this.CHAR_DATA_REGEXP, NOT_A_CHAR_CB_OBJ);
     }
     return content;
 };
@@ -1632,10 +1655,13 @@ SAXParser.prototype.nextRegExp = function(regExp) {
 memory usage reduction of nextRegExp, compares char by char, does not extract this.xml.substr(this.index)
 for flexibility purpose, current char at end of that method is the character of the regExp found in xml
 */
-SAXParser.prototype.nextCharRegExp = function(regExp) {
+SAXParser.prototype.nextCharRegExp = function(regExp, continuation) {
     for (var oldIndex = this.index ; this.index < this.length ; this.index++) {
         this.ch = this.xml.charAt(this.index);
         if (regExp.test(this.ch)) {
+            if (continuation && continuation.pattern.test(this.ch)) {
+                return continuation.cb.call(this);
+            }
             return this.xml.substring(oldIndex, this.index);
         }
     }
