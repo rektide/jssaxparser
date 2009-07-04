@@ -66,7 +66,7 @@ var NOT_A_CHAR = new RegExp(NOT_CHAR);
 var NOT_A_CHAR_ERROR_CB = function () {
     return this.fireError("invalid XML character, decimal code number '"+this.ch.charCodeAt(0)+"'", FATAL);
 };
-var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB}
+var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB};
 
 var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
 var WS = new RegExp(WS_STR);
@@ -426,9 +426,6 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
 };
 
 SAXParser.prototype.next = function() {
-    if (this.ll === undefined) {
-        this.ll = 0;
-    }
     this.skipWhiteSpaces();
     if (this.ch === ">") {
         this.nextChar();
@@ -436,11 +433,6 @@ SAXParser.prototype.next = function() {
         this.nextChar();
         this.scanLT();
     } else if (this.elementsStack.length > 0) {
-        this.ll++;
-        if (this.ll > 2645) {
-            alert('over')
-            throw '';
-        }
         this.scanText();
     //if elementsStack is empty it is text misplaced
     } else {
