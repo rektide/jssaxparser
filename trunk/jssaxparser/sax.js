@@ -792,55 +792,21 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
     // Fix: need to have conditions to trigger STATE_EXT_ENT somehow
     // allow scanning of text declaration/external XML entity?
     var version = null;
-    var encoding = 'UTF-8'; // If no explicit encoding and no byte-order mark
+    var encoding = 'UTF-8'; // As the default with no declaration is UTF-8, we assume it is such, unless the
+    // encoding is indicated explicitly, in which case we will trust that. We are therefore not able to discern
+    // UTF-16 represented without an explicit declaration nor report any inconsistencies between header encoding,
+    // byte-order mark, or explicit encoding information (see next note).
 
-    var firstChar = this.xml.substr(this.index, 1);
-    var secondChar = this.xml.substr(this.index+1, 1);
-    var bomEncoding;
-    
-    var byteOrderMark = BYTE_ORDER_MARK_START.test(firstChar);
-    if (byteOrderMark) { // May also be another encoding
-        switch(firstChar) {
-            case '\uFEFF':
-                if (secondChar === '\u0000') {
-                    bomEncoding = 'UCS-4'; // unusual octet order (3412)
-                }
-                else {
-                    bomEncoding = 'UTF-16'; // big-endian
-                }
-                break;
-            case '\uFFFE': // UCS-4LE or UTF-16LE
-                if (secondChar === '\u0000') {
-                    bomEncoding = 'UCS-4'; // little-endian machine (4321)
-                }
-                else {
-                    bomEncoding = 'UTF-16'; // little-endian
-                }
-                break;
-            case '\u0000':
-                if (secondChar === '\uFEFF' || secondChar === '\uFFFE') { // UCS-4: big-endian machine (1234 order) OR unusual octet order (2143)
-                    bomEncoding = 'UCS-4';
-                }
-                /*
-                // Other possibility here is no byte order mark, but we need to check declaration anyhow
-                if (secondChar === '\u003C' || secondChar === '\u3C00') { // UCS-4 or other supported 32-bit encoding (big-endian (1234) or unusual byte orders (2143))
-                }
-                */
-                break;
-            case '\uEFBB': // UTF-8
-                if (secondChar.charCodeAt(0) >> 8 === 0xEF) {
-                    bomEncoding = 'UTF-8'; // explicit
-                    throw 'We cannot read single bytes in JavaScript, so cannot reliably represent the rest of the document directly as UTF-8'; // U+EFBB is a private use area character
-                }
-            default:
-                throw 'Unexpected byte order mark value';
-        }
-        this.nextChar(true);
-        this.nextChar(true);
-    }
+    // If we were processing individual bytes (e.g., if we represented XML as an array of bytes), we
+    //    could detect the encoding ourselves, including byte-order mark (and also allow checking
+    //    against any header encoding), but since JavaScript converts pages for us into UTF-16 (two bytes per
+    //    character), we cannot use the same approach as the InputSource with the InputStream (byteStream)
+    //    constructor in Java SAX2; instead we take an approach more similar to the StringReader (Reader characterStream
+    //    constructor), though we haven't implemented that API at present: http://java.sun.com/j2se/1.4.2/docs/api/java/io/StringReader.html
+    // This script will therefore not detect an inconsistency between the encoding of the original document (since
+    //    we don't know what it is) and the encoding indicated in its (optional) XML Declaration/Text Declaration
 
     if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 6))) {
-        // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
         this.nextNChar(6);
         var standalone = false;
         if (this.state === STATE_XML_DECL) {
@@ -874,7 +840,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
             if (!versionOrEncodingArr) {
                 return this.fireError("A text declaration must possess explicit encoding information", FATAL);
             }
-            encoding = versionOrEncodingArr[1]; // Fix: override that from BOM, etc. previous to this?
+            encoding = versionOrEncodingArr[1];
             this.setEncoding(encoding);
         }
 
@@ -891,9 +857,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
         if (this.state === STATE_XML_DECL) {
             this.setXMLVersion('1.0'); // Assumed when no declaration present
             if (this.locator) {
-//                if (!byteOrderMark) {
-                    this.locator.setEncoding(encoding);
-//                }
+                this.locator.setEncoding(encoding);
             }
             this.features['http://xml.org/sax/features/is-standalone'] = false;
         }
