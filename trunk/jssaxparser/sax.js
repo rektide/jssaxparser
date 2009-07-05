@@ -1,4 +1,4 @@
-/*global ActiveXObject, AttributesImpl, ExternalId, NamespaceSupport, XMLHttpRequest, location, window */
+/*global ActiveXObject, AttributesImpl, NamespaceSupport, XMLHttpRequest, location, window */
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
@@ -47,6 +47,19 @@ var that = this; // probably window object
 
 /* Private static variables (constant) */
 
+/* Error values */
+var WARNING = "W";
+var ERROR = "E";
+var FATAL = "F";
+
+/* Scanner states */
+var STATE_XML_DECL                  =  0;
+var STATE_PROLOG                    =  1;
+var STATE_PROLOG_DOCTYPE_DECLARED   =  2;
+var STATE_ROOT_ELEMENT              =  3;
+var STATE_CONTENT                   =  4;
+var STATE_TRAILING_MISC             =  5;
+
 var XML_VERSIONS = ['1.0', '1.1']; // All existing versions of XML; will check this.features['http://xml.org/sax/features/xml-1.1'] if parser supports XML 1.1
 var XML_VERSION = /^1\.\d+$/;
 var ENCODING = /^[A-Za-z]([A-Za-z0-9._]|-)*$/;
@@ -75,19 +88,6 @@ var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_STR+'|\\?)', 'i');
 
 var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
-
-/* Scanner states */
-var STATE_XML_DECL                  =  0;
-var STATE_PROLOG                    =  1;
-var STATE_PROLOG_DOCTYPE_DECLARED   =  2;
-var STATE_ROOT_ELEMENT              =  3;
-var STATE_CONTENT                   =  4;
-var STATE_TRAILING_MISC             =  5;
-
-/* Error values */
-var WARNING = "W";
-var ERROR = "E";
-var FATAL = "F";
 
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
 function SAXException(message, exception) { // java.lang.Exception
@@ -137,15 +137,18 @@ SAXParseException.prototype.getLineNumber = function () {};
 SAXParseException.prototype.getPublicId = function () {};
 SAXParseException.prototype.getSystemId = function () {};
 
+
+// CUSTOM EXCEPTION CLASSES
+// Our own exception class; should this perhaps extend SAXParseException?
+function EndOfInputException() {}
+
 function InternalEntityNotFoundException (entityName) {
     this.entityName = entityName;
 }
 InternalEntityNotFoundException.prototype = new SAXParseException();
 InternalEntityNotFoundException.constructor = InternalEntityNotFoundException;
 
-// Our own exception; should this perhaps extend SAXParseException?
-function EndOfInputException() {}
-
+// CUSTOM HELPER CLASSES
 /*
 in case of attributes, empty prefix will be null because default namespace is null for attributes
 in case of elements, empty prefix will be "".
@@ -162,6 +165,18 @@ function Sax_QName(prefix, localName) {
 Sax_QName.prototype.equals = function(qName) {
     return this.qName === qName.qName;
 };
+
+/*
+Class for storing publicId and systemId
+*/
+function ExternalId() {
+    this.publicId = null;
+    this.systemId = null;
+}
+ExternalId.prototype.toString = function() {
+    return "ExternalId";
+};
+
 
 // NOTE: The following notes might not be perfectly up to date
 // The official SAX2 parse() method is not fully implemented (to accept an InputSource object constructed by a
@@ -910,17 +925,6 @@ SAXParser.prototype.scanDoctypeDecl = function() {
     } else {
         return this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
     }
-};
-
-/*
-object to store publicId and systemId
-*/
-function ExternalId() {
-    this.publicId = null;
-    this.systemId = null;
-}
-ExternalId.prototype.toString = function() {
-    return "ExternalId";
 };
 
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
