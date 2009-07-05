@@ -794,45 +794,51 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
     var version = null;
     var encoding = 'UTF-8'; // If no explicit encoding and no byte-order mark
 
-  /* // Incomplete; also need to reconcile with explicit encoding
-    var byteOrderMark = BYTE_ORDER_MARK_START.test(this.xml.substr(this.index, 1));
-    if (/[\u0000\u3C00\u003C\u3C3F\u4C6F]/) {
-    }
+    var firstChar = this.xml.substr(this.index, 1);
+    var secondChar = this.xml.substr(this.index+1, 1);
+    var bomEncoding;
+    
+    var byteOrderMark = BYTE_ORDER_MARK_START.test(firstChar);
     if (byteOrderMark) { // May also be another encoding
-        switch(this.xml.substr(this.index, 1)) {
+        switch(firstChar) {
             case '\uFEFF':
-                if (this.xml.substr(this.index+1, 1) === '\u0000') {
-                    encoding = 'UCS-4'; // unusual octet order (3412)
+                if (secondChar === '\u0000') {
+                    bomEncoding = 'UCS-4'; // unusual octet order (3412)
                 }
                 else {
-                    encoding = 'UTF-16'; // big-endian
+                    bomEncoding = 'UTF-16'; // big-endian
                 }
                 break;
             case '\uFFFE': // UCS-4LE or UTF-16LE
-                if (this.xml.substr(this.index+1, 1) === '\u0000') {
-                    encoding = 'UCS-4'; // little-endian machine (4321)
+                if (secondChar === '\u0000') {
+                    bomEncoding = 'UCS-4'; // little-endian machine (4321)
                 }
                 else {
-                    encoding = 'UTF-16'; // little-endian
+                    bomEncoding = 'UTF-16'; // little-endian
                 }
                 break;
-            case '\u0000': // UCS-4 unusual octet order (2143)
-                if (this.xml.substr(this.index+1, 1) === '\uFEFF' || this.xml.substr(this.index+1, 1) === '\uFFFE') { // big-endian machine (1234 order) OR unusual octet order (2143)
-                    encoding = 'UCS-4'; // unusual octet order (3412)
+            case '\u0000':
+                if (secondChar === '\uFEFF' || secondChar === '\uFFFE') { // UCS-4: big-endian machine (1234 order) OR unusual octet order (2143)
+                    bomEncoding = 'UCS-4';
                 }
+                /*
+                // Other possibility here is no byte order mark, but we need to check declaration anyhow
+                if (secondChar === '\u003C' || secondChar === '\u3C00') { // UCS-4 or other supported 32-bit encoding (big-endian (1234) or unusual byte orders (2143))
+                }
+                */
                 break;
             case '\uEFBB': // UTF-8
-                if (this.xml.substr(this.index+1, 1).charCodeAt(0) >> 8 === 0xEF) {
-                    encoding = 'UTF-8'; // explicit
+                if (secondChar.charCodeAt(0) >> 8 === 0xEF) {
+                    bomEncoding = 'UTF-8'; // explicit
+                    throw 'We cannot read single bytes in JavaScript, so cannot reliably represent the rest of the document directly as UTF-8'; // U+EFBB is a private use area character
                 }
-                encoding = 'UTF-8'; // assumed
             default:
                 throw 'Unexpected byte order mark value';
         }
         this.nextChar(true);
         this.nextChar(true);
     }
-*/
+
     if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 6))) {
         // Fix: Check for standalone/version and and report as features; version and encoding can be given to Locator2
         this.nextNChar(6);
