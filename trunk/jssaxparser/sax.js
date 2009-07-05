@@ -737,47 +737,50 @@ SAXParser.prototype.setXMLVersion = function (version) {
     }
 };
 
-SAXParser.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, allowableValues) {
+SAXParser.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, allowableValues, requireWS) {
+    if (this.ch === "?") {
+        return false;
+    }
+    if (requireWS && !WS.test(this.ch)) {
+        return this.fireError('The XML Declaration or Text Declaration must possess a space between the version/encoding/standalone information.', FATAL);
+    }
     this.skipWhiteSpaces();
-    if (this.ch !== "?") {
-        var attName = this.scanName();
-        var attPos = allowableAtts.indexOf(attName);
-        if (attPos === -1) {
-            if (['version', 'encoding', 'standalone'].indexOf(attName) !== -1) {
-                return this.fireError('The attribute name "'+attName+'" was not expected at this position in an XML or text declaration. It was expected to be: '+allowableAtts.join(', '), FATAL);
-            }
-            return this.fireError('The attribute name "'+attName+'" does not match the allowable names in an XML or text declaration: '+allowableAtts.join(', '), FATAL);
+    var attName = this.scanName();
+    var attPos = allowableAtts.indexOf(attName);
+    if (attPos === -1) {
+        if (['version', 'encoding', 'standalone'].indexOf(attName) !== -1) {
+            return this.fireError('The attribute name "'+attName+'" was not expected at this position in an XML or text declaration. It was expected to be: '+allowableAtts.join(', '), FATAL);
         }
-        this.skipWhiteSpaces();
-        if (this.ch === "=") {
-            this.nextChar();
-            if (this.ch === '"' || this.ch === "'") {
-                var quote = this.ch;
-                try {
-                    this.nextChar(true);
-                    var attValue = this.nextRegExp("[" + quote + "]");
-                    if (!allowableValues[attPos].test(attValue)) {
-                        return this.fireError('The attribute value "'+attValue+'" does not match the allowable values in an XML or text declaration: '+allowableValues[attPos], FATAL);
-                    }
-                    //current char is ending quote
-                    this.nextChar();
-                //adding a message in that case
-                } catch(e) {
-                    if (e instanceof EndOfInputException) {
-                        return this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
-                    } else {
-                        throw e;
-                    }
+        return this.fireError('The attribute name "'+attName+'" does not match the allowable names in an XML or text declaration: '+allowableAtts.join(', '), FATAL);
+    }
+    this.skipWhiteSpaces();
+    if (this.ch === "=") {
+        this.nextChar();
+        if (this.ch === '"' || this.ch === "'") {
+            var quote = this.ch;
+            try {
+                this.nextChar(true);
+                var attValue = this.nextRegExp("[" + quote + "]");
+                if (!allowableValues[attPos].test(attValue)) {
+                    return this.fireError('The attribute value "'+attValue+'" does not match the allowable values in an XML or text declaration: '+allowableValues[attPos], FATAL);
                 }
-            } else {
-                return this.fireError("invalid declaration attribute value declaration, must begin with a quote", FATAL);
+                //current char is ending quote
+                this.nextChar(true);
+            //adding a message in that case
+            } catch(e) {
+                if (e instanceof EndOfInputException) {
+                    return this.fireError("document incomplete, attribute value declaration must end with a quote", FATAL);
+                } else {
+                    throw e;
+                }
             }
         } else {
-            return this.fireError("invalid declaration attribute, must contain = between name and value", FATAL);
+            return this.fireError("invalid declaration attribute value declaration, must begin with a quote", FATAL);
         }
-        return [attName, attValue];
+    } else {
+        return this.fireError("invalid declaration attribute, must contain = between name and value", FATAL);
     }
-    return false;
+    return [attName, attValue];
 };
 
 // [23] XMLDecl ::= '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
@@ -816,13 +819,13 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
             }
             version = versionArr[1];
             this.setXMLVersion(version);
-            var encodingOrStandalone = this.scanXMLDeclOrTextDeclAttribute(['encoding', 'standalone'], [ENCODING, STANDALONE]);
+            var encodingOrStandalone = this.scanXMLDeclOrTextDeclAttribute(['encoding', 'standalone'], [ENCODING, STANDALONE], true);
             if (encodingOrStandalone) {
                 if (encodingOrStandalone[0] === 'encoding') {
                     encoding = encodingOrStandalone[1];
                     this.setEncoding(encoding);
                     
-                    var standaloneArr = this.scanXMLDeclOrTextDeclAttribute(['standalone'], [STANDALONE]);
+                    var standaloneArr = this.scanXMLDeclOrTextDeclAttribute(['standalone'], [STANDALONE], true);
                     if (standaloneArr && standaloneArr === 'yes') {
                         standalone = true;
                     }
@@ -835,7 +838,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
             if (versionOrEncodingArr[0] === 'version') {
                 version = versionArr[1];
                 this.setXMLVersion(version);
-                versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['encoding'], [ENCODING]);
+                versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['encoding'], [ENCODING], true);
             }
             if (!versionOrEncodingArr) {
                 return this.fireError("A text declaration must possess explicit encoding information", FATAL);
