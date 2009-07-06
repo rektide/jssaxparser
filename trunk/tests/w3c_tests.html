@@ -5,6 +5,7 @@
     <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
     <script type="text/javascript" src="../jssaxparser/AttributesImpl.js"></script>
     <script type="text/javascript" src="../jssaxparser/NamespaceSupport.js"></script>
+    <script type="text/javascript" src="../jssaxparser/InputSource.js"></script>
     <script type="text/javascript" src="../jssaxparser/sax.js"></script>
     <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
     <script type="text/javascript" src="../jssaxparser/DefaultHandlers.js"></script>
@@ -48,7 +49,7 @@
     function parseTestCase(uri) {
         var contentHandler2 = new DefaultHandler2();
         var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
-        saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
+        saxParser2.parse("xmlconf/xmltest/" + uri);
         throwNotFatalException(saxParser2.errorHandler);
     }
 
@@ -174,10 +175,6 @@
         }
         //for breakpoint
         var a = "A";
-    }
-    
-    function InputSource(systemId) {
-        this.systemId = systemId;
     }
     
     function runAllTests () {

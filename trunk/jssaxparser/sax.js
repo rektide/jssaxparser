@@ -35,11 +35,7 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
-// NOTE: We have at least a skeleton for all non-deprecated, non-adapter SAX2 classes/interfaces/exceptions,
-// except for InputSource: http://www.saxproject.org/apidoc/org/xml/sax/InputSource.html which works largely
-// with streams; we use our own parseString() instead of XMLReader's parse() which expects the InputSouce (or
-// systemId); note that resolveEntity() on EntityResolver and also getExternalSubset() on EntityResolver2 return
-// an InputSource; Locator and Locator2 also have notes on InputSource
+// NOTE: We have at least a skeleton for all non-deprecated, non-adapter SAX2 classes/interfaces/exceptions
 
 (function () { // Begin namespace
 
@@ -309,21 +305,36 @@ SAXParser.prototype.getProperty = function (name) { // (java.lang.String)
     }
     return this.properties[name];
 };
+
+// For convenience, when dealing with strings as input, one can simply use our own parseString() instead of
+// XMLReader's parse() which expects an InputSouce (or systemId)
+// Note: The InputSource argument is not fully supported, as the parser currently does not use its methods for parsing
 SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input OR java.lang.String systemId)
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
-    var systemId;
-    if (inputOrSystemId.systemId) {
-        systemId = inputOrSystemId.systemId;
+    var systemId, xmlAsString, path;
+    if (inputOrSystemId instanceof InputSource) {
+        var charStream = inputOrSystemId.getCharacterStream();
+        if (charStream && charStream instanceof StringReader) {
+            xmlAsString = charStream.s; // Fix: Just a hack, until we may support Reader's methods
+            systemId = inputOrSystemId.getSystemId();
+        }
+        else {
+            // Priority for the parser is characterStream, byteStream, then URI, but we only really implemented the systemId (URI), so we automatically go with that
+            systemId = inputOrSystemId.getSystemId();
+        }
     } else if (typeof inputOrSystemId === "string") {
         systemId = inputOrSystemId;
     } else {
         throw 'Not implemented: at present you must use our non-SAX parseString() method';
     }
-    var xmlAsString = this.loadFile(systemId);
+    if (!xmlAsString) { // If set above
+        // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
+        xmlAsString = this.loadFile(systemId);
+    }
     //get the path to the file
-    var path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
+    path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
     this.baseURI = path;
     this.parseString(xmlAsString);
 };
