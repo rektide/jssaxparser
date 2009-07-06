@@ -327,7 +327,7 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     } else if (typeof inputOrSystemId === "string") {
         systemId = inputOrSystemId;
     } else {
-        throw 'Not implemented: at present you must use our non-SAX parseString() method';
+        throw "The argument supplied to SAXParser's parse() method was invalid";
     }
     if (!xmlAsString) { // If set above
         // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
