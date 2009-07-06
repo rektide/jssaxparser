@@ -168,7 +168,7 @@
         var contentHandler = new DomContentHandler();
         var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/not-sa/012.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/not-sa/031.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);

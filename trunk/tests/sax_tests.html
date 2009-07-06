@@ -57,12 +57,28 @@
     
     function testParse_test_files_svg() {
         var fileAsText = loadFile("test_files/Water_molecule_3D.svg");
-        parse(fileAsText);
+        try {
+            saxParser.parseString(fileAsText);
+        } catch(e) {
+            assertTrue(e.message, false);
+        }
+        //there has been an exception thrown because the dtd could not be loaded.
+        assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
+		contentHandler.saxParseExceptions.length === 1);
+        assertXmlEquals(createDocumentFromText(fileAsText), contentHandler.document);
     }
     
     function testParse_test_files_svg_with_entities() {
         var fileAsText = loadFile("test_files/chem1.svg");
-        parse(fileAsText);
+        try {
+            saxParser.parseString(fileAsText);
+        } catch(e) {
+            assertTrue(e.message, false);
+        }
+        //there has been an exception thrown because the dtd could not be loaded.
+        assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
+		contentHandler.saxParseExceptions.length === 1);
+        assertXmlEquals(createDocumentFromText(fileAsText), contentHandler.document);
     }
     
     function testParse_test_files_6nbn() {

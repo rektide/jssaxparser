@@ -51,10 +51,11 @@ var FATAL = "F";
 /* Scanner states */
 var STATE_XML_DECL                  =  0;
 var STATE_PROLOG                    =  1;
-var STATE_PROLOG_DOCTYPE_DECLARED   =  2;
-var STATE_ROOT_ELEMENT              =  3;
-var STATE_CONTENT                   =  4;
-var STATE_TRAILING_MISC             =  5;
+var STATE_EXT_ENT                   =  2;
+var STATE_PROLOG_DOCTYPE_DECLARED   =  3;
+var STATE_ROOT_ELEMENT              =  4;
+var STATE_CONTENT                   =  5;
+var STATE_TRAILING_MISC             =  6;
 
 var XML_VERSIONS = ['1.0', '1.1']; // All existing versions of XML; will check this.features['http://xml.org/sax/features/xml-1.1'] if parser supports XML 1.1
 var XML_VERSION = /^1\.\d+$/;
@@ -79,7 +80,9 @@ var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB};
 
 var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
 var WS = new RegExp(WS_STR);
-var XML_DECL_BEGIN = new RegExp("\\?xml"+WS_STR);
+//in the case of XML declaration document has not yet been processed, token is on <
+var XML_DECL_BEGIN = new RegExp("<\\?xml"+WS_STR);
+// in the case of detection of double XML declation, token in after <
 var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_STR+'|\\?)', 'i');
 
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
@@ -431,17 +434,18 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
         this.fireError("empty document", FATAL);
     }
     try {
-        // We must test for the XML Declaration before processing any whitespace
-        if (!this.scanXMLDeclOrTextDecl()) {
-            this.state = STATE_PROLOG;
+        // a XML doc must begin with a <
+        if (this.ch !== "<") {
+            this.fireError("First character of the XML is not &lt; : [" + this.ch + "]", FATAL);
         } else {
-            //if it was a XMLDecl (only one XMLDecl is permitted)
+            // We must test for the XML Declaration before processing any whitespace
+            this.scanXMLDeclOrTextDecl();
             this.state = STATE_PROLOG;
+            while (this.index < this.length) {
+                this.next();
+            }
+            throw new EndOfInputException();
         }
-        while (this.index < this.length) {
-            this.next();
-        }
-        throw new EndOfInputException();
     } catch(e) {
         if (e instanceof SAXParseException) {
             this.errorHandler.fatalError(e);
@@ -694,10 +698,26 @@ SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, repla
         if (new RegExp("&" + entityName + ";").test(replacement)) {
             this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
         }
-        //there may be another xml declaration at beginning of external entity, not yet taken in account.
-        replacement = replacement.replace(/^<\?xml[^>]*>/, "");
+        //there may be another xml declaration at beginning of external entity
+        this.includeText(entityStartIndex, replacement);
+        this.state = STATE_EXT_ENT;
+        if (this.ch !== "<") {
+            return this.fireError("Invalid first character in external entity : [" + this.ch + "]", FATAL);
+        }
+        if (this.scanXMLDeclOrTextDecl()) {
+            this.skipWhiteSpaces();
+        } else {
+            //goes to char after <
+            this.nextChar(true);
+        }
+        this.state = STATE_PROLOG;
+    } else {
+        this.includeText(entityStartIndex, replacement);
     }
-   // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
+};
+
+SAXParser.prototype.includeText = function(entityStartIndex, replacement) {
+    // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
     this.xml = this.xml.substring(0, entityStartIndex).concat(replacement, this.xml.substr(this.index));
     this.length = this.xml.length;
     this.index = entityStartIndex;
@@ -873,7 +893,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
         else { // STATE_EXT_ENT
             var versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['version', 'encoding'], [XML_VERSION, ENCODING]);
             if (versionOrEncodingArr[0] === 'version') {
-                version = versionArr[1];
+                version = versionOrEncodingArr[1];
                 this.setXMLVersion(version);
                 versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['encoding'], [ENCODING], true);
             }
@@ -937,6 +957,16 @@ SAXParser.prototype.scanDoctypeDecl = function() {
             }
             this.nextChar();
         }
+        //extract of specs : if both the external and internal subsets are used, the internal subset MUST be considered to occur before the external subset
+        if (externalId.systemId !== null) {
+            //in case of restricted uri error
+            try {
+                var extSubset = this.loadFile(this.baseURI + externalId.systemId);
+                this.scanExtSubset(extSubset);
+            } catch(e) {
+                this.fireError("exception : [" + e.toString() + "] trying to load external subset : [" + this.baseURI + externalId.systemId + "]", WARNING);
+            }
+        }
         if (this.ch !== ">") {
             return this.fireError("invalid content in doctype declaration", FATAL);
         }
@@ -948,6 +978,42 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         return this.fireError("invalid doctype declaration, must be &lt;!DOCTYPE", FATAL);
     }
 };
+
+/*
+[30]   	extSubset	   ::=   	 TextDecl? extSubsetDecl
+[31]   	extSubsetDecl	   ::=   	( markupdecl | conditionalSect | DeclSep)*
+*/
+SAXParser.prototype.scanExtSubset = function(extSubset) {
+    //restart the index
+    var currentIndex = this.index;
+    var currentXml = this.xml;
+    this.xml = extSubset;
+    this.length = this.xml.length;
+    this.index = 0;
+    this.ch = this.xml.charAt(this.index);
+    if (this.ch !== "<") {
+        return this.fireError("Invalid first character in external subset : [" + this.ch + "]", FATAL);
+    }
+    if (this.scanXMLDeclOrTextDecl()) {
+        this.skipWhiteSpaces();
+    } else {
+        this.nextChar(true);
+    }
+    try {
+        while (this.index < this.length) {
+            //should also support conditionalSect
+            this.scanDoctypeDeclIntSubset();
+        }
+    } catch (e) {
+        if (!(e instanceof EndOfInputException)) {
+            throw e;
+        }
+    }
+    this.xml = currentXml;
+    this.length = this.xml.length;
+    this.index = currentIndex;
+    this.ch = this.xml.charAt(this.index);
+}
 
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
 //			| 'PUBLIC' S PubidLiteral S SystemLiteral
