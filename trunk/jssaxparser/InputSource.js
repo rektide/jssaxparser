@@ -16,24 +16,24 @@ function InputSource(input) {
     else if (input instanceof InputStream) {
         this.byteStream = input;
     }
-    else if (input instanceof Reader) {
+    else if (input instanceof Reader) { // Should not have a byte-order mark
         this.characterStream = input;
     }
 }
 InputSource.prototype.getByteStream = function () {
-    return this.byteStream || null;
+    return this.byteStream || null; // InputStream
 };
-InputSource.prototype.getCharacterStream = function () {
-    return this.characterStream || null;
+InputSource.prototype.getCharacterStream = function () { // Should apparently not have a byte-order mark (see constructor)
+    return this.characterStream || null; // Reader
 };
 InputSource.prototype.getEncoding = function () {
-    return this.encoding || null;
+    return this.encoding || null; // String
 };
 InputSource.prototype.getPublicId = function () {
-    return this.publicId || null;
+    return this.publicId || null; // String
 };
 InputSource.prototype.getSystemId = function () {
-    return this.systemId || null;
+    return this.systemId || null; // String
 };
 InputSource.prototype.setByteStream = function (byteStream) { // InputStream
     this.byteStream = byteStream;

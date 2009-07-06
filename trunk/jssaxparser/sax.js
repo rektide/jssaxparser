@@ -82,7 +82,6 @@ var WS = new RegExp(WS_STR);
 var XML_DECL_BEGIN = new RegExp("\\?xml"+WS_STR);
 var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_STR+'|\\?)', 'i');
 
-var BYTE_ORDER_MARK_START = /[\uFEFF\uFFFE\u0000\uEFBB]/;
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
 
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
@@ -316,26 +315,39 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     var systemId, xmlAsString, path;
     if (inputOrSystemId instanceof InputSource) {
         var charStream = inputOrSystemId.getCharacterStream();
-        if (charStream && charStream instanceof StringReader) {
-            xmlAsString = charStream.s; // Fix: Just a hack, until we may support Reader's methods
-            systemId = inputOrSystemId.getSystemId();
+        var byteStream = inputOrSystemId.getByteStream();
+        // Priority for the parser is characterStream, byteStream, then URI, but we only really implemented the systemId (URI), so we automatically go with that
+        systemId = inputOrSystemId.getSystemId();
+        if (charStream) {
+            if (charStream instanceof StringReader) { // Fix: This if-else is just a hack, until the parser may support Reader's methods like read()
+                xmlAsString = charStream.s;
+            }
+            else {
+                throw "A character stream InputSource is not implemented at present unless it is a StringReader character stream (and that only if it is our own version which has the string on the 's' property)";
+            }
         }
-        else {
-            // Priority for the parser is characterStream, byteStream, then URI, but we only really implemented the systemId (URI), so we automatically go with that
-            systemId = inputOrSystemId.getSystemId();
+        else if (byteStream || systemId) {
+            this.encoding = inputOrSystemId.getEncoding(); // To be used during XML Declaration checking
+            if (byteStream) {
+                throw "A byte stream InputSource is not implemented at present in SAXParser's parse() method";
+            }
+        }
+        if (!systemId && !xmlAsString) {
+            throw "The SAXParser parse() method must, at present, take an InputSource with a systemId or with a StringReader character stream";
         }
     } else if (typeof inputOrSystemId === "string") {
         systemId = inputOrSystemId;
     } else {
         throw "The argument supplied to SAXParser's parse() method was invalid";
     }
-    if (!xmlAsString) { // If set above
+    this.systemId = systemId;
+    if (!xmlAsString) { // If not set above
         // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
         xmlAsString = this.loadFile(systemId);
+        //get the path to the file
+        path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
+        this.baseURI = path;
     }
-    //get the path to the file
-    path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
-    this.baseURI = path;
     this.parseString(xmlAsString);
 };
 SAXParser.prototype.setContentHandler = function (handler) { // (ContentHandler)
@@ -416,7 +428,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.contentHandler.startDocument();
     //if all whitespaces, w3c test case xmlconf/xmltest/not-wf/sa/050.xml
     if (!(/[^\t\n\r ]/.test(this.xml))) {
-        return this.fireError("empty document", FATAL);
+        this.fireError("empty document", FATAL);
     }
     try {
         // We must test for the XML Declaration before processing any whitespace
@@ -435,7 +447,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
             this.errorHandler.fatalError(e);
         } else if (e instanceof EndOfInputException) {
             if (this.elementsStack.length > 0) {
-                return this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
+                this.fireError("the markup " + this.elementsStack.pop() + " has not been closed", FATAL);
             } else {
                 try {
                     //maybe validation exceptions
@@ -448,7 +460,6 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
             throw e;
         }
     }
-    return true;
 };
 
 SAXParser.prototype.next = function() {
@@ -744,7 +755,7 @@ SAXParser.prototype.scanComment = function() {
 
 SAXParser.prototype.setEncoding = function (encoding) {
     if (this.locator) {
-        this.locator.setEncoding(encoding);
+        this.locator.setEncoding(this.encoding || encoding); // Higher priority is given to any encoding set on an InputSource (passed in during parse())
     }
 };
 
@@ -824,14 +835,14 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
     var encoding = 'UTF-8'; // As the default with no declaration is UTF-8, we assume it is such, unless the
     // encoding is indicated explicitly, in which case we will trust that. We are therefore not able to discern
     // UTF-16 represented without an explicit declaration nor report any inconsistencies between header encoding,
-    // byte-order mark, or explicit encoding information (see next note).
+    // byte-order mark, or explicit encoding information, unless it is reported on InputSource (see next note).
 
     // If we were processing individual bytes (e.g., if we represented XML as an array of bytes), we
     //    could detect the encoding ourselves, including byte-order mark (and also allow checking
     //    against any header encoding), but since JavaScript converts pages for us into UTF-16 (two bytes per
-    //    character), we cannot use the same approach as the InputSource with the InputStream (byteStream)
+    //    character), we cannot use the same approach unless we allow the InputSource with the InputStream (byteStream)
     //    constructor in Java SAX2; instead we take an approach more similar to the StringReader (Reader characterStream
-    //    constructor), though we haven't implemented that API at present: http://java.sun.com/j2se/1.4.2/docs/api/java/io/StringReader.html
+    //    constructor), though we haven't fully implemented that API at present: http://java.sun.com/j2se/1.4.2/docs/api/java/io/StringReader.html
     // This script will therefore not detect an inconsistency between the encoding of the original document (since
     //    we don't know what it is) and the encoding indicated in its (optional) XML Declaration/Text Declaration
 

@@ -65,7 +65,7 @@ StringReader.prototype.read = function (cbuf, off, len) { // (char[] (, int, int
     if (arguments.length === 1) {
         // Note: Although StringReader is supposed to inherit the single-argument char[] read() method from Reader,
         // due to the lack of overloading in JavaScript, we must call it from here
-        return Reader.call(this, cbuf);
+        return Reader.call(this, cbuf); // returns int
     }
 
 };
