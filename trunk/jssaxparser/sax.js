@@ -475,7 +475,7 @@ SAXParser.prototype.next = function() {
         this.nextChar();
     } else if (this.ch === "<") {
         this.nextChar();
-        this.scanLT();
+        this.scanMarkup();
     } else if (this.elementsStack.length > 0) {
         this.scanText();
     //if elementsStack is empty it is text misplaced
@@ -505,7 +505,7 @@ SAXParser.prototype.next = function() {
 //
 //White Space
 // [3] S ::=(#x20 | #x9 | #xD | #xA)+
-SAXParser.prototype.scanLT = function() {
+SAXParser.prototype.scanMarkup = function() {
     if (this.state === STATE_PROLOG) {
         if (this.ch === "!") {
             this.nextChar(true);
@@ -523,7 +523,7 @@ SAXParser.prototype.scanLT = function() {
         } else {
             this.state = STATE_ROOT_ELEMENT;
             //does not go to next char exiting the method
-            this.scanLT();
+            this.scanMarkup();
         }
     } else if (this.state === STATE_PROLOG_DOCTYPE_DECLARED) {
         if (this.ch === "!") {
@@ -542,10 +542,10 @@ SAXParser.prototype.scanLT = function() {
         } else {
             this.state = STATE_ROOT_ELEMENT;
             //does not go to next char exiting the method
-            this.scanLT();
+            this.scanMarkup();
         }
     } else if (this.state === STATE_ROOT_ELEMENT) {
-        if (this.scanMarkup()) {
+        if (this.scanElement()) {
             //there may be just a root empty markup (already closed)
             if (this.elementsStack.length > 0) {
                 this.state = STATE_CONTENT;
@@ -575,7 +575,7 @@ SAXParser.prototype.scanLT = function() {
                 }
             }
         } else {
-            if (!this.scanMarkup()) {
+            if (!this.scanElement()) {
                 this.fireError("not valid markup", FATAL);
             }
         }
@@ -1384,7 +1384,10 @@ SAXParser.prototype.scanNotationDecl = function() {
 };
 
 /*
- [39] element ::= EmptyElemTag | STag content ETag
+if called from an element parsing defaultPrefix would be ""
+if called from an attribute parsing defaultPrefix would be null
+
+[39] element ::= EmptyElemTag | STag content ETag
 [44] EmptyElemTag ::= '<' Name (S Attribute)* S? '/>'
 [40] STag ::= '<' Name (S Attribute)* S? '>'
 [41] Attribute ::= Name Eq AttValue
@@ -1397,17 +1400,6 @@ SAXParser.prototype.scanNotationDecl = function() {
 [4]  NameChar ::= Letter | Digit | '.' | '-' | '_' | ':' | CombiningChar | Extender
 [5]  Name ::= Letter | '_' | ':') (NameChar)*
 */
-SAXParser.prototype.scanMarkup = function() {
-    var qName = this.getQName("");
-    this.elementsStack.push(qName.qName);
-    this.scanElement(qName);
-    return true;
-};
-
-/*
-if called from an element parsing defaultPrefix would be ""
-if called from an attribute parsing defaultPrefix would be null
-*/
 SAXParser.prototype.getQName = function(defaultPrefix) {
     var name = this.scanName();
     var localName = name;
@@ -1419,7 +1411,9 @@ SAXParser.prototype.getQName = function(defaultPrefix) {
     return new Sax_QName(defaultPrefix, localName);
 };
 
-SAXParser.prototype.scanElement = function(qName) {
+SAXParser.prototype.scanElement = function() {
+    var qName = this.getQName("");
+    this.elementsStack.push(qName.qName);
     var atts = this.scanAttributes(qName);
     var namespaceURI = null;
     try {
@@ -1439,6 +1433,7 @@ SAXParser.prototype.scanElement = function(qName) {
             this.fireError("invalid empty markup, must finish with /&gt;", FATAL);
         }
     }
+    return true;
 };
 
 SAXParser.prototype.scanAttributes = function(qName) {
