@@ -1902,47 +1902,47 @@ XMLFilterImpl.prototype.setProperty = function (name, value) { // (java.lang.Str
 
 // INTERFACE: ContentHandler: http://www.saxproject.org/apidoc/org/xml/sax/ContentHandler.html
 XMLFilterImpl.prototype.startDocument = function() {
-    return this.parent.startDocument.call(this.parent);
+    return this.parent.contentHandler.startDocument.call(this.parent);
 };
 
 XMLFilterImpl.prototype.startElement = function(namespaceURI, localName, qName, atts) {
-    return this.parent.startElement.call(this.parent, namespaceURI, localName, qName, atts);
+    return this.parent.contentHandler.startElement.call(this.parent, namespaceURI, localName, qName, atts);
 };
 
 XMLFilterImpl.prototype.endElement = function(namespaceURI, localName, qName) {
-    return this.parent.endElement.call(this.parent, namespaceURI, localName, qName);
+    return this.parent.contentHandler.endElement.call(this.parent, namespaceURI, localName, qName);
 };
 
 XMLFilterImpl.prototype.startPrefixMapping = function(prefix, uri) {
-    return this.parent.startPrefixMapping.call(this.parent, uri);
+    return this.parent.contentHandler.startPrefixMapping.call(this.parent, uri);
 };
 
 XMLFilterImpl.prototype.endPrefixMapping = function(prefix) {
-    return this.parent.endPrefixMapping.call(this.parent, prefix);
+    return this.parent.contentHandler.endPrefixMapping.call(this.parent, prefix);
 };
 
 XMLFilterImpl.prototype.processingInstruction = function(target, data) {
-    return this.parent.processingInstruction.call(this.parent, target, data);
+    return this.parent.contentHandler.processingInstruction.call(this.parent, target, data);
 };
 
 XMLFilterImpl.prototype.ignorableWhitespace = function(ch, start, length) {
-    return this.parent.ignorableWhitespace.call(this.parent, ch, start, length);
+    return this.parent.contentHandler.ignorableWhitespace.call(this.parent, ch, start, length);
 };
 
 XMLFilterImpl.prototype.characters = function(ch, start, length) {
-    return this.parent.characters.call(this.parent, ch, start, length);
+    return this.parent.contentHandler.characters.call(this.parent, ch, start, length);
 };
 
 XMLFilterImpl.prototype.skippedEntity = function(name) {
-    return this.parent.skippedEntity.call(this.parent, name);
+    return this.parent.contentHandler.skippedEntity.call(this.parent, name);
 };
 
 XMLFilterImpl.prototype.endDocument = function() {
-    return this.parent.endDocument.call(this.parent);
+    return this.parent.contentHandler.endDocument.call(this.parent);
 };
 
 XMLFilterImpl.prototype.setDocumentLocator = function (locator) {
-    return this.parent.setDocument.call(this.parent, locator);
+    return this.parent.contentHandler.setDocument.call(this.parent, locator);
 };
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
@@ -1952,10 +1952,10 @@ XMLFilterImpl.prototype.resolveEntity = function (publicId, systemId) {
 
 // INTERFACE: DTDHandler: http://www.saxproject.org/apidoc/org/xml/sax/DTDHandler.html
 XMLFilterImpl.prototype.notationDecl = function (name, publicId, systemId) {
-    return this.parent.notationDecl.call(this.parent, name, publicId, systemId);
+    return this.parent.dtdHandler.notationDecl.call(this.parent, name, publicId, systemId);
 };
 XMLFilterImpl.prototype.unparsedEntityDecl = function (name, publicId, systemId, notationName) {
-    return this.parent.unparsedEntityDecl.call(this.parent, name, publicId, systemId, notationName);
+    return this.parent.dtdHandler.unparsedEntityDecl.call(this.parent, name, publicId, systemId, notationName);
 };
 
 // INTERFACE: ErrorHandler: http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
