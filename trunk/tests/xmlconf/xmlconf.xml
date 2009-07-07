@@ -66,7 +66,7 @@
     &ibm-not-wf;
     &ibm-valid;
 </TESTCASES>
-<!-- Wrapping TESTCASES elements below added by Dieter Köhler -->
+<!-- Wrapping TESTCASES elements below added by Dieter Köhler
 <TESTCASES PROFILE="IBM XML 1.1 Tests" xml:base="ibm/xml-1.1/">
     &ibm-xml1.1-invalid;
     &ibm-xml1.1-not-wf;
@@ -94,5 +94,5 @@
 <TESTCASES xml:base="eduni/namespaces/errata-1e/">
     &eduni-nse;
 </TESTCASES>
-
+ -->
 </TESTSUITE>

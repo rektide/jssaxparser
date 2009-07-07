@@ -844,14 +844,16 @@ SAXParser.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, al
     return [attName, attValue];
 };
 
-// [23] XMLDecl ::= '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
-// [24] VersionInfo ::= S 'version' Eq (' VersionNum ' | " VersionNum ")
-// [80] EncodingDecl ::= S 'encoding' Eq ('"' EncName '"' |  "'" EncName "'" )
-// [81] EncName ::= [A-Za-z] ([A-Za-z0-9._] | '-')*
-// [32] SDDecl ::= S 'standalone' Eq (("'" ('yes' | 'no') "'")
-//                 | ('"' ('yes' | 'no') '"'))
-//
-// [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
+/*
+ [23] XMLDecl ::= '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
+ [24] VersionInfo ::= S 'version' Eq (' VersionNum ' | " VersionNum ")
+ [80] EncodingDecl ::= S 'encoding' Eq ('"' EncName '"' |  "'" EncName "'" )
+ [81] EncName ::= [A-Za-z] ([A-Za-z0-9._] | '-')*
+ [32] SDDecl ::= S 'standalone' Eq (("'" ('yes' | 'no') "'")
+                 | ('"' ('yes' | 'no') '"'))
+ [77] TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
+ current character is "<", at return current char is after ending ">"
+ */
 SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
     // Fix: need to have conditions to trigger STATE_EXT_ENT somehow
     // allow scanning of text declaration/external XML entity?
@@ -915,6 +917,8 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
         this.nextChar(true);
         if (this.ch !== ">") {
             return this.fireError("invalid markup inside XML or text declaration; must end with &gt;", FATAL);
+        } else {
+            this.nextChar();
         }
         return true;
     } else {
