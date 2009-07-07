@@ -211,8 +211,8 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
         // For Locator2 (there are no standard fields for us to use; our Locator2 must support these)
         this.locator.version = null;
         this.locator.encoding = null;
+        this.contentHandler.setDocumentLocator(locator);
     }
-    this.contentHandler.setDocumentLocator(locator);
     this.dtdHandler = dtdHandler;
     this.errorHandler = errorHandler;
     this.entityResolver = null;
@@ -245,7 +245,10 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/string-interning'] = true; // Make safe to treat string literals as identical to String()
     this.features['http://xml.org/sax/features/unicode-normalization-checking'] = false;
     this.features['http://xml.org/sax/features/use-attributes2'] = false; // Not supported yet
-    this.features['http://xml.org/sax/features/use-locator2'] = false; // Not supported yet
+    this.features['http://xml.org/sax/features/use-locator2'] = !!(locator && // No interfaces in JavaScript, so we duck-type:
+                                                                                                                    typeof locator.getXMLVersion === 'function' &&
+                                                                                                                    typeof locator.getEncoding === 'function'
+                                                                                                                ); // Not supported yet
     this.features['http://xml.org/sax/features/use-entity-resolver2'] = true;
     this.features['http://xml.org/sax/features/validation'] = false; // Not supported yet
     this.features['http://xml.org/sax/features/xmlns-uris'] = false;
@@ -702,7 +705,7 @@ SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, repla
         this.includeText(entityStartIndex, replacement);
         this.state = STATE_EXT_ENT;
         if (this.ch !== "<") {
-            return this.fireError("Invalid first character in external entity : [" + this.ch + "]", FATAL);
+            this.fireError("Invalid first character in external entity : [" + this.ch + "]", FATAL);
         }
         if (this.scanXMLDeclOrTextDecl()) {
             this.skipWhiteSpaces();
@@ -992,7 +995,7 @@ SAXParser.prototype.scanExtSubset = function(extSubset) {
     this.index = 0;
     this.ch = this.xml.charAt(this.index);
     if (this.ch !== "<") {
-        return this.fireError("Invalid first character in external subset : [" + this.ch + "]", FATAL);
+        this.fireError("Invalid first character in external subset : [" + this.ch + "]", FATAL);
     }
     if (this.scanXMLDeclOrTextDecl()) {
         this.skipWhiteSpaces();

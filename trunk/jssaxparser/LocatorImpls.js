@@ -67,7 +67,7 @@ knowledge of the CeCILL license and that you accept its terms.
 (function () { // Begin namespace
 
 /* Supporting classes  */
-// NOT USED YET (Sax class should set, though only use Locator2 API if http://xml.org/sax/features/use-locator2 feature is set)
+// NOT USED YET (Sax class should set, though only use Locator2 API if http://xml.org/sax/features/use-locator2 feature is set on the parser)
 
 /*
 public LocatorImpl()
@@ -80,7 +80,12 @@ Parameters:
     locator - The locator to copy.
 */
 function LocatorImpl (locator) {
-    if (locator) {}
+    if (locator) {
+        var properties = ['columnNumber', 'lineNumber', 'publicId', 'systemId'];
+        for (var i=0; i < properties.length; i++) {
+            this[properties[i]] = locator[properties[i]];
+        }
+    }
 }
 // INTERFACE: Locator: http://www.saxproject.org/apidoc/org/xml/sax/Locator.html
 /*
@@ -139,7 +144,13 @@ Parameters:
     locator - The existing Locator object.
  **/
 function Locator2Impl (locator) {
-    if (locator) {}
+    if (locator) {
+        LocatorImpl.call(this, locator); // 'columnNumber', 'lineNumber', 'publicId', 'systemId'
+        var properties = ['encoding', 'version'];
+        for (var i=0; i < properties.length; i++) {
+            this[properties[i]] = locator[properties[i]];
+        }
+    }
 }
 Locator2Impl.prototype = new LocatorImpl();
 /* INTERFACE: Locator2: http://www.saxproject.org/apidoc/org/xml/sax/ext/Locator2.html
