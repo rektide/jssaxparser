@@ -932,7 +932,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXParser.prototype.scanPI = function() {
-    if ((XML_DECL_BEGIN_FALSE).test(this.xml.substr(this.index, 6))) {
+    if ((XML_DECL_BEGIN_FALSE).test(this.xml.substr(this.index, 5))) {
         return this.fireError("XML Declaration cannot occur past the very beginning of the document.", FATAL);
     }
     this.nextChar(true);
