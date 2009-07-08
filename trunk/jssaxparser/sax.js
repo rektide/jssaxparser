@@ -1319,7 +1319,11 @@ SAXParser.prototype.scanAttType = function() {
     if (this.ch === "(") {
         this.nextChar();
         type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
-        this.skipWhiteSpaces();
+        //removes whitespaces between NOTATION, does not support the invalidity of whitespaces inside Name
+        while (WS.test(this.ch)) {
+            this.skipWhiteSpaces();
+            type += this.nextCharRegExp(NOT_START_OR_END_CHAR);
+        }
         if (this.ch !== ")") {
             this.fireError("Invalid character : [" + this.ch + "] in ATTLIST enumeration", ERROR);
             type += this.ch + this.nextCharRegExp(WS);

@@ -65,6 +65,7 @@
         testCt++;
         try {
             saxParser.parse(new InputSource("xmlconf/xmlconf.xml"));
+            throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, false);
         }
