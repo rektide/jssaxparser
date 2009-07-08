@@ -264,6 +264,7 @@ XMLFilterImpl2.prototype.getExternalSubset = function(name, baseURI) {
     return this.parent.getExternalSubset.call(this.parent, name, baseURI);
 };
 
+// Could put on org.xml.sax.helpers.
 this.XMLFilterImpl = XMLFilterImpl;
 this.XMLFilterImpl2 = XMLFilterImpl2;
 
