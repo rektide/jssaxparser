@@ -19,8 +19,13 @@
     /*global assertTrue, DomContentHandler, SAXParser, loadFile, JsUnitException , DefaultHandler2, SAXException, textContent*/
 	// (Note: change reference to SAXParser above if change name)
     var output;
+    var testResultSummary;
     //keeps it global, used in all tests
     var xmlConf;
+    
+    // Keep track of total test errors
+    var notSupportedCt = 0;
+    var failedCt = 0;
     
     function setUp() {
         output = document.getElementById("output");
@@ -85,8 +90,10 @@
                     output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>valid<\/td><\/tr>";
                 } catch(e) {
                     if (isAssumedNotConformant(uri)) {
+                        notSupportedCt++;
                         output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                     } else {
+                        failedCt++;
                         output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED, exception found :" + e.message + "<\/td><\/tr>";
                     }
                 }
@@ -119,8 +126,10 @@
                         output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
                     } else {
                         if (isAssumedNotConformant(uri)) {
+                            notSupportedCt++;
                             output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                         } else {
+                            failedCt++;
                             output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                         }
                     }
@@ -154,8 +163,10 @@
                         output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
                     } else {
                         if (isAssumedNotConformant(uri)) {
+                            notSupportedCt++;
                             output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                         } else {
+                            failedCt++;
                             output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                         }
                     }
@@ -177,6 +188,17 @@
         var a = "A";
     }
     
+    function print_total_errs () {
+    
+        var hr = document.createElementNS('http://www.w3.org/1999/xhtml', 'hr');
+        var p = document.createElementNS('http://www.w3.org/1999/xhtml', 'p');
+        testResultSummary = p.innerHTML = 'Total test failures: '+failedCt+'; Total not supported notices: '+notSupportedCt;
+        p.style.border = 'solid black 2px';
+        p.style.fontSize = '20px';
+        document.getElementById('outputDiv').appendChild(hr);
+        document.getElementById('outputDiv').appendChild(p);
+    }
+    
     function runAllTests () {
         setUp();
         //testParseIndividual();
@@ -185,8 +207,9 @@
         testParse_jclark_xmltest_valid();
         testParse_jclark_xmltest_invalid();
         testParse_jclark_xmltest_not_wf();
+        print_total_errs();
         
-        alert('done!');
+        alert('Done! '+testResultSummary);
     }
     
     // Brett added to be able to show something in console when error is thrown
