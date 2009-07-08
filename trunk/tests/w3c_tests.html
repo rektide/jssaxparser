@@ -16,16 +16,16 @@
     <script type="text/javascript" src="applyXslt.js"></script>
     <script type="text/javascript"><!--//--><![CDATA[//><!--
 
-    /*global assertTrue, DomContentHandler, SAXParser, loadFile, JsUnitException , DefaultHandler2, SAXException, textContent*/
+    /*global assertTrue, DomContentHandler, SAXParser, loadFile, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource*/
 	// (Note: change reference to SAXParser above if change name)
-    var output;
-    var testResultSummary;
+    var output, testResultSummary;
     //keeps it global, used in all tests
     var xmlConf;
     
     // Keep track of total test errors
     var notSupportedCt = 0;
     var failedCt = 0;
+    var testCt = 0;
     
     function setUp() {
         output = document.getElementById("output");
@@ -62,6 +62,7 @@
     function testParse_xmlconf() {
         var contentHandler = new DomContentHandler();
         var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        testCt++;
         try {
             saxParser.parse(new InputSource("xmlconf/xmlconf.xml"));
         } catch(e) {
@@ -78,6 +79,7 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
+        testCt += tests.length;
         
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
@@ -109,6 +111,7 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
+        testCt += tests.length;
         
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
@@ -146,6 +149,7 @@
         var jclarkTestcase = testcases.item(0);
         //there must be content of xmlconf\xmltest\xmltest.xml inside
         var tests = jclarkTestcase.getElementsByTagName("TEST");
+        testCt += tests.length;
         
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
@@ -192,7 +196,7 @@
     
         var hr = document.createElementNS('http://www.w3.org/1999/xhtml', 'hr');
         var p = document.createElementNS('http://www.w3.org/1999/xhtml', 'p');
-        testResultSummary = p.innerHTML = 'Total test failures: '+failedCt+'; Total not supported notices: '+notSupportedCt;
+        testResultSummary = p.innerHTML = 'Total test failures: '+failedCt+'; Total not supported notices: '+notSupportedCt+'; Total tests: '+testCt;
         p.style.border = 'solid black 2px';
         p.style.fontSize = '20px';
         document.getElementById('outputDiv').appendChild(hr);
