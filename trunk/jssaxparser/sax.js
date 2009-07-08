@@ -480,9 +480,7 @@ SAXParser.prototype.startParsing = function() {
 // BEGIN FUNCTIONS WHICH SHOULD BE CONSIDERED PRIVATE
 SAXParser.prototype.next = function() {
     this.skipWhiteSpaces();
-    if (this.ch === ">") {
-        this.nextChar();
-    } else if (this.ch === "<") {
+    if (this.ch === "<") {
         this.nextChar(true);
         this.scanMarkup();
     } else if (this.elementsStack.length > 0) {
@@ -975,6 +973,8 @@ SAXParser.prototype.scanDoctypeDecl = function() {
         }
         if (this.ch !== ">") {
             return this.fireError("invalid content in doctype declaration", FATAL);
+        } else {
+            this.nextChar();
         }
         if (this.lexicalHandler) {
             this.lexicalHandler.endDTD();
@@ -1429,6 +1429,11 @@ SAXParser.prototype.scanElement = function() {
         } else {
             this.fireError("invalid empty markup, must finish with /&gt;", FATAL);
         }
+    }
+    if (this.ch !== ">") {
+        this.fireError("invalid element, must finish with &gt;", FATAL);
+    } else {
+        this.nextChar(true);
     }
     return true;
 };
