@@ -437,18 +437,13 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
         this.fireError("empty document", FATAL);
     }
     try {
-        // a XML doc must begin with a <
-        if (this.ch !== "<") {
-            this.fireError("First character of the XML is not &lt; : [" + this.ch + "]", FATAL);
-        } else {
-            // We must test for the XML Declaration before processing any whitespace
-            this.scanXMLDeclOrTextDecl();
-            this.state = STATE_PROLOG;
-            while (this.index < this.length) {
-                this.next();
-            }
-            throw new EndOfInputException();
+        // We must test for the XML Declaration before processing any whitespace
+        this.startParsing();
+        this.state = STATE_PROLOG;
+        while (this.index < this.length) {
+            this.next();
         }
+        throw new EndOfInputException();
     } catch(e) {
         if (e instanceof SAXParseException) {
             this.errorHandler.fatalError(e);
@@ -469,13 +464,26 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     }
 };
 
+/*
+scan XML declaration, test first character of document, and if right goes to character after <
+*/
+SAXParser.prototype.startParsing = function() {
+    //if no XML declaration, then white spaces are allowed at beginning of XML
+    if (!this.scanXMLDeclOrTextDecl()) {
+        this.skipWhiteSpaces();
+    }
+    if (this.ch !== "<") {
+        this.fireError("Invalid first character in document, external entity or external subset : [" + this.ch + "]", FATAL);
+    }
+}
+
 // BEGIN FUNCTIONS WHICH SHOULD BE CONSIDERED PRIVATE
 SAXParser.prototype.next = function() {
     this.skipWhiteSpaces();
     if (this.ch === ">") {
         this.nextChar();
     } else if (this.ch === "<") {
-        this.nextChar();
+        this.nextChar(true);
         this.scanMarkup();
     } else if (this.elementsStack.length > 0) {
         this.scanText();
@@ -621,14 +629,7 @@ SAXParser.prototype.scanText = function() {
             if (externalId === undefined) {
                 this.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", ERROR);
             } else {
-                //if it is not a SAXException then security issue so ignores it
-                try {
-                    this.includeEntity(e.entityName, entityStart, externalId);
-                } catch (e2) {
-                    if (e2 instanceof SAXException) {
-                        throw e2;
-                    }
-                }
+                this.includeEntity(e.entityName, entityStart, externalId);
             }
         } else {
             throw e;
@@ -697,24 +698,21 @@ SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, repla
     //if it is an externalId, have to include the external content
     if (replacement instanceof ExternalId) {
         var relativeBaseUri = this.getRelativeBaseUri();
-        replacement = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
-        //check for no recursion
-        if (new RegExp("&" + entityName + ";").test(replacement)) {
-            this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
+        try {
+            replacement = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
+            //check for no recursion
+            if (new RegExp("&" + entityName + ";").test(replacement)) {
+                this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
+            }
+            //there may be another xml declaration at beginning of external entity
+            this.includeText(entityStartIndex, replacement);
+            var oldState = this.state;
+            this.state = STATE_EXT_ENT;
+            this.startParsing();
+            this.state = oldState;
+        } catch(e) {
+            this.fireError("issue at resolving entity : [" + entityName + "], publicId : [" + replacement.publicId + "], uri : [" + relativeBaseUri + "], systemId : [" + replacement.systemId + "], got exception : [" + e.toString() + "]", ERROR);
         }
-        //there may be another xml declaration at beginning of external entity
-        this.includeText(entityStartIndex, replacement);
-        this.state = STATE_EXT_ENT;
-        if (this.ch !== "<") {
-            this.fireError("Invalid first character in external entity : [" + this.ch + "]", FATAL);
-        }
-        if (this.scanXMLDeclOrTextDecl()) {
-            this.skipWhiteSpaces();
-        } else {
-            //goes to char after <
-            this.nextChar(true);
-        }
-        this.state = STATE_PROLOG;
     } else {
         this.includeText(entityStartIndex, replacement);
     }
@@ -999,14 +997,8 @@ SAXParser.prototype.scanExtSubset = function(extSubset) {
     this.length = this.xml.length;
     this.index = 0;
     this.ch = this.xml.charAt(this.index);
-    if (this.ch !== "<") {
-        this.fireError("Invalid first character in external subset : [" + this.ch + "]", FATAL);
-    }
-    if (this.scanXMLDeclOrTextDecl()) {
-        this.skipWhiteSpaces();
-    } else {
-        this.nextChar(true);
-    }
+    this.startParsing();
+    //current char is first <
     try {
         while (this.index < this.length) {
             //should also support conditionalSect
