@@ -78,12 +78,14 @@ var NOT_A_CHAR_ERROR_CB = function () {
 };
 var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB};
 
-var WS_STR = '[\\t\\n\\r ]'; // \s is too inclusive
-var WS = new RegExp(WS_STR);
+var WS_CHARS = '\\t\\n\\r ';
+var WS_CHAR = '['+WS_CHARS+']'; // \s is too inclusive
+var WS = new RegExp(WS_CHAR);
+var NON_WS = new RegExp('[^'+WS_CHARS+']');
 //in the case of XML declaration document has not yet been processed, token is on <
-var XML_DECL_BEGIN = new RegExp("<\\?xml"+WS_STR);
+var XML_DECL_BEGIN = new RegExp("<\\?xml"+WS_CHAR);
 // in the case of detection of double XML declation, token in after <
-var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_STR+'|\\?)', 'i');
+var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_CHAR+'|\\?)', 'i');
 
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
 
@@ -433,7 +435,7 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     this.relativeBaseUris = [];
     this.contentHandler.startDocument();
     //if all whitespaces, w3c test case xmlconf/xmltest/not-wf/sa/050.xml
-    if (!(/[^\t\n\r ]/.test(this.xml))) {
+    if (!(NON_WS.test(this.xml))) {
         this.fireError("empty document", FATAL);
     }
     try {
@@ -699,7 +701,7 @@ SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, repla
         try {
             var externalEntity = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
             //if not only whitespace
-            if (/[^\t\n\r ]/.test(externalEntity)) {
+            if (NON_WS.test(externalEntity)) {
                 //check for no recursion
                 if (new RegExp("&" + entityName + ";").test(externalEntity)) {
                     this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
@@ -993,7 +995,7 @@ SAXParser.prototype.scanDoctypeDecl = function() {
 [31]   	extSubsetDecl	   ::=   	( markupdecl | conditionalSect | DeclSep)*
 */
 SAXParser.prototype.scanExtSubset = function(extSubset) {
-    if (/[^\t\n\r ]/.test(extSubset)) {
+    if (NON_WS.test(extSubset)) {
         //restart the index
         var currentIndex = this.index;
         var currentXml = this.xml;
@@ -1284,7 +1286,7 @@ SAXParser.prototype.scanAttDef = function(eName) {
     //DefaultDecl
     var mode = null;
     if (this.ch === "#") {
-        mode = this.nextCharRegExp(new RegExp("[\t\n\r >]"));
+        mode = this.nextCharRegExp(new RegExp(WS_CHAR+"|>"));
         this.skipWhiteSpaces();
     }
     var attValue = null;
