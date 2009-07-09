@@ -697,17 +697,20 @@ SAXParser.prototype.includeEntity = function(entityName, entityStartIndex, repla
     if (replacement instanceof ExternalId) {
         var relativeBaseUri = this.getRelativeBaseUri();
         try {
-            replacement = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
-            //check for no recursion
-            if (new RegExp("&" + entityName + ";").test(replacement)) {
-                this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
+            var externalEntity = this.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
+            //if not only whitespace
+            if (/[^\t\n\r ]/.test(externalEntity)) {
+                //check for no recursion
+                if (new RegExp("&" + entityName + ";").test(externalEntity)) {
+                    this.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", FATAL);
+                }
+                //there may be another xml declaration at beginning of external entity
+                this.includeText(entityStartIndex, externalEntity);
+                var oldState = this.state;
+                this.state = STATE_EXT_ENT;
+                this.startParsing();
+                this.state = oldState;
             }
-            //there may be another xml declaration at beginning of external entity
-            this.includeText(entityStartIndex, replacement);
-            var oldState = this.state;
-            this.state = STATE_EXT_ENT;
-            this.startParsing();
-            this.state = oldState;
         } catch(e) {
             this.fireError("issue at resolving entity : [" + entityName + "], publicId : [" + replacement.publicId + "], uri : [" + relativeBaseUri + "], systemId : [" + replacement.systemId + "], got exception : [" + e.toString() + "]", ERROR);
         }
@@ -990,29 +993,29 @@ SAXParser.prototype.scanDoctypeDecl = function() {
 [31]   	extSubsetDecl	   ::=   	( markupdecl | conditionalSect | DeclSep)*
 */
 SAXParser.prototype.scanExtSubset = function(extSubset) {
-    //restart the index
-    var currentIndex = this.index;
-    var currentXml = this.xml;
-    this.xml = extSubset;
-    this.length = this.xml.length;
-    this.index = 0;
-    this.ch = this.xml.charAt(this.index);
-    this.startParsing();
-    //current char is first <
-    try {
-        while (this.index < this.length) {
+    if (/[^\t\n\r ]/.test(extSubset)) {
+        //restart the index
+        var currentIndex = this.index;
+        var currentXml = this.xml;
+        this.xml = extSubset;
+        this.length = this.xml.length;
+        this.index = 0;
+        this.ch = this.xml.charAt(this.index);
+        this.startParsing();
+        //current char is first <
+        try {
             //should also support conditionalSect
             this.scanDoctypeDeclIntSubset();
+        } catch(e) {
+            if (!(e instanceof EndOfInputException)) {
+                throw e;
+            }
         }
-    } catch (e) {
-        if (!(e instanceof EndOfInputException)) {
-            throw e;
-        }
+        this.xml = currentXml;
+        this.length = this.xml.length;
+        this.index = currentIndex;
+        this.ch = this.xml.charAt(this.index);
     }
-    this.xml = currentXml;
-    this.length = this.xml.length;
-    this.index = currentIndex;
-    this.ch = this.xml.charAt(this.index);
 };
 
 //[75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
@@ -1054,6 +1057,25 @@ SAXParser.prototype.scanPubIdLiteral = function(externalId) {
 };
 
 /*
+Parameter entity references are recognized anywhere in the DTD (internal and external subsets and external parameter entities),
+except in literals, processing instructions, comments, and the contents of ignored conditional sections
+current char is %
+*/
+SAXParser.prototype.includeParameterEntity = function() {
+    var entityStart = this.index;
+    this.nextChar(true);
+    var entityName = this.nextCharRegExp(/;/);
+    // if % found here, include and parse replacement
+    var replacement = this.scanPeRef(entityName);
+    //current char is ending quote
+    this.nextChar(true);
+    // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
+    this.includeEntity(entityName, entityStart, replacement);
+    //white spaces are not significant here
+    this.skipWhiteSpaces();
+}
+
+/*
 actual char is non whitespace char after '['
 [28a]   	DeclSep	   ::=   	 PEReference | S
 [28b]   	intSubset	   ::=   	(markupdecl | DeclSep)*
@@ -1088,16 +1110,7 @@ SAXParser.prototype.scanDoctypeDeclIntSubset = function() {
     Reference in DTD	 Included as PE
 */
     } else if (this.ch === "%") {
-        var entityStart = this.index;
-        this.nextChar(true);
-        var entityName = this.nextCharRegExp(/;/);
-        var replacement = this.scanPeRef(entityName);
-        //current char is ending quote
-        this.nextChar(true);
-        // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
-        this.includeEntity(entityName, entityStart, replacement);
-        //white spaces are not significant here
-        this.skipWhiteSpaces();
+        this.includeParameterEntity();
     } else {
         this.fireError("invalid character in internal subset of doctype declaration : [" + this.ch + "]", FATAL);
     }
@@ -1258,6 +1271,8 @@ SAXParser.prototype.scanAttlistDecl = function() {
 [53]   	AttDef	   ::=   	S Name S AttType S DefaultDecl
 [60]   	DefaultDecl	   ::=   	'#REQUIRED' | '#IMPLIED'
 			| (('#FIXED' S)? AttValue)
+[10]    	AttValue	   ::=   	'"' ([^<&"] | Reference)* '"'
+                                |  "'" ([^<&'] | Reference)* "'"
 */
 SAXParser.prototype.scanAttDef = function(eName) {
     var aName = this.scanName();
@@ -1275,11 +1290,16 @@ SAXParser.prototype.scanAttDef = function(eName) {
     var attValue = null;
     if (mode === null || mode === "#FIXED") {
         //attValue
+        //here % is included and parsed
+        if (this.ch === "%") {
+            this.includeParameterEntity();
+        }
         if (this.ch === '"' || this.ch === "'") {
             var quote = this.ch;
             this.nextChar(true);
             attValue = this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
             //if found a "%" must replace it, PeRef are replaced here but not EntityRef
+            // Included in Literal here (not parsed as the literal can not be terminated by quote)
             while (this.ch === "%") {
                 this.nextChar(true);
                 var ref = this.scanPeRef();
