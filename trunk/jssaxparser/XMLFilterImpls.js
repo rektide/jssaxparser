@@ -162,7 +162,7 @@ XMLFilterImpl.prototype.setDocumentLocator = function (locator) {
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
 XMLFilterImpl.prototype.resolveEntity = function (publicId, systemId) {
-    return this.parent ? this.parent.resolveEntity.call(this.parent, publicId, systemId) : undefined;
+    return this.parent ? this.parent.entityResolver.resolveEntity.call(this.parent, publicId, systemId) : undefined;
 };
 
 // INTERFACE: DTDHandler: http://www.saxproject.org/apidoc/org/xml/sax/DTDHandler.html
@@ -175,13 +175,13 @@ XMLFilterImpl.prototype.unparsedEntityDecl = function (name, publicId, systemId,
 
 // INTERFACE: ErrorHandler: http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
 XMLFilterImpl.prototype.warning = function(saxParseException) {
-    return this.parent ? this.parent.warning.call(this.parent, saxParseException) : undefined;
+    return this.parent ? this.parent.errorHandler.warning.call(this.parent, saxParseException) : undefined;
 };
 XMLFilterImpl.prototype.error = function(saxParseException) {
-    return this.parent ? this.parent.error.call(this.parent, saxParseException) : undefined;
+    return this.parent ? this.parent.errorHandler.error.call(this.parent, saxParseException) : undefined;
 };
 XMLFilterImpl.prototype.fatalError = function(saxParseException) {
-    return this.parent ? this.parent.fatalError.call(this.parent, saxParseException) : undefined;
+    return this.parent ? this.parent.errorHandler.fatalError.call(this.parent, saxParseException) : undefined;
 };
 
 
