@@ -64,6 +64,7 @@ function XMLFilterImpl (parent) {
         }
         this.parent = parent;
     }
+    // If there is no parent and it is not set subsequently by setParent(), this class can only be used for event consuming
 }
 // INTERFACE: XMLFilter: http://www.saxproject.org/apidoc/org/xml/sax/XMLFilter.html
 XMLFilterImpl.prototype.setParent = function (parent) { // e.g., SAXParser
@@ -116,71 +117,71 @@ XMLFilterImpl.prototype.setProperty = function (name, value) { // (java.lang.Str
 
 // INTERFACE: ContentHandler: http://www.saxproject.org/apidoc/org/xml/sax/ContentHandler.html
 XMLFilterImpl.prototype.startDocument = function() {
-    return this.parent.contentHandler.startDocument.call(this.parent);
+    return this.parent ? this.parent.contentHandler.startDocument.call(this.parent) : undefined;
 };
 
 XMLFilterImpl.prototype.startElement = function(namespaceURI, localName, qName, atts) {
-    return this.parent.contentHandler.startElement.call(this.parent, namespaceURI, localName, qName, atts);
+    return this.parent ? this.parent.contentHandler.startElement.call(this.parent, namespaceURI, localName, qName, atts) : undefined;
 };
 
 XMLFilterImpl.prototype.endElement = function(namespaceURI, localName, qName) {
-    return this.parent.contentHandler.endElement.call(this.parent, namespaceURI, localName, qName);
+    return this.parent ? this.parent.contentHandler.endElement.call(this.parent, namespaceURI, localName, qName) : undefined;
 };
 
 XMLFilterImpl.prototype.startPrefixMapping = function(prefix, uri) {
-    return this.parent.contentHandler.startPrefixMapping.call(this.parent, uri);
+    return this.parent ? this.parent.contentHandler.startPrefixMapping.call(this.parent, prefix, uri) : undefined;
 };
 
 XMLFilterImpl.prototype.endPrefixMapping = function(prefix) {
-    return this.parent.contentHandler.endPrefixMapping.call(this.parent, prefix);
+    return this.parent ? this.parent.contentHandler.endPrefixMapping.call(this.parent, prefix) : undefined;
 };
 
 XMLFilterImpl.prototype.processingInstruction = function(target, data) {
-    return this.parent.contentHandler.processingInstruction.call(this.parent, target, data);
+    return this.parent ? this.parent.contentHandler.processingInstruction.call(this.parent, target, data) : undefined;
 };
 
 XMLFilterImpl.prototype.ignorableWhitespace = function(ch, start, length) {
-    return this.parent.contentHandler.ignorableWhitespace.call(this.parent, ch, start, length);
+    return this.parent ? this.parent.contentHandler.ignorableWhitespace.call(this.parent, ch, start, length) : undefined;
 };
 
 XMLFilterImpl.prototype.characters = function(ch, start, length) {
-    return this.parent.contentHandler.characters.call(this.parent, ch, start, length);
+    return this.parent ? this.parent.contentHandler.characters.call(this.parent, ch, start, length) : undefined;
 };
 
 XMLFilterImpl.prototype.skippedEntity = function(name) {
-    return this.parent.contentHandler.skippedEntity.call(this.parent, name);
+    return this.parent ? this.parent.contentHandler.skippedEntity.call(this.parent, name) : undefined;
 };
 
 XMLFilterImpl.prototype.endDocument = function() {
-    return this.parent.contentHandler.endDocument.call(this.parent);
+    return this.parent ? this.parent.contentHandler.endDocument.call(this.parent) : undefined;
 };
 
 XMLFilterImpl.prototype.setDocumentLocator = function (locator) {
-    return this.parent.contentHandler.setDocument.call(this.parent, locator);
+    return this.parent ? this.parent.contentHandler.setDocument.call(this.parent, locator) : undefined;
 };
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
 XMLFilterImpl.prototype.resolveEntity = function (publicId, systemId) {
-    return this.parent.resolveEntity.call(this.parent, publicId, systemId);
+    return this.parent ? this.parent.resolveEntity.call(this.parent, publicId, systemId) : undefined;
 };
 
 // INTERFACE: DTDHandler: http://www.saxproject.org/apidoc/org/xml/sax/DTDHandler.html
 XMLFilterImpl.prototype.notationDecl = function (name, publicId, systemId) {
-    return this.parent.dtdHandler.notationDecl.call(this.parent, name, publicId, systemId);
+    return this.parent ? this.parent.dtdHandler.notationDecl.call(this.parent, name, publicId, systemId) : undefined;
 };
 XMLFilterImpl.prototype.unparsedEntityDecl = function (name, publicId, systemId, notationName) {
-    return this.parent.dtdHandler.unparsedEntityDecl.call(this.parent, name, publicId, systemId, notationName);
+    return this.parent ? this.parent.dtdHandler.unparsedEntityDecl.call(this.parent, name, publicId, systemId, notationName) : undefined;
 };
 
 // INTERFACE: ErrorHandler: http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
 XMLFilterImpl.prototype.warning = function(saxParseException) {
-    return this.parent.warning.call(this.parent, saxParseException);
+    return this.parent ? this.parent.warning.call(this.parent, saxParseException) : undefined;
 };
 XMLFilterImpl.prototype.error = function(saxParseException) {
-    return this.parent.error.call(this.parent, saxParseException);
+    return this.parent ? this.parent.error.call(this.parent, saxParseException) : undefined;
 };
 XMLFilterImpl.prototype.fatalError = function(saxParseException) {
-    return this.parent.fatalError.call(this.parent, saxParseException);
+    return this.parent ? this.parent.fatalError.call(this.parent, saxParseException) : undefined;
 };
 
 
@@ -195,13 +196,7 @@ XMLFilterImpl.prototype.parseString = function(xml) {
 //  in XMLFilterImpl: DeclHandler, EntityResolver2, LexicalHandler
 
 function XMLFilterImpl2 (parent) {
-    if (parent) {
-        if (!_implements(parent,
-            ['attributeDecl', 'elementDecl', 'externalEntityDecl', 'internalEntityDecl', 'comment', 'endCDATA',
-            'endDTD', 'endEntity', 'startCDATA', 'startDTD', 'startEntity', 'resolveEntity', 'getExternalSubset'])) {
-            throw 'XMLFilterImpl must be given a parent which implements XMLReader';
-        }
-    }
+    // If there is no parent and it is not set subsequently by setParent(), this class can only be used for event consuming
     return XMLFilterImpl.call(this, parent);
 }
 XMLFilterImpl2.prototype = new XMLFilterImpl();
@@ -209,59 +204,59 @@ XMLFilterImpl2.prototype = new XMLFilterImpl();
 // INTERFACE: DeclHandler: http://www.saxproject.org/apidoc/org/xml/sax/ext/DeclHandler.html
 
 XMLFilterImpl2.prototype.attributeDecl = function(eName, aName, type, mode, value) {
-    return this.parent.attributeDecl.call(this.parent, eName, aName, type, mode, value);
+    return this.parent ? this.parent.declarationHandler.attributeDecl.call(this.parent, eName, aName, type, mode, value) : undefined;
 };
 
 XMLFilterImpl2.prototype.elementDecl = function(name, model) {
-    return this.parent.elementDecl.call(this.parent, name, model);
+    return this.parent ? this.parent.declarationHandler.elementDecl.call(this.parent, name, model) : undefined;
 };
 
 XMLFilterImpl2.prototype.externalEntityDecl = function(name, publicId, systemId) {
-    return this.parent.externalEntityDecl.call(this.parent, publicId, systemId);
+    return this.parent ? this.parent.declarationHandler.externalEntityDecl.call(this.parent, name, publicId, systemId) : undefined;
 };
 
 XMLFilterImpl2.prototype.internalEntityDecl = function(name, value) {
-    return this.parent.internalEntityDecl.call(this.parent, name, value);
+    return this.parent ? this.parent.declarationHandler.internalEntityDecl.call(this.parent, name, value) : undefined;
 };
 
 // INTERFACE: LexicalHandler: http://www.saxproject.org/apidoc/org/xml/sax/ext/LexicalHandler.html
 
 XMLFilterImpl2.prototype.comment = function(ch, start, length) {
-    return this.parent.comment.call(this.parent, ch, start, length);
+    return this.parent ? this.parent.lexicalHandler.comment.call(this.parent, ch, start, length) : undefined;
 };
 
 XMLFilterImpl2.prototype.endCDATA = function() {
-    return this.parent.endCDATA.call(this.parent);
+    return this.parent ? this.parent.lexicalHandler.endCDATA.call(this.parent) : undefined;
 };
 
 XMLFilterImpl2.prototype.endDTD = function() {
-    return this.parent.endDTD.call(this.parent);
+    return this.parent ? this.parent.lexicalHandler.endDTD.call(this.parent) : undefined;
 };
 
 XMLFilterImpl2.prototype.endEntity = function(name) {
-    return this.parent.endEntity.call(this.parent, name);
+    return this.parent ? this.parent.lexicalHandler.endEntity.call(this.parent, name) : undefined;
 };
 
 XMLFilterImpl2.prototype.startCDATA = function() {
-    return this.parent.startCDATA.call(this.parent);
+    return this.parent ? this.parent.lexicalHandler.startCDATA.call(this.parent) : undefined;
 };
 
 XMLFilterImpl2.prototype.startDTD = function(name, publicId, systemId) {
-    return this.parent.startDTD.call(this.parent, name, publicId, systemId);
+    return this.parent ? this.parent.lexicalHandler.startDTD.call(this.parent, name, publicId, systemId) : undefined;
 };
 
 XMLFilterImpl2.prototype.startEntity = function(name) {
-    return this.parent.startEntity.call(this.parent, name);
+    return this.parent ? this.parent.lexicalHandler.startEntity.call(this.parent, name) : undefined;
 };
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
 // XMLFilterImpl2.prototype.resolveEntity = function (publicId, systemId) {};
 // INTERFACE: EntityResolver2: http://www.saxproject.org/apidoc/org/xml/sax/ext/EntityResolver2.html
 XMLFilterImpl2.prototype.resolveEntity = function(name, publicId, baseURI, systemId) {
-    return this.parent.resolveEntity.call(this.parent, name, publicId, baseURI, systemId);
+    return this.parent ? this.parent.entityResolver.resolveEntity.call(this.parent, name, publicId, baseURI, systemId) : undefined;
 };
 XMLFilterImpl2.prototype.getExternalSubset = function(name, baseURI) {
-    return this.parent.getExternalSubset.call(this.parent, name, baseURI);
+    return this.parent ? this.parent.entityResolver.getExternalSubset.call(this.parent, name, baseURI) : undefined;
 };
 
 // Could put on org.xml.sax.helpers.
