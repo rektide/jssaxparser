@@ -157,7 +157,7 @@ XMLFilterImpl.prototype.endDocument = function() {
 };
 
 XMLFilterImpl.prototype.setDocumentLocator = function (locator) {
-    return this.parent ? this.parent.contentHandler.setDocument.call(this.parent, locator) : undefined;
+    return this.parent ? this.parent.contentHandler.setDocumentLocator.call(this.parent, locator) : undefined;
 };
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
