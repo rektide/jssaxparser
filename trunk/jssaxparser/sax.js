@@ -259,7 +259,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
-    this.properties['http://xml.org/sax/properties/document-xml-version'] = null;
+    this.properties['http://xml.org/sax/properties/document-xml-version'] = null; // string
     this.properties['http://xml.org/sax/properties/dom-node'] = this.domNode = domNode; // Not supported yet (if treating DOM node as though SAX2, this will be starting node)
     this.properties['http://xml.org/sax/properties/lexical-handler'] = this.lexicalHandler = lexicalHandler || null;
     this.properties['http://xml.org/sax/properties/xml-string'] = null; // Not supported yet (update with characters that were responsible for the event)
@@ -390,6 +390,17 @@ SAXParser.prototype.setProperty = function (name, value) { // (java.lang.String,
         throw new SAXNotSupportedException();
     }
     this.properties[name] = value;
+    switch (name) { // Keep any aliases up to date as well
+        case 'http://xml.org/sax/properties/lexical-handler':
+            this.lexicalHandler = value;
+            break;
+        case 'http://xml.org/sax/properties/declaration-handler':
+            this.declarationHandler = value;
+            break;
+        case 'http://xml.org/sax/properties/dom-node':
+            this.domNode = value;
+            break;
+    }
 };
 // END SAX2 XMLReader INTERFACE
 
