@@ -754,21 +754,23 @@ SAXParser.prototype.scanComment = function() {
             //do not skip white space at beginning of comment
             this.nextChar(true);
             var start = this.index;
-            var comment = this.nextRegExp(/--/);
-            var length = this.index - start;
-            //goes to second '-'
-            this.nextChar(true);
-            this.nextChar(true);
-            //must be '>'
-            if (this.ch === ">") {
-                if (this.lexicalHandler) {
-                    this.lexicalHandler.comment(comment, start, length);// Brett (test for support and change start/length?)
-                }
+            var comment = this.nextCharRegExp(new RegExp(NOT_CHAR+'|-'), NOT_A_CHAR_CB_OBJ);
+            while (this.ch === "-") {
                 this.nextChar(true);
-                return true;
-            } else {
-                return this.fireError("end of comment not valid, must be --&gt;", FATAL);
+                if (this.isFollowedBy("->")) {
+                    break;
+                }
+                else if (this.isFollowedBy("-")) {
+                    return this.fireError("end of comment not valid, must be --&gt;", FATAL);
+                }
+                comment += "-" + this.nextCharRegExp(new RegExp(NOT_CHAR+'|-'), NOT_A_CHAR_CB_OBJ);
             }
+            var length = comment.length;
+            if (this.lexicalHandler) {
+                this.lexicalHandler.comment(comment, start, length);// Brett (test for support and change start/length?)
+            }
+            //this.nextChar(true);
+            return true;
         } else {
             return this.fireError("beginning comment markup is invalid, must be &lt;!--", FATAL);
         }
