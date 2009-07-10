@@ -61,7 +61,7 @@
 
     function parseTestCase(uri, strictChars) {
         var contentHandler2 = new DefaultHandler2();
-        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
+        var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
         if (strictChars) {
             saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
         }
@@ -79,7 +79,7 @@
     
     function testParse_xmlconf() {
         var contentHandler = new DomContentHandler();
-        var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         testCt++;
         try {
             saxParser.parse(new InputSource("xmlconf/xmlconf.xml"));
@@ -200,7 +200,7 @@
     
     function testParseIndividual() {
         var contentHandler = new DomContentHandler();
-        var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
         try {
             saxParser.parse(new InputSource("xmlconf/xmltest/valid/not-sa/003.xml"));
             throwNotFatalException(saxParser.errorHandler);

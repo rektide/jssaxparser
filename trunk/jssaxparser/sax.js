@@ -35,8 +35,6 @@ knowledge of the CeCILL license and that you accept its terms.
 
 */
 
-// NOTE: We have at least a skeleton for all non-deprecated, non-adapter SAX2 classes/interfaces/exceptions
-
 (function () { // Begin namespace
 
 var that = this; // probably window object
@@ -179,27 +177,23 @@ ExternalId.prototype.toString = function() {
 };
 
 
-// NOTE: The following notes might not be perfectly up to date
-// The official SAX2 parse() method is not fully implemented (to accept an InputSource object constructed by a
+// NOTES:
+// 1) The following notes might not be perfectly up to date
+// 2) No property should be retrieved or set publicly.
+// 3) We have at least a skeleton for all non-deprecated, non-adapter SAX2 classes/interfaces/exceptions
+// 4) // The official SAX2 parse() method is not fully implemented (to accept an InputSource object constructed by a
 //    Reader (like StringReader would probably be best) or InputStream). For now the parseString() method can
 //    be used (and is more convenient than converting to an InputSource object).
-// The feature/property defaults are incomplete, as they really depend on the implementation and how far we
+// 5) // The feature/property defaults are incomplete, as they really depend on the implementation and how far we
 //   implement them; however, we've added defaults, two of which (on namespaces) are required to be
 //   supported (though they don't need to support both true and false options).
-// FURTHER NOTES:
-// 1) No property should be retrieved or set publicly.
-// 2) The SAXParser constructor currently only works with these arguments: first (partially), second, third, and fourth (partially)
+// 6) Currently does not call the following (lexicalHandler, dtdHandler, and errorHandler interface methods, are all supported, however):
+//  a) on the contentHandler: ignorableWhitespace(), skippedEntity() and for startElement(), support Attributes2 in 4th argument (rename AttributesImpl to Attributes2Impl and support interface)
+//  b) on the declarationHandler: externalEntityDecl()
+//  c) on entityResolver: resolveEntity() and for EntityResolver2 interface: resolveEntity() (additional args) or getExternalSubset()
+//  d) much of Locator information is not made available
 
-// Currently does not call the following (as does the DefaultHandler2 class)
-// 1) on the contentHandler: ignorableWhitespace(), skippedEntity(), setDocumentLocator() (including with Locator2)
-// 2) on the DeclHandler: attributeDecl(), elementDecl(), externalEntityDecl()
-// 3) on EntityResolver: resolveEntity()
-// 4) on EntityResolver2: resolveEntity() (additional args) or getExternalSubset()
-// 5) on DTDHandler: notationDecl(), unparsedEntityDecl()
-// lexicalHandler and errorHandler interface methods, however, are all supported
-// Need to also implement Attributes2 in startElement (rename AttributesImpl to Attributes2Impl and add interface)
-
-function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, domNode, locator) {
+function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, entityResolver, locator, domNode) {
     // Implements SAX2 XMLReader interface (except for parse() methods)
     // XMLReader doesn't specify a constructor (though XMLFilterImpl does), so this class is able to define its own behavior to accept a contentHandler, etc.
 
@@ -218,7 +212,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     }
     this.dtdHandler = dtdHandler;
     this.errorHandler = errorHandler;
-    this.entityResolver = null;
+    this.entityResolver = entityResolver || null;
 
     try {
         this.namespaceSupport = new NamespaceSupport();
@@ -1161,6 +1155,9 @@ SAXParser.prototype.scanEntityDecl = function() {
                     if (this.isFollowedBy("NDATA")) {
                         this.nextChar();
                         var ndataName = this.scanName();
+                        if (this.dtdHandler) {
+                            this.dtdHandler.unparsedEntityDecl(entityName, externalId.publicId, externalId.systemId, ndataName);
+                        }
                     }
                     this.externalEntities[entityName] = externalId;
                 } else {
@@ -1400,8 +1397,8 @@ SAXParser.prototype.scanNotationDecl = function() {
         } else {
             this.scanExternalId(externalId);
         }
-        if (this.declarationHandler) {
-            this.declarationHandler.notationDecl(name, externalId.publicId, externalId.systemId);
+        if (this.dtdHandler) {
+            this.dtdHandler.notationDecl(name, externalId.publicId, externalId.systemId);
         }
         return true;
     }

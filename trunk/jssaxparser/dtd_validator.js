@@ -103,11 +103,6 @@ DtdValidator.prototype.endDocument = function() {
 
 DtdValidator.prototype.setDocumentLocator = function (locator) {
 };
-// INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
-// Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
-DtdValidator.prototype.resolveEntity = function (publicId, systemId) {
-    return null;
-};
 
 // INTERFACE: DTDHandler: http://www.saxproject.org/apidoc/org/xml/sax/DTDHandler.html
 DtdValidator.prototype.notationDecl = function (name, publicId, systemId) {
@@ -273,6 +268,7 @@ DtdValidator.prototype.startEntity = function(name) {
 // DefaultHandler2.prototype.resolveEntity = function (publicId, systemId) {};
 // INTERFACE: EntityResolver2: http://www.saxproject.org/apidoc/org/xml/sax/ext/EntityResolver2.html
 DtdValidator.prototype.resolveEntity = function(name, publicId, baseURI, systemId) {
+    return null;
 };
 DtdValidator.prototype.getExternalSubset = function(name, baseURI) {
 };
