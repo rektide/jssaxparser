@@ -259,12 +259,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     // Our custom features (as for other features, retrieve/set publicly via getFeature/setFeature):
     // We are deliberately non-conformant by default (for performance reasons)
     this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict'] = false;
-    if (this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict']) {
-        this.CHAR_DATA_REGEXP = new RegExp(NOT_CHAR+'|[<&\\]]');
-    }
-    else {
-        this.CHAR_DATA_REGEXP = /[<&\]]/;
-    }
+    this.updateCharacterDataStrict();
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
@@ -295,8 +290,7 @@ SAXParser.prototype.getFeature = function (name) { // (java.lang.String)
     // Look up the value of a feature flag (boolean).
     if (this.features[name] === undefined) {
       throw new SAXNotRecognizedException();
-    }
-    else if (this.disallowedGetFeature.indexOf(name) !== -1) {
+    } else if (this.disallowedGetFeature.indexOf(name) !== -1) {
       throw new SAXNotSupportedException();
     }
     return this.features[name];
@@ -306,8 +300,7 @@ SAXParser.prototype.getProperty = function (name) { // (java.lang.String)
     // It is possible for an XMLReader to recognize a property name but temporarily be unable to return its value. Some property values may be available only in specific contexts, such as before, during, or after a parse.
     if (this.properties[name] === undefined) {
       throw new SAXNotRecognizedException();
-    }
-    else if (this.disallowedGetProperty.indexOf(name) !== -1) {
+    } else if (this.disallowedGetProperty.indexOf(name) !== -1) {
       throw new SAXNotSupportedException();
     }
     return this.properties[name];
@@ -329,12 +322,10 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
         if (charStream) {
             if (charStream instanceof StringReader) { // Fix: This if-else is just a hack, until the parser may support Reader's methods like read()
                 xmlAsString = charStream.s;
-            }
-            else {
+            } else {
                 throw "A character stream InputSource is not implemented at present unless it is a StringReader character stream (and that only if it is our own version which has the string on the 's' property)";
             }
-        }
-        else if (byteStream || systemId) {
+        } else if (byteStream || systemId) {
             this.encoding = inputOrSystemId.getEncoding(); // To be used during XML Declaration checking
             if (byteStream) {
                 throw "A byte stream InputSource is not implemented at present in SAXParser's parse() method";
@@ -378,8 +369,7 @@ SAXParser.prototype.setFeature = function (name, value) { // (java.lang.String, 
     // Set the value of a feature flag (void).
     if (this.features[name] === undefined) { // Should be defined already in some manner
         throw new SAXNotRecognizedException();
-    }
-    else if (
+    } else if (
             (this.disallowedSetFeatureValues[name] !== undefined &&
                     this.disallowedSetFeatureValues[name] === value) ||
                 (this.disallowedSetFeature.indexOf(name) !== -1)
@@ -387,14 +377,16 @@ SAXParser.prototype.setFeature = function (name, value) { // (java.lang.String, 
         throw new SAXNotSupportedException();
     }
     this.features[name] = value;
+    if (name === 'http://debeissat.nicolas.free.fr/ns/character-data-strict') {
+        this.updateCharacterDataStrict();
+    }
 };
 SAXParser.prototype.setProperty = function (name, value) { // (java.lang.String, java.lang.Object)
     // Set the value of a property (void).
     // It is possible for an XMLReader to recognize a property name but to be unable to change the current value. Some property values may be immutable or mutable only in specific contexts, such as before, during, or after a parse.
     if (this.properties[name] === undefined) { // Should be defined already in some manner
         throw new SAXNotRecognizedException();
-    }
-    else if (
+    } else if (
                 (this.disallowedSetPropertyValues[name] !== undefined &&
                     this.disallowedSetPropertyValues[name] === value) ||
                 (this.disallowedSetProperty.indexOf(name) !== -1)
@@ -466,6 +458,16 @@ SAXParser.prototype.parseString = function(xml) { // We implement our own for no
     }
 };
 
+// BEGIN FUNCTIONS WHICH SHOULD BE CONSIDERED PRIVATE
+
+SAXParser.prototype.updateCharacterDataStrict = function () {
+    if (this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict']) {
+        this.CHAR_DATA_REGEXP = new RegExp(NOT_CHAR+'|[<&\\]]');
+    } else {
+        this.CHAR_DATA_REGEXP = /[<&\]]/;
+    }
+};
+
 /*
 scan XML declaration, test first character of document, and if right goes to character after <
 */
@@ -479,7 +481,6 @@ SAXParser.prototype.startParsing = function() {
     }
 };
 
-// BEGIN FUNCTIONS WHICH SHOULD BE CONSIDERED PRIVATE
 SAXParser.prototype.next = function() {
     this.skipWhiteSpaces();
     if (this.ch === "<") {
@@ -788,8 +789,7 @@ SAXParser.prototype.setXMLVersion = function (version) {
    if (version) {
         if (XML_VERSIONS.indexOf(version) === -1) {
             this.fireError("The specified XML Version is not a presently valid XML version number", FATAL); // e.g. 1.5
-        }
-        else if (version === '1.1' && this.features['http://xml.org/sax/features/xml-1.1'] === false) {
+        } else if (version === '1.1' && this.features['http://xml.org/sax/features/xml-1.1'] === false) {
             this.fireError("The XML text specifies version 1.1, but this parser does not support this version.", FATAL);
         }
         this.properties['http://xml.org/sax/properties/document-xml-version'] = version;
@@ -896,8 +896,7 @@ SAXParser.prototype.scanXMLDeclOrTextDecl = function() {
                 }
             }
             this.features['http://xml.org/sax/features/is-standalone'] = standalone;
-        }
-        else { // STATE_EXT_ENT
+        } else { // STATE_EXT_ENT
             var versionOrEncodingArr = this.scanXMLDeclOrTextDeclAttribute(['version', 'encoding'], [XML_VERSION, ENCODING]);
             if (versionOrEncodingArr[0] === 'version') {
                 version = versionOrEncodingArr[1];
@@ -1075,7 +1074,7 @@ SAXParser.prototype.includeParameterEntity = function() {
     this.includeEntity(entityName, entityStart, replacement);
     //white spaces are not significant here
     this.skipWhiteSpaces();
-}
+};
 
 /*
 actual char is non whitespace char after '['
@@ -1799,8 +1798,15 @@ SAXParser.prototype.nextGT = function() {
 };
 
 SAXParser.prototype.nextEndPI = function() {
-    var content = this.nextRegExp(/\?>/);
-    this.nextNChar(2);
+    var content = this.nextCharRegExp(new RegExp(NOT_CHAR+'|\\?'), NOT_A_CHAR_CB_OBJ);
+    //if found a "?", end if it is followed by ">"
+    while (this.ch === "?") {
+        this.nextChar(true);
+        if (this.isFollowedBy(">")) {
+            break;
+        }
+        content += "?" + this.nextCharRegExp(new RegExp(NOT_CHAR+'|\\?'), NOT_A_CHAR_CB_OBJ);
+    }
     return content;
 };
 

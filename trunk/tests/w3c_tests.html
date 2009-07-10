@@ -38,23 +38,41 @@
     }
     
     function isAssumedNotConformant(uri) {
-        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
         switch (uri) {
-            case "not-wf/sa/030.xml":
-            case "not-wf/sa/031.xml":
-            case "not-wf/sa/032.xml":
-            case "not-wf/sa/033.xml":
             case "valid/sa/012.xml":
                 return true;
             default:
                 return false;
         }
     }
+    
+    function testForStrictCharacterData(uri) {
+        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
+        switch (uri) {
+            case "not-wf/sa/030.xml":
+            case "not-wf/sa/031.xml":
+            case "not-wf/sa/032.xml":
+            case "not-wf/sa/033.xml":
+                return true;
+            default:
+                return false;
+        }
+    }
 
-    function parseTestCase(uri) {
+    function parseTestCase(uri, strictChars) {
         var contentHandler2 = new DefaultHandler2();
         var saxParser2 = new SAXParser(contentHandler2, contentHandler2, contentHandler2, contentHandler2, contentHandler2);
-        saxParser2.parse("xmlconf/xmltest/" + uri);
+        if (strictChars) {
+            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
+        }
+        try {
+            saxParser2.parse("xmlconf/xmltest/" + uri);
+        }
+        finally {
+            if (strictChars) {
+                saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
+            }
+        }
         throwNotFatalException(saxParser2.errorHandler);
     }
 
@@ -159,7 +177,7 @@
                 var uri = test.getAttribute("URI");
                 var testLabel = textContent(test);
                 try {
-                    parseTestCase(uri);
+                    parseTestCase(uri, testForStrictCharacterData(uri));
                     //should have been exceptions
                     assertTrue("not-wf XML not detected in uri : " + uri + ", test label was : " + testLabel, false);
                 } catch(e) {
