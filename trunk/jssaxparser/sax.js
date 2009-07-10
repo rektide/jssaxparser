@@ -192,6 +192,7 @@ ExternalId.prototype.toString = function() {
 //  b) on the declarationHandler: externalEntityDecl()
 //  c) on entityResolver: resolveEntity() and for EntityResolver2 interface: resolveEntity() (additional args) or getExternalSubset()
 //  d) much of Locator information is not made available
+//  e) domNode
 
 function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHandler, dtdHandler, entityResolver, locator, domNode) {
     // Implements SAX2 XMLReader interface (except for parse() methods)
