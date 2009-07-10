@@ -15,24 +15,29 @@
     <script type="text/javascript"><!--//--><![CDATA[//><!--
 
     /*global assertTrue, assertXmlEquals, createDocumentFromText, DomContentHandler, SAXParser, loadFile, loadXml, loadXml2, loadXml3, loadRelaxng, loadRelaxng2,loadRelaxng3, JsUnitException */
-	// (Note: change reference to SAXParser above if change name)
+    // (Note: change reference to SAXParser above if change name)
     var contentHandler;
     var saxParser;
     
     function setUp() {
         contentHandler = new DomContentHandler();
-		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
     }
 
-	function parse(xml) {
+    function parse(xml) {
         try {
             saxParser.parseString(xml);
         } catch(e) {
             assertTrue(e.message, false);
         }
         assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
-		contentHandler.saxParseExceptions.length === 0);
+        contentHandler.saxParseExceptions.length === 0);
         assertXmlEquals(createDocumentFromText(xml), contentHandler.document);
+    }
+    
+    function testParse_test_files_chinese() {
+        var fileAsText = loadFile("test_files/chintest9.xml");
+        parse(fileAsText);
     }
     
     function testParse_test_files_trailing_misc() {
@@ -64,7 +69,7 @@
         }
         //there has been an exception thrown because the dtd could not be loaded.
         assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
-		contentHandler.saxParseExceptions.length === 1);
+        contentHandler.saxParseExceptions.length === 1);
         assertXmlEquals(createDocumentFromText(fileAsText), contentHandler.document);
     }
     
@@ -77,7 +82,7 @@
         }
         //there has been an exception thrown because the dtd could not be loaded.
         assertTrue(contentHandler.saxParseExceptions.length + " SAX exception(s) has(have) been thrown",
-		contentHandler.saxParseExceptions.length === 1);
+        contentHandler.saxParseExceptions.length === 1);
         assertXmlEquals(createDocumentFromText(fileAsText), contentHandler.document);
     }
     
@@ -127,45 +132,47 @@
         parse(fileAsText);
     }
     
-	function runAllTests () {
+    function runAllTests () {
         setUp();
-		testParse_test_files_trailing_misc();
+        testParse_test_files_trailing_misc();
         setUp();
-		testParse_test_files_namespaces();
-		setUp();
-		testParse_test_files_xslt();
-		setUp(); // needed a new DOM content handler, so calling before each test
-		testParse_test_files_comment_cdata();
-		setUp();
-		testParse_test_files_svg();
-		setUp();
-		testParse_test_files_svg_with_entities();
-		setUp();
-		testParse_test_files_6nbn();
-		setUp();
-		testParse_test_files_benchmark();
-		setUp();
-		testParse_xml1();
-		setUp();
-		testParse_xml2();
-		setUp();
-		testParse_xml3();
-		setUp();
-		testParse_relaxng();
-		setUp();
-		testParse_relaxng2();
-		setUp();
-		testParse_relaxng3();
+        testParse_test_files_namespaces();
+        setUp();
+        testParse_test_files_xslt();
+        setUp(); // needed a new DOM content handler, so calling before each test
+        testParse_test_files_comment_cdata();
+        setUp();
+        testParse_test_files_svg();
+        setUp();
+        testParse_test_files_svg_with_entities();
+        setUp();
+        testParse_test_files_6nbn();
+        setUp();
+        testParse_test_files_benchmark();
+        setUp();
+        testParse_xml1();
+        setUp();
+        testParse_xml2();
+        setUp();
+        testParse_xml3();
+        setUp();
+        testParse_relaxng();
+        setUp();
+        testParse_relaxng2();
+        setUp();
+        testParse_relaxng3();
         setUp();
         testParse_catalog_dtd();
+        setUp();
+        testParse_test_files_chinese();
         alert('done!');
-	}
-	
-	// Brett added to be able to show something in console when error is thrown
-	JsUnitException.prototype.toString = function () {
-		return this.jsUnitMessage;
-	};
-	
+    }
+    
+    // Brett added to be able to show something in console when error is thrown
+    JsUnitException.prototype.toString = function () {
+        return this.jsUnitMessage;
+    };
+    
 	/*
 	Object.prototype.toString = function () {
 		return this.description;
