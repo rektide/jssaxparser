@@ -1882,7 +1882,7 @@ XMLReaderFactory.getSaxImport = function() {
         }
     }
     return that.saxImport;
-}
+};
 
 XMLReaderFactory.getJsPath = function() {
     if (that.jsPath === undefined) {
@@ -1893,7 +1893,7 @@ XMLReaderFactory.getJsPath = function() {
         }
     }
     return that.jsPath;
-}
+};
 
 XMLReaderFactory.importJS = function(filename) {
     var scriptTag = XMLReaderFactory.getSaxImport();
@@ -1910,7 +1910,7 @@ XMLReaderFactory.importJS = function(filename) {
     } else {
         throw new SAXException("could not find script markup importing sax.js in the document");
     }
-}
+};
 
 XMLReaderFactory.checkDependencies = function() {
     //need an implementation of AttributesImpl
@@ -1925,11 +1925,11 @@ XMLReaderFactory.checkDependencies = function() {
     if (typeof that.NamespaceSupport !== 'function') {
         try {
             this.importJS("NamespaceSupport.js");
-        } catch(e) {
-            throw new SAXException("implementation of NamespaceSupport, like NamespaceSupport.js, not provided and could not be dynamically loaded because of exception", e);
+        } catch(e2) {
+            throw new SAXException("implementation of NamespaceSupport, like NamespaceSupport.js, not provided and could not be dynamically loaded because of exception", e2);
         }
     }
-}
+};
 
 XMLReaderFactory.createXMLReader = function (className) {
     if (className) {

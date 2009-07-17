@@ -60,7 +60,7 @@ Serializer.prototype.startElement = function(namespaceURI, localName, qName, att
         this.string += ' xmlns:' + i + '="' + this.currentPrefixMapping[i] + '"'; // .toLowerCase()
     }
     this.currentPrefixMapping = {};
-    for (var i = 0 ; i < atts.getLength() ; i++) {
+    for (i = 0 ; i < atts.getLength() ; i++) {
         this.string += ' ' + atts.getQName(i) + '="' + this.entify(atts.getValue(i)) + '"'; // .toLowerCase()
     }
     this.string += '>';
