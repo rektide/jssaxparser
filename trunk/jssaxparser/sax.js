@@ -1869,6 +1869,16 @@ function XMLReaderFactory () {
     throw 'XMLReaderFactory is not meant to be instantiated';
 }
 
+// PUBLIC API
+XMLReaderFactory.createXMLReader = function (className) {
+    if (className) {
+        return new that[className]();
+    }
+    return new SAXParser(); // our system default XMLReader (parse() not implemented, however)
+};
+
+// CUSTOM CONVENIENCE METHODS
+
 XMLReaderFactory.getSaxImport = function() {
     if (!that.saxImport) {
         var scripts = document.getElementsByTagName("script");
@@ -1929,13 +1939,6 @@ XMLReaderFactory.checkDependencies = function() {
             throw new SAXException("implementation of NamespaceSupport, like NamespaceSupport.js, not provided and could not be dynamically loaded because of exception", e2);
         }
     }
-};
-
-XMLReaderFactory.createXMLReader = function (className) {
-    if (className) {
-        return new that[className]();
-    }
-    return new SAXParser(); // our system default XMLReader (parse() not implemented, however)
 };
 
 
