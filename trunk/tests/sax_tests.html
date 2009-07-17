@@ -3,8 +3,6 @@
   <head>
     <title>SAX Tests</title>
     <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
-    <script type="text/javascript" src="../jssaxparser/AttributesImpl.js"></script>
-    <script type="text/javascript" src="../jssaxparser/NamespaceSupport.js"></script>
     <script type="text/javascript" src="../jssaxparser/sax.js"></script>
     <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
     <script type="text/javascript" src="../examples/xml_samples.js"></script>
@@ -21,7 +19,8 @@
     
     function setUp() {
         contentHandler = new DomContentHandler();
-        saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        saxParser = XMLReaderFactory.createXMLReader();
+        saxParser.setHandler(contentHandler);
     }
 
     function parse(xml) {
@@ -180,7 +179,7 @@
 	assertTrue('ok', true, false); // Now will show: Error: uncaught exception: Incorrect arguments passed to assert function
 	*/
 	
-	runAllTests(); // all were apparently working except following due to: Error: uncaught exception: Expected translate(20, 20) scale(4, 4) (string) but was translate(20,20) scale(4) (string); the problem didn't show up before since the test had a slight bug in two nested for loops using the same 'i' variable; I fixed it, and then the problem surfaced, until I fudged the sample file slightly--see below.
+	// all were apparently working except following due to: Error: uncaught exception: Expected translate(20, 20) scale(4, 4) (string) but was translate(20,20) scale(4) (string); the problem didn't show up before since the test had a slight bug in two nested for loops using the same 'i' variable; I fixed it, and then the problem surfaced, until I fudged the sample file slightly--see below.
 	/*
 	setUp();
 	testParse_test_files_svg_with_entities();
@@ -199,7 +198,7 @@
 	*/
     //--><!]]></script>
   </head>
-  <body>
+  <body onload="runAllTests()">
     <p>This is a Test Page for sax.js</p>
   </body>
 </html>

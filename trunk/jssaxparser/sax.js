@@ -102,11 +102,6 @@ SAXException.prototype.getException = function () {
     return this.exception;
 };
 
-//check that an implementation of Attributes is provided
-if (typeof that.AttributesImpl !== 'function') {
-    throw new SAXException("you must import an implementation of Attributes, like AttributesImpl.js, in the html");
-}
-
 
 // Not fully implemented
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXNotSupportedException.html
@@ -215,6 +210,11 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.errorHandler = errorHandler;
     this.entityResolver = entityResolver || null;
 
+    try {
+        new AttributesImpl();
+    } catch(e) {
+        throw new SAXException("you must import an implementation of AttributesImpl, like AttributesImpl.js, in the html", e);
+    }
     try {
         this.namespaceSupport = new NamespaceSupport();
     } catch(e2) {
@@ -344,6 +344,15 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
         this.baseURI = path;
     }
     this.parseString(xmlAsString);
+};
+/* convenient method in order to set all handlers at once */
+SAXParser.prototype.setHandler = function (handler) { // (ContentHandler)
+    this.contentHandler = handler;
+    this.lexicalHandler = handler;
+    this.errorHandler = handler;
+    this.declarationHandler = handler;
+    this.dtdHandler = handler;
+    this.entityResolver = handler;
 };
 SAXParser.prototype.setContentHandler = function (handler) { // (ContentHandler)
     // Allow an application to register a content event handler (void).
@@ -1850,7 +1859,6 @@ SAXParser.prototype.fireError = function(message, gravity) {
     return true;
 };
 
-
 /*
 static XMLReader 	createXMLReader()
           Attempt to create an XMLReader from system defaults.
@@ -1860,6 +1868,69 @@ static XMLReader 	createXMLReader(java.lang.String className)
 function XMLReaderFactory () {
     throw 'XMLReaderFactory is not meant to be instantiated';
 }
+
+XMLReaderFactory.getSaxImport = function() {
+    if (!that.saxImport) {
+        var scripts = document.getElementsByTagName("script");
+        for (var i = 0 ; i < scripts.length ; i++) {
+            var script = scripts.item(i);
+            var src = script.getAttribute("src");
+            if (src && src.match("sax.js")) {
+                that.saxImport = script;
+                return that.saxImport;
+            }
+        }
+    }
+    return that.saxImport;
+}
+
+XMLReaderFactory.getJsPath = function() {
+    if (that.jsPath === undefined) {
+        var scriptTag = XMLReaderFactory.getSaxImport();
+        if (scriptTag) {
+            var src = scriptTag.getAttribute("src");
+            that.jsPath = src.substring(0, src.lastIndexOf("/") + 1);
+        }
+    }
+    return that.jsPath;
+}
+
+XMLReaderFactory.importJS = function(filename) {
+    var scriptTag = XMLReaderFactory.getSaxImport();
+    if (scriptTag !== undefined) {
+        var path = XMLReaderFactory.getJsPath();
+        if (path !== undefined) {
+            var script = document.createElement("script");
+            script.setAttribute("src", path + filename);
+            script.setAttribute("type", "text/javascript");
+            scriptTag.parentNode.insertBefore(script, scriptTag);
+        } else {
+            throw new SAXException("could not get path of sax.js from the script markup");
+        }
+    } else {
+        throw new SAXException("could not find script markup importing sax.js in the document");
+    }
+}
+
+XMLReaderFactory.checkDependencies = function() {
+    //need an implementation of AttributesImpl
+    if (typeof that.AttributesImpl !== 'function') {
+        try {
+            this.importJS("AttributesImpl.js");
+        } catch(e) {
+            throw new SAXException("implementation of Attributes, like AttributesImpl.js, not provided and could not be dynamically loaded because of exception", e);
+        }
+    }
+    //also need an implementation of NamespaceSupport
+    if (typeof that.NamespaceSupport !== 'function') {
+        try {
+            this.importJS("NamespaceSupport.js");
+        } catch(e) {
+            throw new SAXException("implementation of NamespaceSupport, like NamespaceSupport.js, not provided and could not be dynamically loaded because of exception", e);
+        }
+    }
+}
+
 XMLReaderFactory.createXMLReader = function (className) {
     if (className) {
         return new that[className]();
@@ -1879,5 +1950,7 @@ this.SAXParseException = SAXParseException;
 
 // Could put on org.xml.sax.helpers.
 this.XMLReaderFactory = XMLReaderFactory;
+
+XMLReaderFactory.checkDependencies();
 
 }()); // end namespace
