@@ -210,11 +210,10 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.errorHandler = errorHandler;
     this.entityResolver = entityResolver || null;
 
-    try {
-        new AttributesImpl();
-    } catch(e) {
-        throw new SAXException("you must import an implementation of AttributesImpl, like AttributesImpl.js, in the html", e);
+    if (typeof that.AttributesImpl !== 'function') {
+        throw new SAXException("you must import an implementation of AttributesImpl, like AttributesImpl.js, in the html");
     }
+    
     try {
         this.namespaceSupport = new NamespaceSupport();
     } catch(e2) {
