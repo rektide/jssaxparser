@@ -122,6 +122,9 @@ function DomContentHandler() {
     this.cdata = false;
 }
 
+DomContentHandler.prototype.toString = function () {
+    return "DomContentHandler";
+}
 
 // INTERFACE: ContentHandler: http://www.saxproject.org/apidoc/org/xml/sax/ContentHandler.html
 // implemented in DefaultHandler, DefaultHandler2:

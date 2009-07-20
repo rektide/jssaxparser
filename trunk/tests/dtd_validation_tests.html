@@ -4,7 +4,7 @@
     <title>SAX Tests - DTD validation</title>
     <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
     <script type="text/javascript" src="../jssaxparser/sax.js"></script>
-    <script type="text/javascript" src="../jssaxparser/dtd_validator.js"></script>
+    <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
     <script type="text/javascript" src="../jssaxparser/validation_common/validator_functions.js"></script>
     <script type="text/javascript" src="../jssaxparser/validation_common/validator_objects.js"></script>
     <script type="text/javascript" src="../jssaxparser/jsdatatypelibrary-0.2/datatype_library.js"></script>
@@ -22,8 +22,10 @@
     var saxParser;
     
     function setUp() {
-        contentHandler = new DtdValidator();
-		saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
+        contentHandler = new DomContentHandler();
+        saxParser = XMLReaderFactory.createXMLReader();
+        saxParser.setHandler(contentHandler);
+        saxParser.setFeature('http://xml.org/sax/features/validation', true);
     }
 
 	function parse(xml) {
