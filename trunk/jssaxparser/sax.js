@@ -264,7 +264,7 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     this.systemId = systemId;
     if (!xmlAsString) { // If not set above
         // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
-        xmlAsString = this.loadFile(systemId);
+        xmlAsString = SAXParser.loadFile(systemId);
         //get the path to the file
         path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
         this.baseURI = path;
@@ -290,6 +290,9 @@ SAXParser.prototype.parseString = function (xmlAsString) {
         saxEvents.attributeDecl = this.attributeDecl_validating;
         saxEvents.elementDecl = this.elementDecl_validating;
         saxEvents.startDTD = this.startDTD_validating;
+    }
+    if (this.features['http://xml.org/sax/features/use-entity-resolver2']) {
+        saxEvents.resolveEntity = this.resolveEntity;
     }
     this.saxScanner.parseString(xmlAsString);
 };
@@ -541,7 +544,7 @@ SAXParser.prototype.startDTD_validating = function(name, publicId, systemId) {
     return;
 };
 
-SAXParser.prototype.loadFile = function(fname) {
+SAXParser.loadFile = function(fname) {
 	var xmlhttp = null;
 	if (window.XMLHttpRequest) {// code for Firefox, Opera, IE7, etc.
 		xmlhttp = new XMLHttpRequest();
@@ -561,7 +564,7 @@ SAXParser.prototype.loadFile = function(fname) {
 };
 
 SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, systemId) {
-    var txt = this.loadFile(this.baseURI + systemId);
+    var txt = SAXParser.loadFile(baseURI + systemId);
     if (txt) {
         return txt;
     }

@@ -64,7 +64,7 @@
             saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
         }
         try {
-            saxParser2.parse("xmlconf/xmltest/" + uri);
+            saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
         }
         finally {
             if (strictChars) {

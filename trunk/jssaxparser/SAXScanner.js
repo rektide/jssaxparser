@@ -87,9 +87,16 @@ var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
 // Our own exception class; should this perhaps extend SAXParseException?
 function EndOfInputException() {}
 
+EndOfInputException.prototype.toString = function() {
+    return "EndOfInputException";
+};
+
 function InternalEntityNotFoundException (entityName) {
     this.entityName = entityName;
 }
+InternalEntityNotFoundException.prototype.toString = function() {
+    return "InternalEntityNotFoundException";
+};
 InternalEntityNotFoundException.prototype = new SAXParseException();
 InternalEntityNotFoundException.constructor = InternalEntityNotFoundException;
 
@@ -151,10 +158,6 @@ SAXScanner.prototype.parseString = function(xml) { // We implement our own for n
                 contain a map between element name and a map between
                 attributes name and types ( 3 level tree) */
     this.attributesType = {};
-    /* this.baseURI is the relative URI of the XML file loaded. not possible to load a file above the html */
-    if (!this.baseURI) {
-        this.baseURI = window.location;
-    }
     /* on each depth, a relative base URI, empty if no xml:base found, is recorded */
     this.relativeBaseUris = [];
     this.saxEvents.startDocument();
@@ -380,7 +383,7 @@ SAXScanner.prototype.scanCharData = function() {
 
 
 SAXScanner.prototype.getRelativeBaseUri = function() {
-    var returned = "";
+    var returned = this.saxParser.baseURI;
     var i = this.relativeBaseUris.length;
     while (i--) {
         returned += this.relativeBaseUris[i];
@@ -395,11 +398,11 @@ SAXScanner.prototype.getRelativeBaseUri = function() {
 SAXScanner.prototype.includeEntity = function(entityName, entityStartIndex, replacement) {
     //if it is an externalId, have to include the external content
     if (replacement instanceof ExternalId) {
-        var relativeBaseUri = this.getRelativeBaseUri();
         try {
-            var externalEntity = this.saxEvents.resolveEntity(entityName, replacement.publicId, relativeBaseUri, replacement.systemId);
+            //it seems externalEntity does not take in account xml:base, see xmlconf.xml
+            var externalEntity = this.saxEvents.resolveEntity(entityName, replacement.publicId, this.saxParser.baseURI, replacement.systemId);
             //if not only whitespace
-            if (NON_WS.test(externalEntity)) {
+            if (externalEntity !== undefined && NON_WS.test(externalEntity)) {
                 //check for no recursion
                 if (new RegExp("&" + entityName + ";").test(externalEntity)) {
                     this.saxParser.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", SAXParser.FATAL);
@@ -412,7 +415,12 @@ SAXScanner.prototype.includeEntity = function(entityName, entityStartIndex, repl
                 this.state = oldState;
             }
         } catch(e) {
-            this.saxParser.fireError("issue at resolving entity : [" + entityName + "], publicId : [" + replacement.publicId + "], uri : [" + relativeBaseUri + "], systemId : [" + replacement.systemId + "], got exception : [" + e.toString() + "]", SAXParser.ERROR);
+            this.saxParser.fireError("issue at resolving entity : [" + entityName + "], publicId : [" + replacement.publicId + "], uri : [" + this.saxParser.baseURI + "], systemId : [" + replacement.systemId + "], got exception : [" + e.toString() + "]", SAXParser.ERROR);
+            //removes the entity
+            this.xml = this.xml.substring(0, entityStartIndex).concat(this.xml.substr(this.index));
+            this.length = this.xml.length;
+            this.index = entityStartIndex;
+            this.ch = this.xml.charAt(this.index);
         }
     } else {
         this.includeText(entityStartIndex, replacement);
@@ -664,10 +672,10 @@ SAXScanner.prototype.scanDoctypeDecl = function() {
         if (externalId.systemId !== null) {
             //in case of restricted uri error
             try {
-                var extSubset = this.saxParser.loadFile(this.baseURI + externalId.systemId);
+                var extSubset = SAXParser.loadFile(this.saxParser.baseURI + externalId.systemId);
                 this.scanExtSubset(extSubset);
             } catch(e) {
-                this.saxParser.fireError("exception : [" + e.toString() + "] trying to load external subset : [" + this.baseURI + externalId.systemId + "]", SAXParser.WARNING);
+                this.saxParser.fireError("exception : [" + e.toString() + "] trying to load external subset : [" + this.saxParser.baseURI + externalId.systemId + "]", SAXParser.WARNING);
             }
         }
         if (this.ch !== ">") {
