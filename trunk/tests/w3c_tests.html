@@ -14,7 +14,7 @@
     <script type="text/javascript" src="applyXslt.js"></script>
     <script type="text/javascript"><!--//--><![CDATA[//><!--
 
-    /*global assertTrue, DomContentHandler, SAXParser, loadFile, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource*/
+    /*global document, alert, assertTrue, DomContentHandler, SAXParser, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource*/
 	// (Note: change reference to SAXParser above if change name)
     var output, testResultSummary;
     //keeps it global, used in all tests
@@ -223,7 +223,6 @@
     function runAllTests () {
         setUp();
         //testParseIndividual();
-        
         testParse_xmlconf();
         testParse_jclark_xmltest_valid();
         testParse_jclark_xmltest_invalid();

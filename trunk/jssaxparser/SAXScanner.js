@@ -1,4 +1,4 @@
-/*global window, XMLHttpRequest, ActiveXObject, AttributesImpl, NamespaceSupport, InputSource, StringReader */
+/*global window, AttributesImpl, SAXParseException, SAXParser */
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 

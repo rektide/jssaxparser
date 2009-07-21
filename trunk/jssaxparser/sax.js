@@ -1,4 +1,6 @@
-/*global window, XMLHttpRequest, ActiveXObject, AttributesImpl, NamespaceSupport, InputSource, StringReader */
+/*global window, document, XMLHttpRequest, ActiveXObject, AnyName, Attribute, AttributeNode, Choice, Context, DatatypeLibrary, Element, ElementNode, Empty, Group, NOT_CHAR, 
+Name, NotAllowed, OneOrMore, QName, SAXScanner, Text , TextNode, ValidatorFunctions, XMLFilterImpl2, NamespaceSupport, InputSource, StringReader */
+
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
 
@@ -41,10 +43,6 @@ var that = this; // probably window object
 
 /* Private static variables (constant) */
 
-/* Error values */
-SAXParser.WARNING = "W";
-SAXParser.ERROR = "E";
-SAXParser.FATAL = "F";
 
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
 function SAXException(message, exception) { // java.lang.Exception
@@ -181,9 +179,16 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.properties['http://xml.org/sax/properties/xml-string'] = null; // Not supported yet (update with characters that were responsible for the event)
 }
 
+/* CLASS "CONSTANTS" */
+/* Error values */
+SAXParser.WARNING = "W";
+SAXParser.ERROR = "E";
+SAXParser.FATAL = "F";
+
+/* CUSTOM API */
 SAXParser.prototype.toString = function () {
     return "SAXParser";
-}
+};
 
 // BEGIN SAX2 XMLReader INTERFACE
 SAXParser.prototype.getContentHandler = function () {
@@ -550,7 +555,7 @@ SAXParser.prototype.loadFile = function(fname) {
 			return xmlhttp.responseText;
 		}
 	} else {
-		this.fireError("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", ERROR);
+		this.fireError("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", SAXParser.ERROR);
 	}
     return false;
 };
@@ -654,23 +659,23 @@ XMLReaderFactory.checkDependencies = function() {
     if (typeof that.AttributesImpl !== 'function') {
         try {
             this.importJS("AttributesImpl.js");
-        } catch(e) {
-            throw new SAXException("implementation of Attributes, like AttributesImpl.js, not provided and could not be dynamically loaded because of exception", e);
+        } catch(e2) {
+            throw new SAXException("implementation of Attributes, like AttributesImpl.js, not provided and could not be dynamically loaded because of exception", e2);
         }
     }
     //also need an implementation of NamespaceSupport
     if (typeof that.NamespaceSupport !== 'function') {
         try {
             this.importJS("NamespaceSupport.js");
-        } catch(e2) {
-            throw new SAXException("implementation of NamespaceSupport, like NamespaceSupport.js, not provided and could not be dynamically loaded because of exception", e2);
+        } catch(e3) {
+            throw new SAXException("implementation of NamespaceSupport, like NamespaceSupport.js, not provided and could not be dynamically loaded because of exception", e3);
         }
     }
     if (typeof that.XMLFilterImpl !== 'function') {
         try {
             this.importJS("XMLFilterImpls.js");
-        } catch(e) {
-            throw new SAXException("implementation of XMLFilterImpl, like XMLFilterImpls.js, not provided and could not be dynamically loaded because of exception", e);
+        } catch(e4) {
+            throw new SAXException("implementation of XMLFilterImpl, like XMLFilterImpls.js, not provided and could not be dynamically loaded because of exception", e4);
         }
     }
 };
