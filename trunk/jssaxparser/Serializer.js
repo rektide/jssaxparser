@@ -47,10 +47,6 @@ function Serializer() {
     this.dtdDumped = false;
 }
 
-Serializer.prototype.entify = function entify(str) { // FIX: this is probably too many replaces in some cases and a call to it may not be needed at all in some cases
-    return str.replace(/&/g, '&amp;').replace(/>/g, '&gt;').replace(new RegExp('<', 'g'), '&lt;').replace(/"/g, '&quot;');
-};
-
 Serializer.prototype.startDocument = function() {};
 
 Serializer.prototype.startElement = function(namespaceURI, localName, qName, atts) {
@@ -61,7 +57,7 @@ Serializer.prototype.startElement = function(namespaceURI, localName, qName, att
     }
     this.currentPrefixMapping = {};
     for (i = 0 ; i < atts.getLength() ; i++) {
-        this.string += ' ' + atts.getQName(i) + '="' + this.entify(atts.getValue(i)) + '"'; // .toLowerCase()
+        this.string += ' ' + atts.getQName(i) + '="' + atts.getValue(i) + '"'; // .toLowerCase()
     }
     this.string += '>';
 };
@@ -83,7 +79,7 @@ Serializer.prototype.processingInstruction = function(target, data) {
 Serializer.prototype.ignorableWhitespace = function(ch, start, length) {};
 
 Serializer.prototype.characters = function(ch, start, length) {
-    this.string += this.entify(ch);
+    this.string += ch;
 };
 
 Serializer.prototype.skippedEntity = function(name) {};

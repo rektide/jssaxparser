@@ -1291,17 +1291,19 @@ SAXScanner.prototype.scanCData = function() {
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
 // current ch is char after "&#",  returned current char is after ";"
 SAXScanner.prototype.scanCharRef = function() {
-    var returned = "";
+    var returned, charCode = "";
     if (this.ch === "x") {
         this.nextChar(true);
         while (this.ch !== ";") {
             if (!/[0-9a-fA-F]/.test(this.ch)) {
                 this.saxParser.fireError("invalid char reference beginning with x, must contain alphanumeric characters only", SAXParser.ERROR);
+            } else {
+                charCode += this.ch;
             }
             this.nextChar(true);
         }
+        returned = String.fromCharCode("0x" + charCode);
     } else {
-        var charCode = "";
         while (this.ch !== ";") {
             if (!/\d/.test(this.ch)) {
                 this.saxParser.fireError("invalid char reference, must contain numeric characters only", SAXParser.ERROR);

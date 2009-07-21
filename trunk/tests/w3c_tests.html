@@ -224,11 +224,13 @@
     }
     
     function testParseIndividual() {
-        var contentHandler = new DomContentHandler();
+        //var contentHandler = new DomContentHandler();
+        var serializer = new Serializer();
         saxParser = XMLReaderFactory.createXMLReader();
-        saxParser.setHandler(contentHandler);
+        //saxParser.setHandler(contentHandler);
+        saxParser.setHandler(serializer);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/not-sa/003.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/009.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);
@@ -251,6 +253,7 @@
     function runAllTests () {
         setUp();
         //testParseIndividual();
+        
         testParse_xmlconf();
         testParse_jclark_xmltest_valid();
         testParse_jclark_xmltest_invalid();
@@ -258,6 +261,7 @@
         print_total_errs();
         
         alert('Done! '+testResultSummary);
+        
     }
     
     // Brett added to be able to show something in console when error is thrown
