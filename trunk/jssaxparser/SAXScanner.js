@@ -52,7 +52,7 @@ var STATE_TRAILING_MISC             =  6;
 var XML_VERSIONS = ['1.0', '1.1']; // All existing versions of XML; will check this.features['http://xml.org/sax/features/xml-1.1'] if parser supports XML 1.1
 var XML_VERSION = /^1\.\d+$/;
 var ENCODING = /^[A-Za-z]([A-Za-z0-9._]|-)*$/;
-var STANDALONE = /^yes|no$/;
+var STANDALONE = /^yes$|^no$/;
 
 /* XML Name regular expressions */
 // Should disallow independent high or low surrogates or inversed surrogate pairs and also have option to reject private use characters; but strict mode will need to check for sequence of 2 characters if a surrogate is found
@@ -80,7 +80,8 @@ var XML_DECL_BEGIN = new RegExp("<\\?xml"+WS_CHAR);
 // in the case of detection of double XML declation, token in after <
 var XML_DECL_BEGIN_FALSE = new RegExp("\\?xml("+WS_CHAR+'|\\?)', 'i');
 
-var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$|^apos$/;
+var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$/;
+var APOS_ENTITY = /^apos$/;
 
 
 // CUSTOM EXCEPTION CLASSES
@@ -1290,7 +1291,7 @@ SAXScanner.prototype.scanCData = function() {
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
 // current ch is char after "&#",  returned current char is after ";"
 SAXScanner.prototype.scanCharRef = function() {
-    var oldIndex = this.index;
+    var returned = "";
     if (this.ch === "x") {
         this.nextChar(true);
         while (this.ch !== ";") {
@@ -1300,16 +1301,20 @@ SAXScanner.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
     } else {
+        var charCode = "";
         while (this.ch !== ";") {
             if (!/\d/.test(this.ch)) {
                 this.saxParser.fireError("invalid char reference, must contain numeric characters only", SAXParser.ERROR);
+            } else {
+                charCode += this.ch;
             }
             this.nextChar(true);
         }
+        returned = String.fromCharCode(charCode);
     }
     //current char is ';'
     this.nextChar(true);
-    return this.xml.substring(oldIndex, this.index);
+    return returned;
 };
 
 /*
@@ -1327,9 +1332,12 @@ SAXScanner.prototype.scanEntityRef = function() {
         this.nextChar(true);
         this.saxEvents.startEntity(ref);
         this.saxEvents.endEntity(ref);
-        // well-formed documents need not declare any of the following entities: amp, lt, gt, apos, quot.
+        // well-formed documents need not declare any of the following entities: amp, lt, gt, quot.
         if (NOT_REPLACED_ENTITIES.test(ref)) {
             return "&" + ref + ";";
+        //apos is replaced by '
+        } else if (APOS_ENTITY.test(ref)) {
+            return "'";
         }
         var replacement = this.entities[ref];
         if (replacement === undefined) {
