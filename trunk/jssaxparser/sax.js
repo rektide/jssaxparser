@@ -427,7 +427,7 @@ SAXParser.prototype.attributeDecl_validating = function(eName, aName, type, mode
     if (this.parent && this.parent.declarationHandler) {
         return this.parent.declarationHandler.attributeDecl.call(this.parent.declarationHandler, eName, aName, type, mode, value);
     }
-    return;
+    return undefined;
 };
 
 /*
@@ -532,7 +532,7 @@ SAXParser.prototype.elementDecl_validating = function(name, model) {
     if (this.parent && this.parent.declarationHandler) {
         return this.parent.declarationHandler.elementDecl.call(this.parent.declarationHandler,  name, model);
     }
-    return;
+    return undefined;
 };
 
 SAXParser.prototype.startDTD_validating = function(name, publicId, systemId) {
@@ -541,7 +541,7 @@ SAXParser.prototype.startDTD_validating = function(name, publicId, systemId) {
     if (this.parent && this.parent.lexicalHandler) {
         return this.parent.lexicalHandler.startDTD.call(this.parent.lexicalHandler, name, publicId, systemId);
     }
-    return;
+    return undefined;
 };
 
 SAXParser.loadFile = function(fname) {
