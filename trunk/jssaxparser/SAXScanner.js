@@ -1200,7 +1200,7 @@ SAXScanner.prototype.scanElement = function() {
 };
 
 SAXScanner.prototype.scanAttributes = function(qName) {
-    var atts = new AttributesImpl();
+    var atts = this.saxParser.getAttributesInstance();
     //namespaces declared at this step will be stored at one level of global this.namespaces
     this.namespaceSupport.pushContext();
     //same way, in all cases a baseUriAddition is recorded on each level
@@ -1285,7 +1285,7 @@ SAXScanner.prototype.scanAttValue = function() {
                     if (e2 instanceof InternalEntityNotFoundException) {
                         this.saxParser.fireError("entity reference : [" + e2.entityName + "] not declared, ignoring it", SAXParser.ERROR);
                     } else if (e2 instanceof EntityNotReplacedException) {
-                        content += "&" + e2.entityName + ";";
+                        attValue += "&" + e2.entityName + ";";
                     } else {
                         throw e2;
                     }

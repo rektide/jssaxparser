@@ -170,6 +170,8 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     // Our custom features (as for other features, retrieve/set publicly via getFeature/setFeature):
     // We are deliberately non-conformant by default (for performance reasons)
     this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict'] = false;
+    //without that property sax_tests.html does not work as Firefox will not normalize attribute value same way
+    this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization'] = false;
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
@@ -364,7 +366,18 @@ SAXParser.prototype.setProperty = function (name, value) { // (java.lang.String,
 
 
 // BEGIN FUNCTIONS WHICH SHOULD BE CONSIDERED PRIVATE
-
+SAXParser.prototype.getAttributesInstance = function() {
+    var atts;
+    if (this.features['http://xml.org/sax/features/use-attributes2']) {
+        atts = new Attributes2Impl();
+    } else {
+        atts = new AttributesImpl();
+    }
+    if (this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization']) {
+        atts.whitespaceNormalization = true;
+    }
+    return atts;
+}
 
 SAXParser.prototype.startDocument_validating = function() {
     //initializes the elements at saxParser level, not at XMLFilter

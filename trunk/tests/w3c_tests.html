@@ -8,6 +8,9 @@
     <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
     <script type="text/javascript" src="../jssaxparser/DefaultHandlers.js"></script>
     <script type="text/javascript" src="../jssaxparser/Serializer.js"></script>
+    <script type="text/javascript" src="../jssaxparser/validation_common/validator_functions.js"></script>
+    <script type="text/javascript" src="../jssaxparser/validation_common/validator_objects.js"></script>
+    <script type="text/javascript" src="../jssaxparser/jsdatatypelibrary-0.2/datatype_library.js"></script>
     <script type="text/javascript" src="../examples/xml_samples.js"></script>
     <script type="text/javascript" src="manageWhiteSpace.js"></script>
     <script type="text/javascript" src="dom_utils.js"></script>
@@ -81,6 +84,9 @@
         var serializer = new Serializer();
         saxParser2 = XMLReaderFactory.createXMLReader();
         saxParser2.setHandler(serializer);
+        //not yet really supported
+        //saxParser2.setFeature('http://xml.org/sax/features/validation', true);
+        saxParser2.setFeature(['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization'], true);
         if (strictChars) {
             saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
         }
@@ -230,7 +236,7 @@
         //saxParser.setHandler(contentHandler);
         saxParser.setHandler(serializer);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/not-wf/sa/071.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/043.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);
