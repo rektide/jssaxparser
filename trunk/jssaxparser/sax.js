@@ -1,5 +1,5 @@
 /*global window, document, XMLHttpRequest, ActiveXObject, AnyName, Attribute, AttributeNode, Choice, Context, DatatypeLibrary, Element, ElementNode, Empty, Group, NOT_CHAR, 
-Name, NotAllowed, OneOrMore, QName, SAXScanner, Text , TextNode, ValidatorFunctions, XMLFilterImpl2, NamespaceSupport, InputSource, StringReader */
+Name, NotAllowed, OneOrMore, QName, SAXScanner, Text , TextNode, ValidatorFunctions, XMLFilterImpl2, NamespaceSupport, InputSource, StringReader, Attributes2Impl, AttributesImpl */
 
 /*
 Copyright or © or Copr. Nicolas Debeissat, Brett Zamir
@@ -377,7 +377,7 @@ SAXParser.prototype.getAttributesInstance = function() {
         atts.whitespaceNormalization = true;
     }
     return atts;
-}
+};
 
 SAXParser.prototype.startDocument_validating = function() {
     //initializes the elements at saxParser level, not at XMLFilter

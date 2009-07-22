@@ -914,7 +914,7 @@ SAXScanner.prototype.isEntityReferencingItself = function(entityName, entityValu
     } else {
         return false;
     }
-}
+};
 
 /*
 [9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
@@ -1335,7 +1335,7 @@ SAXScanner.prototype.scanCData = function() {
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
 // current ch is char after "&#",  returned current char is after ";"
 SAXScanner.prototype.scanCharRef = function() {
-    var returned, charCode = "", entityStartIndex = this.index - 2;
+    var returned, replacement, charCode = "", entityStartIndex = this.index - 2;
     if (this.ch === "x") {
         this.nextChar(true);
         while (this.ch !== ";") {
@@ -1347,7 +1347,7 @@ SAXScanner.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
         this.nextChar(true);
-        var replacement = String.fromCharCode("0x" + charCode);
+        replacement = String.fromCharCode("0x" + charCode);
         this.includeText(entityStartIndex, replacement);
     } else {
         while (this.ch !== ";") {
@@ -1359,7 +1359,7 @@ SAXScanner.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
         this.nextChar(true);
-        var replacement = String.fromCharCode(charCode);
+        replacement = String.fromCharCode(charCode);
         this.includeText(entityStartIndex, replacement);
     }
 };

@@ -237,7 +237,7 @@ AttributesImpl.prototype.setValue = function (index, value) {
 // CUSTOM CONVENIENCE METHODS
 //in order not to parse qname several times
 AttributesImpl.prototype.whitespaceCollapse = function(type, value) {
-    var value = value.replace(/[\t\n\r ]+/g, " ");
+    value = value.replace(/[\t\n\r ]+/g, " ");
     if (type !== "CDATA") {
         //removes leading and trailing space
         value = value.replace(/^ /, "").replace(/ $/, "");
