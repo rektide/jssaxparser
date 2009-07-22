@@ -19,7 +19,7 @@
     <script type="text/javascript" src="jsdiff.js"></script>
     <script type="text/javascript"><!--//--><![CDATA[//><!--
 
-    /*global document, alert, assertTrue, DomContentHandler, SAXParser, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource*/
+    /*global document, alert, assertTrue, DomContentHandler, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource, Serializer, XMLReaderFactory, diffString, loadFile */
 	// (Note: change reference to SAXParser above if change name)
     var output, testResultSummary;
     //keeps it global, used in all tests
@@ -64,7 +64,7 @@
 
     function parseTestCase(uri, strictChars) {
         var contentHandler2 = new DefaultHandler2();
-        saxParser2 = XMLReaderFactory.createXMLReader();
+        var saxParser2 = XMLReaderFactory.createXMLReader();
         saxParser2.setHandler(contentHandler2);
         if (strictChars) {
             saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
@@ -82,7 +82,7 @@
     
     function parseTestCase_valid(uri, validOutput, strictChars) {
         var serializer = new Serializer();
-        saxParser2 = XMLReaderFactory.createXMLReader();
+        var saxParser2 = XMLReaderFactory.createXMLReader();
         saxParser2.setHandler(serializer);
         //not yet really supported
         //saxParser2.setFeature('http://xml.org/sax/features/validation', true);
@@ -108,7 +108,7 @@
     
     function testParse_xmlconf() {
         var contentHandler = new DomContentHandler();
-        saxParser = XMLReaderFactory.createXMLReader();
+        var saxParser = XMLReaderFactory.createXMLReader();
         saxParser.setHandler(contentHandler);
         testCt++;
         try {
@@ -232,7 +232,7 @@
     function testParseIndividual() {
         //var contentHandler = new DomContentHandler();
         var serializer = new Serializer();
-        saxParser = XMLReaderFactory.createXMLReader();
+        var saxParser = XMLReaderFactory.createXMLReader();
         //saxParser.setHandler(contentHandler);
         saxParser.setHandler(serializer);
         try {
