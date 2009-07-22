@@ -230,7 +230,7 @@
         //saxParser.setHandler(contentHandler);
         saxParser.setHandler(serializer);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/009.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/not-wf/sa/071.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);

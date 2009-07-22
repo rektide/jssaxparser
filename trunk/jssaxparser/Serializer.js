@@ -45,7 +45,13 @@ function Serializer() {
     //may not be dumped to the XML
     this.dtd = "";
     this.dtdDumped = false;
+    //if cdata, then characters must be entified
+    this.cdata = false;
 }
+
+Serializer.prototype.entify = function entify(str) { // FIX: this is probably too many replaces in some cases and a call to it may not be needed at all in some cases
+    return str.replace(/&/g, '&amp;').replace(/>/g, '&gt;').replace(new RegExp('<', 'g'), '&lt;').replace(/"/g, '&quot;');
+};
 
 Serializer.prototype.startDocument = function() {};
 
@@ -79,7 +85,11 @@ Serializer.prototype.processingInstruction = function(target, data) {
 Serializer.prototype.ignorableWhitespace = function(ch, start, length) {};
 
 Serializer.prototype.characters = function(ch, start, length) {
-    this.string += ch;
+    if (this.cdata) {
+        this.string += this.entify(ch);
+    } else {
+        this.string += ch;
+    }
 };
 
 Serializer.prototype.skippedEntity = function(name) {};
@@ -102,11 +112,12 @@ Serializer.prototype.internalEntityDecl = function(name, value) {};
 
 // INTERFACE: LexicalHandler: http://www.saxproject.org/apidoc/org/xml/sax/ext/LexicalHandler.html
 Serializer.prototype.comment = function(ch, start, length) {
-    this.string += '<!-- ' + ch + ' -->';
+    //this.string += '<!-- ' + ch + ' -->';
 };
 
 Serializer.prototype.endCDATA = function() {
-    this.string += ']]>';
+    //this.string += ']]>';
+    this.cdata = false;
 };
 
 Serializer.prototype.endDTD = function() {
@@ -119,7 +130,8 @@ Serializer.prototype.endDTD = function() {
 Serializer.prototype.endEntity = function(name) {};
 
 Serializer.prototype.startCDATA = function() {
-    this.string += '<![CDATA[';
+    //this.string += '<![CDATA[';
+    this.cdata = true;
 };
 
 Serializer.prototype.startDTD = function(name, publicId, systemId) {

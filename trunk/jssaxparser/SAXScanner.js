@@ -92,7 +92,14 @@ EndOfInputException.prototype.toString = function() {
     return "EndOfInputException";
 };
 
-function InternalEntityNotFoundException (entityName) {
+function EntityNotReplacedException(entityName) {
+    this.entityName = entityName;
+}
+EntityNotReplacedException.prototype.toString = function() {
+    return "EntityNotReplacedException";
+};
+
+function InternalEntityNotFoundException(entityName) {
     this.entityName = entityName;
 }
 InternalEntityNotFoundException.prototype.toString = function() {
@@ -155,6 +162,8 @@ SAXScanner.prototype.parseString = function(xml) { // We implement our own for n
     this.parameterEntities = {};
     /* map between external entity names and URIs  */
     this.externalEntities = {};
+    /* in order to check for recursion inside entities */
+    this.currentEntities = [];
     /* As an attribute is declared for an element, that should
                 contain a map between element name and a map between
                 attributes name and types ( 3 level tree) */
@@ -341,27 +350,28 @@ SAXScanner.prototype.scanText = function() {
     var content = this.scanCharData();
     //in case of external entity, the process is reinitialized??
     var entityStart;
-    try {
-        //if found a "&"
-        while (this.ch === "&") {
-            entityStart = this.index;
-            this.nextChar(true);
-            var ref = this.scanRef();
-            content += ref;
-            content += this.scanCharData();
-        }
-    } catch (e) {
-        if (e instanceof InternalEntityNotFoundException) {
-            // at this place in XML, that entity ref may be an external entity
-            var externalId = this.externalEntities[e.entityName];
-            if (externalId === undefined) {
-                this.saxParser.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", SAXParser.ERROR);
+    //if found a "&"
+    while (this.ch === "&") {
+        entityStart = this.index;
+        this.nextChar(true);
+        try {
+            this.scanRef();
+        } catch(e) {
+            if (e instanceof EntityNotReplacedException) {
+                content += "&" + e.entityName + ";";
+            } else if (e instanceof InternalEntityNotFoundException) {
+                // at this place in XML, that entity ref may be an external entity
+                var externalId = this.externalEntities[e.entityName];
+                if (externalId === undefined) {
+                    this.saxParser.fireError("entity : [" + e.entityName + "] not declared as an internal entity or as an external one", SAXParser.ERROR);
+                } else {
+                    this.includeEntity(e.entityName, entityStart, externalId);
+                }
             } else {
-                this.includeEntity(e.entityName, entityStart, externalId);
+                throw e;
             }
-        } else {
-            throw e;
         }
+        content += this.scanCharData();
     }
     //in all cases report the text found, a text found before external entity if present
     var length = this.index - start;
@@ -424,6 +434,10 @@ SAXScanner.prototype.includeEntity = function(entityName, entityStartIndex, repl
             this.ch = this.xml.charAt(this.index);
         }
     } else {
+        //check for no recursion
+        if (new RegExp("&" + entityName + ";").test(replacement)) {
+            this.saxParser.fireError("Recursion detected : [" + entityName + "] contains a reference to itself", SAXParser.FATAL);
+        }
         this.includeText(entityStartIndex, replacement);
     }
 };
@@ -438,17 +452,16 @@ SAXScanner.prototype.includeText = function(entityStartIndex, replacement) {
 
 /*
 current char is after '&'
-may return undefined if entity has not been found (if external for example)
+does not return the replacement, it is added to the xml
+may throw exception if entity has not been found (if external for example)
 */
 SAXScanner.prototype.scanRef = function() {
-    var ref;
     if (this.ch === "#") {
         this.nextChar(true);
-        ref = this.scanCharRef();
+        this.scanCharRef();
     } else {
-        ref = this.scanEntityRef();
+        this.scanEntityRef();
     }
-    return ref;
 };
 
 
@@ -647,7 +660,10 @@ SAXScanner.prototype.scanPI = function() {
         return this.saxParser.fireError("XML Declaration cannot occur past the very beginning of the document.", SAXParser.FATAL);
     }
     this.nextChar(true);
-    this.saxEvents.processingInstruction(this.scanName(), this.nextEndPI());
+    var piName = this.scanName();
+    this.skipWhiteSpaces();
+    var piData = this.nextEndPI();
+    this.saxEvents.processingInstruction(piName, piData);
     return true;
 };
 
@@ -838,7 +854,7 @@ SAXScanner.prototype.scanEntityDecl = function() {
             entityName = this.scanName();
             this.nextChar();
             //if already declared, not effective
-            if (!this.entities[entityName]) {
+            if (!this.parameterEntities[entityName]) {
                 externalId = new ExternalId();
                 if (!this.scanExternalId(externalId)) {
                     entityValue = this.scanEntityValue();
@@ -863,8 +879,12 @@ SAXScanner.prototype.scanEntityDecl = function() {
                     this.externalEntities[entityName] = externalId;
                 } else {
                     entityValue = this.scanEntityValue();
-                    this.entities[entityName] = entityValue;
-                    this.saxEvents.internalEntityDecl(entityName, entityValue);
+                    if (this.isEntityReferencingItself(entityName, entityValue)) {
+                        this.saxParser.fireError("circular entity declaration, entity : [" + entityName + "] is referencing itself directly or indirectly", SAXParser.ERROR);
+                    } else {
+                        this.entities[entityName] = entityValue;
+                        this.saxEvents.internalEntityDecl(entityName, entityValue);
+                    }
                 }
             }
         }
@@ -872,6 +892,29 @@ SAXScanner.prototype.scanEntityDecl = function() {
     }
     return false;
 };
+/*
+false is OK
+*/
+SAXScanner.prototype.isEntityReferencingItself = function(entityName, entityValue) {
+    var parsedValue = /^[^&]*&([^;]+);(.*)/.exec(entityValue);
+    if (parsedValue !== null) {
+        // parsedValue[1] is the name of the nested entity
+        if (parsedValue[1] === entityName) {
+            return true;
+        } else {
+            var replacement = this.entities[parsedValue[1]];
+            //if already declared
+            if (replacement !== undefined) {
+                var check = this.isEntityReferencingItself(entityName, replacement);
+                return check || this.isEntityReferencingItself(entityName, parsedValue[2]);
+            } else {
+                return this.isEntityReferencingItself(entityName, parsedValue[2]);
+            }
+        }
+    } else {
+        return false;
+    }
+}
 
 /*
 [9]   	EntityValue	   ::=   	'"' ([^%&"] | PEReference | Reference)* '"'
@@ -1237,11 +1280,12 @@ SAXScanner.prototype.scanAttValue = function() {
             while (this.ch === "&") {
                 this.nextChar(true);
                 try {
-                    var ref = this.scanRef();
-                    attValue += ref;
+                    this.scanRef();
                 } catch (e2) {
                     if (e2 instanceof InternalEntityNotFoundException) {
                         this.saxParser.fireError("entity reference : [" + e2.entityName + "] not declared, ignoring it", SAXParser.ERROR);
+                    } else if (e2 instanceof EntityNotReplacedException) {
+                        content += "&" + e2.entityName + ";";
                     } else {
                         throw e2;
                     }
@@ -1291,7 +1335,7 @@ SAXScanner.prototype.scanCData = function() {
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
 // current ch is char after "&#",  returned current char is after ";"
 SAXScanner.prototype.scanCharRef = function() {
-    var returned, charCode = "";
+    var returned, charCode = "", entityStartIndex = this.index - 2;
     if (this.ch === "x") {
         this.nextChar(true);
         while (this.ch !== ";") {
@@ -1302,7 +1346,9 @@ SAXScanner.prototype.scanCharRef = function() {
             }
             this.nextChar(true);
         }
-        returned = String.fromCharCode("0x" + charCode);
+        this.nextChar(true);
+        var replacement = String.fromCharCode("0x" + charCode);
+        this.includeText(entityStartIndex, replacement);
     } else {
         while (this.ch !== ";") {
             if (!/\d/.test(this.ch)) {
@@ -1312,11 +1358,10 @@ SAXScanner.prototype.scanCharRef = function() {
             }
             this.nextChar(true);
         }
-        returned = String.fromCharCode(charCode);
+        this.nextChar(true);
+        var replacement = String.fromCharCode(charCode);
+        this.includeText(entityStartIndex, replacement);
     }
-    //current char is ';'
-    this.nextChar(true);
-    return returned;
 };
 
 /*
@@ -1325,27 +1370,30 @@ may return undefined, has to be managed differently depending on
 */
 SAXScanner.prototype.scanEntityRef = function() {
     try {
-        var ref = this.scanName();
+        var entityStart = this.index - 1;
+        var entityName = this.scanName();
         //current char must be ';'
         if (this.ch !== ";") {
-            this.saxParser.fireError("entity : [" + ref + "] contains an invalid character : [" + this.ch + "], or it is not ended by ;", SAXParser.ERROR);
+            this.saxParser.fireError("entity : [" + entityName + "] contains an invalid character : [" + this.ch + "], or it is not ended by ;", SAXParser.ERROR);
             return "";
         }
         this.nextChar(true);
-        this.saxEvents.startEntity(ref);
-        this.saxEvents.endEntity(ref);
+        this.saxEvents.startEntity(entityName);
+        this.saxEvents.endEntity(entityName);
         // well-formed documents need not declare any of the following entities: amp, lt, gt, quot.
-        if (NOT_REPLACED_ENTITIES.test(ref)) {
-            return "&" + ref + ";";
+        if (NOT_REPLACED_ENTITIES.test(entityName)) {
+            throw new EntityNotReplacedException(entityName);
+        }
         //apos is replaced by '
-        } else if (APOS_ENTITY.test(ref)) {
-            return "'";
+        if (APOS_ENTITY.test(entityName)) {
+            this.includeText(entityStart, "'");
+        } else {
+            var replacement = this.entities[entityName];
+            if (replacement === undefined) {
+                throw new InternalEntityNotFoundException(entityName);
+            }
+            this.includeEntity(entityName, entityStart, replacement);
         }
-        var replacement = this.entities[ref];
-        if (replacement === undefined) {
-            throw new InternalEntityNotFoundException(ref);
-        }
-        return replacement;
     //adding a message in that case
     } catch(e) {
         if (e instanceof EndOfInputException) {
