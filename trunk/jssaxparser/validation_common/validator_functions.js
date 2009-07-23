@@ -71,8 +71,8 @@ ValidatorFunctions.prototype.contains = function(nameClass, qName) {
         return (nameClass.uri == qName.uri && nameClass.localName == qName.localName);
     } else if (nameClass instanceof NameClassChoice) {
         return this.contains(nameClass.nameClass1, qName) || this.contains(nameClass.nameClass2, qName);
-        throw new Error('Unexpected result for ValidatorFunctions.contains()');
     }
+    throw new Error('Unexpected result for ValidatorFunctions.contains()');
 };
 
     /*
@@ -121,8 +121,8 @@ ValidatorFunctions.prototype.nullable = function(pattern) {
         return true;
     } else if (pattern instanceof After) {
         return false;
-        throw new Error('Unexpected result for ValidatorFunctions.nullable()');
-    }
+    } 
+    throw new Error('Unexpected result for ValidatorFunctions.nullable()');
 };
     
     /*
