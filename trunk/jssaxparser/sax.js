@@ -292,7 +292,7 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     }
     saxEvents.warning = this.warning;
     saxEvents.error = this.error;
-    saxEvents.fatal = this.fatal;
+    saxEvents.fatalError = this.fatalError;
     this.saxScanner.parseString(xmlAsString);
 };
 

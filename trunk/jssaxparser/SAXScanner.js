@@ -184,9 +184,7 @@ SAXScanner.prototype.parseString = function(xml) { // We implement our own for n
         }
         throw new EndOfInputException();
     } catch(e) {
-        if (e instanceof SAXParseException) {
-            this.saxEvents.fatalError(e);
-        } else if (e instanceof EndOfInputException) {
+        if (e instanceof EndOfInputException) {
             if (this.elementsStack.length > 0) {
                 this.saxEvents.fatalError("the markup " + this.elementsStack.pop() + " has not been closed", this);
             } else {
