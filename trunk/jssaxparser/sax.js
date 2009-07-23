@@ -181,12 +181,6 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.properties['http://xml.org/sax/properties/xml-string'] = null; // Not supported yet (update with characters that were responsible for the event)
 }
 
-/* CLASS "CONSTANTS" */
-/* Error values */
-SAXParser.WARNING = "W";
-SAXParser.ERROR = "E";
-SAXParser.FATAL = "F";
-
 /* CUSTOM API */
 SAXParser.prototype.toString = function () {
     return "SAXParser";
@@ -296,6 +290,9 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     if (this.features['http://xml.org/sax/features/use-entity-resolver2']) {
         saxEvents.resolveEntity = this.resolveEntity;
     }
+    saxEvents.warning = this.warning;
+    saxEvents.error = this.error;
+    saxEvents.fatal = this.fatal;
     this.saxScanner.parseString(xmlAsString);
 };
 
@@ -571,7 +568,7 @@ SAXParser.loadFile = function(fname) {
 			return xmlhttp.responseText;
 		}
 	} else {
-		this.fireError("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", SAXParser.ERROR);
+		throw new SAXException("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", SAXParser.ERROR);
 	}
     return false;
 };
@@ -584,21 +581,38 @@ SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, syst
     return "";
 };
 
-SAXParser.prototype.fireError = function(message, gravity) {
+SAXParser.getSAXParseException = function(message, saxScanner) {
     var saxParseException = new SAXParseException(message);
-    saxParseException.ch = this.ch;
-    saxParseException.index = this.index;
-    if (gravity === SAXParser.WARNING) {
-        this.errorHandler.warning(saxParseException);
-    } else if (gravity === SAXParser.ERROR) {
-        this.errorHandler.error(saxParseException);
-        return false;
-    } else if (gravity === SAXParser.FATAL) {
-        this.errorHandler.fatalError(saxParseException);
-        return false;
-    }
-    return true;
+    saxParseException.ch = saxScanner.ch;
+    saxParseException.index = saxScanner.index;
+    return saxParseException;
 };
+
+SAXParser.prototype.warning = function(message, saxScanner) {
+    var saxParseException = SAXParser.getSAXParseException(message, saxScanner);
+    if (this.parent && this.parent.errorHandler) {
+        return this.parent.errorHandler.warning.call(this.parent.errorHandler, saxParseException);
+    }
+    return undefined;
+};
+
+SAXParser.prototype.error = function(message, saxScanner) {
+    var saxParseException = SAXParser.getSAXParseException(message, saxScanner);
+    if (this.parent && this.parent.errorHandler) {
+        return this.parent.errorHandler.error.call(this.parent.errorHandler, saxParseException);
+    }
+    return undefined;
+};
+
+SAXParser.prototype.fatalError = function(message, saxScanner) {
+    var saxParseException = SAXParser.getSAXParseException(message, saxScanner);
+    if (this.parent && this.parent.errorHandler) {
+        return this.parent.errorHandler.fatalError.call(this.parent.errorHandler, saxParseException);
+    }
+    return undefined;
+};
+
+
 
 /*
 static XMLReader 	createXMLReader()
