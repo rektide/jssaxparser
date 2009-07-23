@@ -164,10 +164,6 @@ SAXScanner.prototype.parseString = function(xml) { // We implement our own for n
     this.externalEntities = {};
     /* in order to check for recursion inside entities */
     this.currentEntities = [];
-    /* As an attribute is declared for an element, that should
-                contain a map between element name and a map between
-                attributes name and types ( 3 level tree) */
-    this.attributesType = {};
     /* on each depth, a relative base URI, empty if no xml:base found, is recorded */
     this.relativeBaseUris = [];
     this.saxEvents.startDocument();
@@ -995,8 +991,6 @@ SAXScanner.prototype.scanAttlistDecl = function() {
     if (this.isFollowedBy("ATTLIST")) {
         this.nextChar();
         var eName = this.scanName();
-        //initializes the attributesType map
-        this.attributesType[eName] = {};
         this.nextChar();
         while (this.ch !== ">") {
             this.scanAttDef(eName);
@@ -1017,8 +1011,6 @@ SAXScanner.prototype.scanAttDef = function(eName) {
     var aName = this.scanName();
     this.skipWhiteSpaces();
     var type = this.scanAttType();
-    //stores the declared type of that attribute for method getType() of AttributesImpl
-    this.attributesType[eName][aName] = type;
     this.skipWhiteSpaces();
     //DefaultDecl
     var mode = null;
@@ -1245,19 +1237,12 @@ SAXScanner.prototype.scanAttribute = function(qName, atts) {
                 this.namespaceSupport.declarePrefix("", value);
                 this.saxEvents.startPrefixMapping("", value);
             } else {
-                //get the type of that attribute from internal DTD if found (no support of namespace in DTD)
-                var type = null;
-                var elementName = qName.localName;
-                var elementMap = this.attributesType[elementName];
-                if (elementMap) {
-                    type = elementMap[attQName.localName];
-                }
                 //check that an attribute with the same qName has not already been defined
                 if (atts.getIndex(attQName.qName) !== -1) {
                     this.saxEvents.error("multiple declarations for same attribute : [" + attQName.qName + "]", this);
                 } else {
-                    //we do not know yet the namespace URI
-                    atts.addPrefixedAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, type, value);
+                    //we do not know yet the namespace URI, added when all attributes have been parser, and the type which is added at augmentation by SAXParser
+                    atts.addPrefixedAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, undefined, value);
                 }
             }
             this.scanAttribute(qName, atts);

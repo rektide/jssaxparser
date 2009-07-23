@@ -279,16 +279,24 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     }
     if (this.features['http://xml.org/sax/features/validation']) {
         saxEvents.startDocument = this.startDocument_validating;
+        saxEvents.startDTD = this.startDTD_validating;
+        saxEvents.elementDecl = this.elementDecl_validating;
+        saxEvents.attributeDecl_augmenting = this.attributeDecl_augmenting;
+        saxEvents.attributeDecl = this.attributeDecl_validating;
+        saxEvents.startElement_augmenting = this.startElement_augmenting;
         saxEvents.startElement = this.startElement_validating;
         saxEvents.endElement = this.endElement_validating;
         saxEvents.characters = this.characters_validating;
         saxEvents.endDocument = this.endDocument_validating;
-        saxEvents.attributeDecl = this.attributeDecl_validating;
-        saxEvents.elementDecl = this.elementDecl_validating;
-        saxEvents.startDTD = this.startDTD_validating;
+    } else {
+        saxEvents.attributeDecl = this.attributeDecl_augmenting;
+        saxEvents.startElement = this.startElement_augmenting;
     }
     if (this.features['http://xml.org/sax/features/use-entity-resolver2']) {
         saxEvents.resolveEntity = this.resolveEntity;
+    }
+    if (this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization']) {
+        saxEvents.normalizeAttValue = this.whitespaceCollapse;
     }
     saxEvents.warning = this.warning;
     saxEvents.error = this.error;
@@ -370,11 +378,88 @@ SAXParser.prototype.getAttributesInstance = function() {
     } else {
         atts = new AttributesImpl();
     }
-    if (this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization']) {
-        atts.whitespaceNormalization = true;
-    }
     return atts;
 };
+
+SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode, value) {
+    if (this.attributesType === undefined) {
+        this.attributesType = {};
+    }
+    if (this.attributesType[eName] === undefined) {
+        this.attributesType[eName] = {};
+    }
+    //if attribute is declared twice only the first declaration is kept
+    if (this.attributesType[eName][aName] === undefined) {
+        this.attributesType[eName][aName] = type;
+        //attribute can be augmented only if a default value is specified and attribute is not FIXED
+        if (mode !== "#FIXED" && value !== null) {
+            if (this.attributeDefaultValues === undefined) {
+                this.attributeDefaultValues = {}
+            }
+            if (this.attributeDefaultValues[eName] === undefined) {
+                this.attributeDefaultValues[eName] = {};
+            }
+            this.attributeDefaultValues[eName][aName] = value;
+        }
+        if (this.parent && this.parent.declarationHandler) {
+            return this.parent.declarationHandler.attributeDecl.call(this.parent.declarationHandler, eName, aName, type, mode, value);
+        }
+    }
+    return undefined;
+}
+
+SAXParser.prototype.whitespaceCollapse = function(type, value) {
+    value = value.replace(/[\t\n\r ]+/g, " ");
+    if (type !== "CDATA") {
+        //removes leading and trailing space
+        value = value.replace(/^ /, "").replace(/ $/, "");
+    }
+    return value;
+};
+
+/*
+sets the type of the attributes from DTD
+and the default values of non present attributes
+*/
+SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, qName, atts) {
+    //get the type of that attribute from internal DTD if found (no support of namespace in DTD)
+    var i = atts.getLength();
+    while (i--) {
+        var attQName = atts.getQName(i);
+        if (this.attributesType && this.attributesType[qName] && this.attributesType[qName][attQName]) {
+            var type = this.attributesType[qName][attQName];
+            atts.setType(i, type);
+            if (this.normalizeAttValue) {
+                var oldValue = atts.getValue(i);
+                var newValue = this.normalizeAttValue(type, oldValue);
+                atts.setValue(i, newValue);
+            }
+        }
+        //no else, error should be detected at validation
+    }
+    if (this.attributeDefaultValues && this.attributeDefaultValues[qName]) {
+        var expectedAtts = this.attributeDefaultValues[qName];
+        for (var aName in expectedAtts) {
+            if (atts.getIndex(aName) === -1) {
+                var typeFromDtd = this.attributesType[qName][aName];
+                var defaultValue = this.attributeDefaultValues[qName][aName];
+                //no namespace in DTD
+                atts.addPrefixedAttribute(null, null, qName, aName, typeFromDtd, defaultValue);
+            }
+        }
+    }
+    return this.parent.contentHandler.startElement.call(this.parent.contentHandler, namespaceURI, localName, qName, atts);
+};
+
+SAXParser.prototype.startDTD_validating = function(name, publicId, systemId) {
+    this.pattern = this.elements[name] = new Element(new Name(null, name));
+    this.context = new Context(publicId, []);
+    if (this.parent && this.parent.lexicalHandler) {
+        return this.parent.lexicalHandler.startDTD.call(this.parent.lexicalHandler, name, publicId, systemId);
+    }
+    return undefined;
+};
+
 
 SAXParser.prototype.startDocument_validating = function() {
     //initializes the elements at saxParser level, not at XMLFilter
@@ -396,7 +481,7 @@ SAXParser.prototype.startElement_validating = function(namespaceURI, localName, 
         newElement.setParentNode(this.currentElementNode);
         this.currentElementNode = newElement;
     }
-    return this.parent.contentHandler.startElement.call(this.parent.contentHandler, namespaceURI, localName, qName, atts);
+    this.startElement_augmenting(namespaceURI, localName, qName, atts);
 };
 
 SAXParser.prototype.endElement_validating = function(namespaceURI, localName, qName) {
@@ -434,10 +519,7 @@ SAXParser.prototype.attributeDecl_validating = function(eName, aName, type, mode
     var attributePattern = new Attribute(new Name(null, aName), type);
     var group = new Group(attributePattern, elementPattern.pattern);
     elementPattern.pattern = group;
-    if (this.parent && this.parent.declarationHandler) {
-        return this.parent.declarationHandler.attributeDecl.call(this.parent.declarationHandler, eName, aName, type, mode, value);
-    }
-    return undefined;
+    this.attributeDecl_augmenting(eName, aName, type, mode, value);
 };
 
 /*
@@ -541,15 +623,6 @@ SAXParser.prototype.elementDecl_validating = function(name, model) {
     }
     if (this.parent && this.parent.declarationHandler) {
         return this.parent.declarationHandler.elementDecl.call(this.parent.declarationHandler,  name, model);
-    }
-    return undefined;
-};
-
-SAXParser.prototype.startDTD_validating = function(name, publicId, systemId) {
-    this.pattern = this.elements[name] = new Element(new Name(null, name));
-    this.context = new Context(publicId, []);
-    if (this.parent && this.parent.lexicalHandler) {
-        return this.parent.lexicalHandler.startDTD.call(this.parent.lexicalHandler, name, publicId, systemId);
     }
     return undefined;
 };

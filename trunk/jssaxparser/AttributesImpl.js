@@ -126,7 +126,6 @@ function AttributesImpl(attsArray) {
     } else {
         this.attsArray = [];
     }
-    this.whitespaceNormalization = false;
 }
 
 // INTERFACE: Attributes: http://www.saxproject.org/apidoc/org/xml/sax/Attributes.html
@@ -236,19 +235,7 @@ AttributesImpl.prototype.setValue = function (index, value) {
 };
 // CUSTOM CONVENIENCE METHODS
 //in order not to parse qname several times
-AttributesImpl.prototype.whitespaceCollapse = function(type, value) {
-    value = value.replace(/[\t\n\r ]+/g, " ");
-    if (type !== "CDATA") {
-        //removes leading and trailing space
-        value = value.replace(/^ /, "").replace(/ $/, "");
-    }
-    return value;
-};
-
 AttributesImpl.prototype.addPrefixedAttribute = function (uri, prefix, localName, qName, type, value) {
-    if (this.whitespaceNormalization) {
-        value = this.whitespaceCollapse(type, value);
-    }
     this.attsArray.push(new Sax_Attribute(uri, prefix, localName, qName, type, value));
 };
 
