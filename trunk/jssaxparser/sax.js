@@ -157,7 +157,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/resolve-dtd-uris'] = true;
     this.features['http://xml.org/sax/features/string-interning'] = true; // Make safe to treat string literals as identical to String()
     this.features['http://xml.org/sax/features/unicode-normalization-checking'] = false;
-    this.features['http://xml.org/sax/features/use-attributes2'] = false; // Not supported yet
+    this.features['http://xml.org/sax/features/use-attributes2'] = true; // Not supported yet
     this.features['http://xml.org/sax/features/use-locator2'] = !!(locator && // No interfaces in JavaScript, so we duck-type:
                                                                                                                     typeof locator.getXMLVersion === 'function' &&
                                                                                                                     typeof locator.getEncoding === 'function'
@@ -273,7 +273,7 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     this.saxScanner = new SAXScanner(this, saxEvents);
     this.saxScanner.namespaceSupport = this.namespaceSupport;
     if (this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict']) {
-        this.saxScanner.CHAR_DATA_REGEXP = new RegExp(NOT_CHAR+'|[<&\\]]');
+        this.saxScanner.CHAR_DATA_REGEXP = new RegExp(this.saxScanner.NOT_CHAR+'|[<&\\]]');
     } else {
         this.saxScanner.CHAR_DATA_REGEXP = /[<&\]]/;
     }
@@ -297,6 +297,11 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     }
     if (this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization']) {
         saxEvents.normalizeAttValue = this.whitespaceCollapse;
+    }
+    if (this.features['http://xml.org/sax/features/use-attributes2']) {
+        this.getAttributesInstance = this.getAttributes2Instance;
+    } else {
+        this.getAttributesInstance = this.getAttributes1Instance;
     }
     saxEvents.warning = this.warning;
     saxEvents.error = this.error;
@@ -371,14 +376,12 @@ SAXParser.prototype.setProperty = function (name, value) { // (java.lang.String,
 
 
 // BEGIN FUNCTIONS WHICH SHOULD BE CONSIDERED PRIVATE
-SAXParser.prototype.getAttributesInstance = function() {
-    var atts;
-    if (this.features['http://xml.org/sax/features/use-attributes2']) {
-        atts = new Attributes2Impl();
-    } else {
-        atts = new AttributesImpl();
-    }
-    return atts;
+SAXParser.prototype.getAttributes2Instance = function() {
+    return new Attributes2Impl();
+};
+
+SAXParser.prototype.getAttributes1Instance = function() {
+    return new AttributesImpl();
 };
 
 SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode, value) {
@@ -406,7 +409,7 @@ SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode
         }
     }
     return undefined;
-}
+};
 
 SAXParser.prototype.whitespaceCollapse = function(type, value) {
     value = value.replace(/[\t\n\r ]+/g, " ");
@@ -434,6 +437,10 @@ SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, 
                 var newValue = this.normalizeAttValue(type, oldValue);
                 atts.setValue(i, newValue);
             }
+            if (atts.setDeclared) {
+                atts.setDeclared(i, true);
+                atts.setSpecified(i, true);
+            }
         }
         //no else, error should be detected at validation
     }
@@ -445,6 +452,13 @@ SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, 
                 var defaultValue = this.attributeDefaultValues[qName][aName];
                 //no namespace in DTD
                 atts.addPrefixedAttribute(null, null, qName, aName, typeFromDtd, defaultValue);
+                //if attributes2 is used
+                if (atts.setDeclared) {
+                    //index of just added attribute is atts.getLength - 1
+                    var index = atts.getLength() - 1;
+                    atts.setDeclared(index, true);
+                    atts.setSpecified(index, false);
+                }
             }
         }
     }
@@ -523,28 +537,6 @@ SAXParser.prototype.attributeDecl_validating = function(eName, aName, type, mode
 };
 
 /*
-[45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'	[VC: Unique Element Type Declaration]
-[46]   	contentspec	   ::=   	'EMPTY' | 'ANY' | Mixed | children 
-[51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
-			| '(' S? '#PCDATA' S? ')'
-*/
-SAXParser.getPatternFromModel = function(model, xmlFilter) {
-    if (model === "'EMPTY'") {
-        return new Empty();
-    } else if (model === "'ANY'") {
-        return new Choice(new Empty(), new OneOrMore(new Element(new AnyName(), new Text())));
-    } else {
-        var returned;
-        if (/^\( ?#PCDATA/.test(model)) {
-            returned = SAXParser.getPatternFromMixed(model, xmlFilter);
-        } else {
-            returned = SAXParser.getPatternFromChildren(model, xmlFilter);
-        }
-        return returned;
-    }
-};
-
-/*
 [51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
 			| '(' S? '#PCDATA' S? ')'
 */
@@ -614,6 +606,28 @@ SAXParser.getPatternFromChildren = function(model, xmlFilter) {
     }
 };
 
+/*
+[45]   	elementdecl	   ::=   	'<!ELEMENT' S  Name  S  contentspec  S? '>'	[VC: Unique Element Type Declaration]
+[46]   	contentspec	   ::=   	'EMPTY' | 'ANY' | Mixed | children 
+[51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
+			| '(' S? '#PCDATA' S? ')'
+*/
+SAXParser.getPatternFromModel = function(model, xmlFilter) {
+    if (model === "'EMPTY'") {
+        return new Empty();
+    } else if (model === "'ANY'") {
+        return new Choice(new Empty(), new OneOrMore(new Element(new AnyName(), new Text())));
+    } else {
+        var returned;
+        if (/^\( ?#PCDATA/.test(model)) {
+            returned = SAXParser.getPatternFromMixed(model, xmlFilter);
+        } else {
+            returned = SAXParser.getPatternFromChildren(model, xmlFilter);
+        }
+        return returned;
+    }
+};
+
 SAXParser.prototype.elementDecl_validating = function(name, model) {
     var pattern = SAXParser.getPatternFromModel(model, this);
     if (!this.elements[name]) {
@@ -641,7 +655,7 @@ SAXParser.loadFile = function(fname) {
 			return xmlhttp.responseText;
 		}
 	} else {
-		throw new SAXException("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved", SAXParser.ERROR);
+		throw new SAXException("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved");
 	}
     return false;
 };

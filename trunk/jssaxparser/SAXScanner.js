@@ -1242,7 +1242,7 @@ SAXScanner.prototype.scanAttribute = function(qName, atts) {
                     this.saxEvents.error("multiple declarations for same attribute : [" + attQName.qName + "]", this);
                 } else {
                     //we do not know yet the namespace URI, added when all attributes have been parser, and the type which is added at augmentation by SAXParser
-                    atts.addPrefixedAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, undefined, value);
+                    atts.addAttribute(undefined, attQName.localName, attQName.qName, undefined, value);
                 }
             }
             this.scanAttribute(qName, atts);
