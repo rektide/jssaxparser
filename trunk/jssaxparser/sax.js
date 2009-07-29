@@ -393,6 +393,10 @@ SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode
     }
     //if attribute is declared twice only the first declaration is kept
     if (this.attributesType[eName][aName] === undefined) {
+        //if it is an enumeration
+        if (/^\(.+\)$/.test(type)) {
+            type = "NMTOKEN";
+        }
         this.attributesType[eName][aName] = type;
         //attribute can be augmented only if a default value is specified and attribute is not FIXED
         if (mode !== "#FIXED" && value !== null) {
@@ -478,6 +482,7 @@ SAXParser.prototype.startDTD_validating = function(name, publicId, systemId) {
 SAXParser.prototype.startDocument_validating = function() {
     //initializes the elements at saxParser level, not at XMLFilter
     this.elements = {};
+    this.instanceContext = new Context("", []);
     return this.parent.contentHandler.startDocument.call(this.parent.contentHandler);
 };
 
@@ -529,10 +534,32 @@ SAXParser.prototype.endDocument_validating = function() {
 
 SAXParser.prototype.attributeDecl_validating = function(eName, aName, type, mode, value) {
     //adds the attribute as the first member of a group with old pattern as the second member
-    var elementPattern = this.elements[eName];
-    var attributePattern = new Attribute(new Name(null, aName), type);
-    var group = new Group(attributePattern, elementPattern.pattern);
-    elementPattern.pattern = group;
+    var element = this.elements[eName];
+    if (!element) {
+        element = this.elements[eName] = new Element(new Name(null, eName));
+    }
+    var datatype = new Datatype("http://www.w3.org/2001/XMLSchema-datatypes", "string");
+    var paramList = [];
+    //if it is an enumeration
+    if (/^\(.+\)$/.test(type)) {
+        var typeToParse = type.replace("^\(", "").replace("\)$", "");
+        var values = typeToParse.split("|");
+        var i = values.length;
+        while (i--) {
+            paramList.push(new Param("enumeration", value[i]));
+        }
+    }
+    var attributePattern = new Attribute(new Name(null, aName), new Data(datatype, paramList));
+    if (mode !== "#REQUIRED") {
+        //then it is optional
+        attributePattern = new Choice(attributePattern, new Empty());
+    }
+    if (element.pattern) {
+        var group = new Group(attributePattern, element.pattern);
+        element.pattern = group;
+    } else {
+        element.pattern = attributePattern;
+    }
     this.attributeDecl_augmenting(eName, aName, type, mode, value);
 };
 
@@ -613,10 +640,10 @@ SAXParser.getPatternFromChildren = function(model, xmlFilter) {
 			| '(' S? '#PCDATA' S? ')'
 */
 SAXParser.getPatternFromModel = function(model, xmlFilter) {
-    if (model === "'EMPTY'") {
+    if (model === "EMPTY") {
         return new Empty();
-    } else if (model === "'ANY'") {
-        return new Choice(new Empty(), new OneOrMore(new Element(new AnyName(), new Text())));
+    } else if (model === "ANY") {
+        return new Choice(new Empty(), new OneOrMore(new Element(new AnyName())));
     } else {
         var returned;
         if (/^\( ?#PCDATA/.test(model)) {
@@ -630,10 +657,21 @@ SAXParser.getPatternFromModel = function(model, xmlFilter) {
 
 SAXParser.prototype.elementDecl_validating = function(name, model) {
     var pattern = SAXParser.getPatternFromModel(model, this);
-    if (!this.elements[name]) {
-        this.elements[name] = new Element(new Name(null, name), pattern);
+    var element = this.elements[name];
+    if (!element) {
+        element = this.elements[name] = new Element(new Name(null, name), pattern);
     } else {
-        this.elements[name].pattern = pattern;
+        //if attributes already declared
+        if (element.pattern) {
+            if (pattern instanceof Text) {
+                //mixed patterns are transformed into interleave patterns between their unique child pattern and a text pattern.
+                element.pattern = new Interleave(element.pattern, pattern);
+            } else {
+                element.pattern = new Group(element.pattern, pattern);
+            }
+        } else {
+            element.pattern = pattern;
+        }
     }
     if (this.parent && this.parent.declarationHandler) {
         return this.parent.declarationHandler.elementDecl.call(this.parent.declarationHandler,  name, model);

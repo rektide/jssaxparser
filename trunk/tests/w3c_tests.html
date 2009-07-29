@@ -80,12 +80,30 @@
         throwNotFatalException(saxParser2.errorHandler);
     }
     
+    function parseTestCase_invalid(uri, strictChars) {
+        var contentHandler2 = new DefaultHandler2();
+        var saxParser2 = XMLReaderFactory.createXMLReader();
+        saxParser2.setHandler(contentHandler2);
+        saxParser2.setFeature('http://xml.org/sax/features/validation', true);
+        if (strictChars) {
+            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
+        }
+        try {
+            saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
+        }
+        finally {
+            if (strictChars) {
+                saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
+            }
+        }
+        throwNotFatalException(saxParser2.errorHandler);
+    }
+    
     function parseTestCase_valid(uri, validOutput, strictChars) {
         var serializer = new Serializer();
         var saxParser2 = XMLReaderFactory.createXMLReader();
         saxParser2.setHandler(serializer);
-        //not yet really supported
-        //saxParser2.setFeature('http://xml.org/sax/features/validation', true);
+        saxParser2.setFeature('http://xml.org/sax/features/validation', true);
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization', true);
         if (strictChars) {
             saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
@@ -170,7 +188,7 @@
                 var uri = test.getAttribute("URI");
                 var testLabel = textContent(test);
                 try {
-                    parseTestCase(uri);
+                    parseTestCase_invalid(uri);
                     //should have been exceptions
                     assertTrue("invalid XML not detected in uri : " + uri + ", expected message was : " + testLabel, false);
                 } catch(e) {
@@ -235,8 +253,9 @@
         var saxParser = XMLReaderFactory.createXMLReader();
         //saxParser.setHandler(contentHandler);
         saxParser.setHandler(serializer);
+        saxParser.setFeature('http://xml.org/sax/features/validation', true);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/047.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/001.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);

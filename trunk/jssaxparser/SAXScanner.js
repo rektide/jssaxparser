@@ -717,8 +717,10 @@ SAXScanner.prototype.scanExtSubset = function(extSubset) {
         this.startParsing();
         //current char is first <
         try {
-            //should also support conditionalSect
-            this.scanDoctypeDeclIntSubset();
+            while (this.index < this.length) {
+                //should also support conditionalSect
+                this.scanDoctypeDeclIntSubset();
+            }
         } catch(e) {
             if (!(e instanceof EndOfInputException)) {
                 throw e;
@@ -1077,6 +1079,7 @@ SAXScanner.prototype.scanAttType = function() {
             this.saxEvents.error("Invalid character : [" + this.ch + "] in ATTLIST enumeration", this);
             type += this.ch + this.nextCharRegExp(WS);
         }
+        type = "(" + type + ")";
         this.nextChar();
     //NotationType
     } else if (this.isFollowedBy("NOTATION")) {
@@ -1093,6 +1096,7 @@ SAXScanner.prototype.scanAttType = function() {
             this.saxEvents.error("Invalid NOTATION, must be followed by '('", this);
             this.nextCharRegExp(/>/);
         }
+        type = "NOTATION (" + type + ")";
     // StringType | TokenizedType
     } else {
         type = this.nextCharRegExp(WS);
