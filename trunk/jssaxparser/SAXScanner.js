@@ -56,7 +56,7 @@ var STANDALONE = /^yes$|^no$/;
 
 /* XML Name regular expressions */
 // Should disallow independent high or low surrogates or inversed surrogate pairs and also have option to reject private use characters; but strict mode will need to check for sequence of 2 characters if a surrogate is found
-var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF
+var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udbff\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF; // Fix: Need to remove surrogate pairs here and handle elsewhere; also must deal with surrogates in entities
 var NOT_START_CHAR = new RegExp("[^" + NAME_START_CHAR + "]");
 var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
@@ -65,14 +65,17 @@ var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + 
 //for performance reason I will not be conformant in applying this within the class (see CHAR_DATA_REGEXP)
 var HIGH_SURR = "\ud800-\udbff"; // db7f cut-off would restrict private high surrogates
 var LOW_SURR = "\udc00-\udfff";
+var HIGH_SURR_EXP = new RegExp('['+HIGH_SURR+']');
+var LOW_SURR_EXP = new RegExp('['+LOW_SURR+']');
+
 var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD";
 var NOT_CHAR = '[^'+CHAR+']';
 var NOT_A_CHAR = new RegExp(NOT_CHAR);
 var NOT_A_CHAR_ERROR_CB = function () {
-    if ((new RegExp('['+HIGH_SURR+']')).test(this.ch)) {
+    if ((HIGH_SURR_EXP).test(this.ch)) {
         var temp_ch = this.ch; // Remember for errors
         this.nextChar(true);
-        if ((new RegExp('['+LOW_SURR+']')).test(this.ch)) {
+        if ((LOW_SURR_EXP).test(this.ch)) {
             return true;
         }
         return this.saxEvents.fatalError("invalid XML character, high surrogate, decimal code number '"+temp_ch.charCodeAt(0)+"' not immediately followed by a low surrogate", this);
