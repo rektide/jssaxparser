@@ -77,15 +77,32 @@ SAXNotRecognizedException.constructor = SAXNotRecognizedException;
 //This constructor is more complex and not presently implemented;
 //  see Java API to implement additional arguments correctly
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXParseException.html
-function SAXParseException (msg) { // java.lang.Exception //
+function SAXParseException (msg, locator) { // java.lang.Exception //
     this.message = msg || '';
+    this.locator = locator;
 }
 SAXParseException.prototype = new SAXException();
 SAXParseException.constructor = SAXParseException;
-SAXParseException.prototype.getColumnNumber = function () {};
-SAXParseException.prototype.getLineNumber = function () {};
-SAXParseException.prototype.getPublicId = function () {};
-SAXParseException.prototype.getSystemId = function () {};
+SAXParseException.prototype.getColumnNumber = function () {
+    if (this.locator) {
+        return this.locator.getColumnNumber();
+    }
+};
+SAXParseException.prototype.getLineNumber = function () {
+    if (this.locator) {
+        return this.locator.getLineNumber();
+    }
+};
+SAXParseException.prototype.getPublicId = function () {
+    if (this.locator) {
+        return this.locator.getPublicId();
+    }
+};
+SAXParseException.prototype.getSystemId = function () {
+    if (this.locator) {
+        return this.locator.getSystemId();
+    }
+};
 
 
 // NOTES:
@@ -310,6 +327,21 @@ SAXParser.prototype.parseString = function (xmlAsString) {
         this.getAttributesInstance = this.getAttributes2Instance;
     } else {
         this.getAttributesInstance = this.getAttributes1Instance;
+    }
+    if (this.contentHandler.locator) {
+        this.contentHandler.locator.saxScanner = this.saxScanner;
+        this.contentHandler.locator.getColumnNumberOld = this.contentHandler.locator.getColumnNumber;
+        this.contentHandler.locator.getLineNumberOld = this.contentHandler.locator.getLineNumber;
+        this.contentHandler.locator.getColumnNumber = function () {
+            var columnNumber = this.saxScanner.index - this.saxScanner.xml.substring(0, this.saxScanner.index).lastIndexOf("\n");
+            this.setColumnNumber(columnNumber);
+            return this.getColumnNumberOld();
+        };
+        this.contentHandler.locator.getLineNumber = function () {
+            var lineNumber = this.saxScanner.xml.substring(0, this.saxScanner.index).split("\n").length;
+            this.setLineNumber(lineNumber);
+            return this.getLineNumberOld();
+        };
     }
     saxEvents.warning = this.warning;
     saxEvents.error = this.error;
@@ -703,15 +735,13 @@ SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, syst
     return "";
 };
 
-SAXParser.getSAXParseException = function(message, saxScanner) {
-    var saxParseException = new SAXParseException(message);
-    saxParseException.ch = saxScanner.ch;
-    saxParseException.index = saxScanner.index;
+SAXParser.getSAXParseException = function(message, locator, saxScanner) {
+    var saxParseException = new SAXParseException(message, locator);
     return saxParseException;
 };
 
 SAXParser.prototype.warning = function(message, saxScanner) {
-    var saxParseException = SAXParser.getSAXParseException(message, saxScanner);
+    var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
         return this.parent.errorHandler.warning.call(this.parent.errorHandler, saxParseException);
     }
@@ -719,7 +749,7 @@ SAXParser.prototype.warning = function(message, saxScanner) {
 };
 
 SAXParser.prototype.error = function(message, saxScanner) {
-    var saxParseException = SAXParser.getSAXParseException(message, saxScanner);
+    var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
         return this.parent.errorHandler.error.call(this.parent.errorHandler, saxParseException);
     }
@@ -727,7 +757,7 @@ SAXParser.prototype.error = function(message, saxScanner) {
 };
 
 SAXParser.prototype.fatalError = function(message, saxScanner) {
-    var saxParseException = SAXParser.getSAXParseException(message, saxScanner);
+    var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
         return this.parent.errorHandler.fatalError.call(this.parent.errorHandler, saxParseException);
     }

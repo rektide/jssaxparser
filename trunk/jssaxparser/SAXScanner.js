@@ -507,8 +507,8 @@ SAXScanner.prototype.scanComment = function() {
 
 
 SAXScanner.prototype.setEncoding = function (encoding) {
-    if (this.locator) {
-        this.locator.setEncoding(this.encoding || encoding); // Higher priority is given to any encoding set on an InputSource (passed in during parse())
+    if (this.saxParser.locator) {
+        this.saxParser.locator.setEncoding(this.encoding || encoding); // Higher priority is given to any encoding set on an InputSource (passed in during parse())
     }
 };
 
@@ -520,8 +520,8 @@ SAXScanner.prototype.setXMLVersion = function (version) {
             this.saxEvents.fatalError("The XML text specifies version 1.1, but this parser does not support this version.", this);
         }
         this.saxParser.properties['http://xml.org/sax/properties/document-xml-version'] = version;
-        if (this.locator) {
-            this.locator.setXMLVersion(version);
+        if (this.saxParser.locator) {
+            this.saxParser.locator.setXMLVersion(version);
         }
     }
 };
@@ -651,8 +651,8 @@ SAXScanner.prototype.scanXMLDeclOrTextDecl = function() {
     } else {
         if (this.state === STATE_XML_DECL) {
             this.setXMLVersion('1.0'); // Assumed when no declaration present
-            if (this.locator) {
-                this.locator.setEncoding(encoding);
+            if (this.saxParser.locator) {
+                this.saxParser.locator.setEncoding(encoding);
             }
             this.saxParser.features['http://xml.org/sax/features/is-standalone'] = false;
         }
