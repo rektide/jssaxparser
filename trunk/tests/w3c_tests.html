@@ -265,8 +265,9 @@
         //saxParser.setHandler(contentHandler);
         saxParser.setHandler(serializer);
         saxParser.setFeature('http://xml.org/sax/features/validation', true);
+        saxParser.setFeature('http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization', true);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/001.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/024.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);
