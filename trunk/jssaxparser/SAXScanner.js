@@ -63,10 +63,20 @@ var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + 
 
 //[2]   	Char	   ::=   	#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
 //for performance reason I will not be conformant in applying this within the class (see CHAR_DATA_REGEXP)
-var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
+var HIGH_SURR = "\ud800-\udbff"; // db7f cut-off would restrict private high surrogates
+var LOW_SURR = "\udc00-\udfff";
+var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD";
 var NOT_CHAR = '[^'+CHAR+']';
 var NOT_A_CHAR = new RegExp(NOT_CHAR);
 var NOT_A_CHAR_ERROR_CB = function () {
+    if ((new RegExp('['+HIGH_SURR+']')).test(this.ch)) {
+        var temp_ch = this.ch; // Remember for errors
+        this.nextChar(true);
+        if ((new RegExp('['+LOW_SURR+']')).test(this.ch)) {
+            return true;
+        }
+        return this.saxEvents.fatalError("invalid XML character, high surrogate, decimal code number '"+temp_ch.charCodeAt(0)+"' not immediately followed by a low surrogate", this);
+    }
     return this.saxEvents.fatalError("invalid XML character, decimal code number '"+this.ch.charCodeAt(0)+"'", this);
 };
 var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB};
@@ -1500,7 +1510,11 @@ SAXScanner.prototype.nextCharRegExp = function(regExp, continuation) {
         this.ch = this.xml.charAt(this.index);
         if (regExp.test(this.ch)) {
             if (continuation && continuation.pattern.test(this.ch)) {
-                return continuation.cb.call(this);
+                var cb = continuation.cb.call(this);
+                if (cb !== true) {
+                    return cb;
+                }
+                continue;
             }
             return this.xml.substring(oldIndex, this.index);
         }
