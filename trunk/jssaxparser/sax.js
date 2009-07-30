@@ -310,7 +310,7 @@ SAXParser.prototype.parseString = function (xmlAsString) {
 };
 
 /* convenient method in order to set all handlers at once */
-SAXParser.prototype.setHandler = function (handler) { // (ContentHandler)
+SAXParser.prototype.setHandler = function (handler) { // (ContentHandler/LexicalHandler/ErrorHandler/DeclarationHandler/DtdHandler)/EntityResolver(2)
     this.contentHandler = handler;
     this.lexicalHandler = handler;
     this.errorHandler = handler;

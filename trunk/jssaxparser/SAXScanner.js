@@ -140,6 +140,7 @@ ExternalId.prototype.toString = function() {
 function SAXScanner(saxParser, saxEvents) {
     this.saxParser = saxParser;
     this.saxEvents = saxEvents;
+    this.NOT_CHAR = NOT_CHAR; // Set for access by SAXParser.parseString()
 }
 SAXScanner.prototype.toString = function() {
     return "SAXScanner";
@@ -1212,7 +1213,7 @@ SAXScanner.prototype.scanAttributes = function(qName) {
         }
         atts.setURI(i, namespaceURI);
         //handling special xml: attributes
-        if (namespaceURI === this.namespaceSupport.XMLNS) {
+        if (namespaceURI === NamespaceSupport.XMLNS) {
             switch (atts.getLocalName(i)) {
                 case "base":
                     baseUriAddition = atts.getValue(i);
