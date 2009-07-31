@@ -226,15 +226,21 @@ SAXScanner.prototype.startParsing = function() {
 };
 
 SAXScanner.prototype.next = function() {
-    this.skipWhiteSpaces();
-    if (this.ch === "<") {
-        this.nextChar(true);
-        this.scanMarkup();
-    } else if (this.elementsStack.length > 0) {
-        this.scanText();
-    //if elementsStack is empty it is text misplaced
+    if (this.elementsStack.length === 0) {
+        this.skipWhiteSpaces();
+        if (this.ch === "<") {
+            this.nextChar(true);
+            this.scanMarkup();
+        } else {
+            this.saxEvents.fatalError("can not have text at root level of the XML", this);
+        }
     } else {
-        this.saxEvents.fatalError("can not have text at root level of the XML", this);
+        if (this.ch === "<") {
+            this.nextChar(true);
+            this.scanMarkup();
+        } else {
+            this.scanText();
+        }
     }
 };
 
@@ -383,7 +389,11 @@ SAXScanner.prototype.scanText = function() {
     }
     //in all cases report the text found, a text found before external entity if present
     var length = this.index - start;
-    this.saxEvents.characters(content, start, length);
+    if (!(NON_WS.test(content))) {
+        this.saxEvents.ignorableWhitespace(content, start, length);
+    } else {
+        this.saxEvents.characters(content, start, length);
+    }
 };
 
 // 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)

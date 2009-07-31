@@ -462,7 +462,7 @@ function TextNode(string) {
     this.string = string;
 }
 TextNode.prototype.toHTML = function() {
-    return "<table><tr><th>TextNode</th></tr><tr><td>string</td><td>" + this.string + "</td></tr></table>";
+    return "<table><tr><th>TextNode</th></tr><tr><td>string</td><td>[" + this.string + "]</td></tr></table>";
 };
 TextNode.prototype.toString = function() {
     return "TextNode";

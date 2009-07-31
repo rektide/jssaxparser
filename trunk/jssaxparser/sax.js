@@ -590,36 +590,73 @@ SAXParser.whitespaceCollapse = function(type, value) {
     return value;
 };
 
+SAXParser.addAttributesIn = function(pattern, attributes) {
+    if (pattern) {
+        if (pattern instanceof Choice) {
+            SAXParser.addAttributesIn(pattern.pattern1, attributes);
+            SAXParser.addAttributesIn(pattern.pattern2, attributes);
+        } else if (pattern instanceof Interleave) {
+            SAXParser.addAttributesIn(pattern.pattern1, attributes);
+            SAXParser.addAttributesIn(pattern.pattern2, attributes);
+        } else if (pattern instanceof Group) {
+            SAXParser.addAttributesIn(pattern.pattern1, attributes);
+            SAXParser.addAttributesIn(pattern.pattern2, attributes);
+        } else if (pattern instanceof Attribute) {
+            attributes.push(pattern);
+        }
+    }
+};
+
+SAXParser.isAlreadyDeclared = function(aName, attributes) {
+    for (var i = 0 ; i < attributes.length ; i++) {
+        var nameClass = attributes[i].nameClass
+        if (nameClass.localName && nameClass.localName === aName) {
+            return true;
+        }
+    }
+    return false;
+};
+
+
 SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode, value) {
     var element = this.elements[eName];
+    var alreadyDeclaredAttributes = [];
     if (!element) {
         element = this.elements[eName] = new Element(new Name(null, eName));
-    }
-    var datatype = new Datatype("http://www.w3.org/2001/XMLSchema-datatypes", "string");
-    var paramList = [];
-    //if it is an enumeration
-    if (/^\(.+\)$/.test(type)) {
-        var typeToParse = type.replace("^\(", "").replace("\)$", "");
-        var values = typeToParse.split("|");
-        var i = values.length;
-        while (i--) {
-            paramList.push(new Param("enumeration", values[i]));
-        }
-    }
-    var attributePattern = new Attribute(new Name(null, aName), new Data(datatype, paramList));
-    //if it is optional
-    if (mode !== "#REQUIRED") {
-        //if a default value is provided
-        if (value) {
-            attributePattern.defaultValue = new Value(datatype, value, this.context);
-        }
-        attributePattern = new Choice(attributePattern, new Empty());
-    }
-    if (element.pattern) {
-        var group = new Group(element.pattern, attributePattern);
-        element.pattern = group;
     } else {
-        element.pattern = attributePattern;
+        SAXParser.addAttributesIn(element.pattern, alreadyDeclaredAttributes);
+    }
+    if (SAXParser.isAlreadyDeclared(aName, alreadyDeclaredAttributes)) {
+        //this.warning("attribute : [" + aName + "] under element : [" + eName + "] is already declared", this.parent.saxScanner);
+    } else {
+        var datatype = new Datatype("http://www.w3.org/2001/XMLSchema-datatypes", "string");
+        var paramList = [];
+        //if it is an enumeration
+        if (/^\(.+\)$/.test(type)) {
+            var typeToParse = type.replace("^\(", "").replace("\)$", "");
+            var values = typeToParse.split("|");
+            var i = values.length;
+            while (i--) {
+                paramList.push(new Param("enumeration", values[i]));
+            }
+        }
+        var attributePattern = new Attribute(new Name(null, aName), new Data(datatype, paramList));
+        //stores the index in order to respect the order (only for tests validation purpose)
+        attributePattern.index = alreadyDeclaredAttributes.length;
+        //if it is optional
+        if (mode !== "#REQUIRED") {
+            //if a default value is provided
+            if (value) {
+                attributePattern.defaultValue = new Value(datatype, value, this.context);
+            }
+            attributePattern = new Choice(attributePattern, new Empty());
+        }
+        if (element.pattern) {
+            var group = new Group(element.pattern, attributePattern);
+            element.pattern = group;
+        } else {
+            element.pattern = attributePattern;
+        }
     }
     if (this.parent && this.parent.declarationHandler) {
         return this.parent.declarationHandler.attributeDecl.call(this.parent.declarationHandler, eName, aName, type, mode, value);
@@ -663,14 +700,20 @@ SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, 
             type = pattern.pattern.datatype.localName;
         }
         var value = pattern.defaultValue.string;
-        this.atts.addAttribute(qName.uri, qName.localName, qName.localName, type, value);
+        var index;
+        if (pattern.index !== undefined && this.atts.addAttributeAtIndex) {
+            index = pattern.index;
+            this.atts.addAttributeAtIndex(pattern.index, qName.uri, qName.localName, qName.localName, type, value);
+        } else {
+            index = atts.getLength();
+            this.atts.addAttribute(qName.uri, qName.localName, qName.localName, type, value);
+        }
         //if attributes2 is used
         if (atts.setDeclared) {
-            //index of just added attribute is atts.getLength - 1
-            var index = atts.getLength() - 1;
             atts.setDeclared(index, true);
             atts.setSpecified(index, false);
         }
+        this.attributeNodes.push(new AttributeNode(qName, value));
     }
     //this.childNode must be an ElementNode
     if (!this.childNode) {

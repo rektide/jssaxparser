@@ -104,6 +104,14 @@ function _getValueByURI(uri, localName) {
     return null;
 }
 
+function _getPrefix(localName, qName) {
+    var prefix = null;
+    if (localName.length !== qName.length) {
+        prefix = qName.split(":")[0];
+    }
+    return prefix;
+}
+
 function Sax_Attribute(namespaceURI, prefix, localName, qName, type, value) {
     this.namespaceURI = namespaceURI;
     //avoiding error, the empty prefix of attribute must be null
@@ -195,10 +203,7 @@ AttributesImpl.prototype.getValue = function(arg1, arg2) {
 };
 // Other AttributesImpl methods
 AttributesImpl.prototype.addAttribute = function (uri, localName, qName, type, value) {
-    var prefix = null;
-    if (localName.length !== qName.length) {
-        prefix = qName.split(":")[0];
-    }
+    var prefix = _getPrefix.call(this, localName, qName);
     this.addPrefixedAttribute(uri, prefix, localName, qName, type, value);
 };
 AttributesImpl.prototype.clear = function () {
@@ -208,7 +213,17 @@ AttributesImpl.prototype.removeAttribute = function (index) {
     this.attsArray.splice(index, 1);
 };
 
+AttributesImpl.prototype.addAttributeAtIndex = function (index, uri, localName, qName, type, value) {
+    var prefix = _getPrefix.call(this, localName, qName);
+    this.attsArray.splice(index, 0, new Sax_Attribute(uri, prefix, localName, qName, type, value));
+};
+
 AttributesImpl.prototype.setAttribute = function (index, uri, localName, qName, type, value) {
+    this.setURI(index, uri);
+    this.setLocalName(index, localName);
+    this.setQName(index, qName);
+    this.setType(index, type);
+    this.setValue(index, value);
 };
 
 AttributesImpl.prototype.setAttributes = function (atts) {
@@ -326,10 +341,7 @@ void 	removeAttribute(int index)
           Assign a value to the "specified" flag of a specific attribute.
  **/
 Attributes2Impl.prototype.addAttribute = function (uri, localName, qName, type, value) {
-    var prefix = null;
-    if (localName.length !== qName.length) {
-        prefix = qName.split(":")[0];
-    }
+    var prefix = _getPrefix.call(this, localName, qName);
     this.addPrefixedAttribute(uri, prefix, localName, qName, type, value);
     //index of just added attribute is atts.getLength - 1
     var index = this.getLength() - 1;
