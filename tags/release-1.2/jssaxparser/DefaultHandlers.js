@@ -76,6 +76,7 @@ DefaultHandler.prototype.endDocument = function() {
 };
 
 DefaultHandler.prototype.setDocumentLocator = function (locator) {
+    this.locator = locator;
 };
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below

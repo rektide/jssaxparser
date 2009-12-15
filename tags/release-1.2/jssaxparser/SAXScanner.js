@@ -56,17 +56,30 @@ var STANDALONE = /^yes$|^no$/;
 
 /* XML Name regular expressions */
 // Should disallow independent high or low surrogates or inversed surrogate pairs and also have option to reject private use characters; but strict mode will need to check for sequence of 2 characters if a surrogate is found
-var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udb7f\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF
+var NAME_START_CHAR = ":A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u0200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\ud800-\udbff\udc00-\udfff"; // The last two ranges are for surrogates that comprise #x10000-#xEFFFF; // Fix: Need to remove surrogate pairs here and handle elsewhere; also must deal with surrogates in entities
 var NOT_START_CHAR = new RegExp("[^" + NAME_START_CHAR + "]");
 var NAME_END_CHAR = ".0-9\u00B7\u0300-\u036F\u203F-\u2040-"; // Don't need escaping since to be put in a character class
 var NOT_START_OR_END_CHAR = new RegExp("[^" + NAME_START_CHAR + NAME_END_CHAR + "]");
 
 //[2]   	Char	   ::=   	#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
 //for performance reason I will not be conformant in applying this within the class (see CHAR_DATA_REGEXP)
-var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\ud800-\udb7f\udc00-\udfff";
+var HIGH_SURR = "\ud800-\udbff"; // db7f cut-off would restrict private high surrogates
+var LOW_SURR = "\udc00-\udfff";
+var HIGH_SURR_EXP = new RegExp('['+HIGH_SURR+']');
+var LOW_SURR_EXP = new RegExp('['+LOW_SURR+']');
+
+var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD";
 var NOT_CHAR = '[^'+CHAR+']';
 var NOT_A_CHAR = new RegExp(NOT_CHAR);
 var NOT_A_CHAR_ERROR_CB = function () {
+    if ((HIGH_SURR_EXP).test(this.ch)) {
+        var temp_ch = this.ch; // Remember for errors
+        this.nextChar(true);
+        if ((LOW_SURR_EXP).test(this.ch)) {
+            return true;
+        }
+        return this.saxEvents.fatalError("invalid XML character, high surrogate, decimal code number '"+temp_ch.charCodeAt(0)+"' not immediately followed by a low surrogate", this);
+    }
     return this.saxEvents.fatalError("invalid XML character, decimal code number '"+this.ch.charCodeAt(0)+"'", this);
 };
 var NOT_A_CHAR_CB_OBJ = {pattern:NOT_A_CHAR, cb:NOT_A_CHAR_ERROR_CB};
@@ -140,6 +153,7 @@ ExternalId.prototype.toString = function() {
 function SAXScanner(saxParser, saxEvents) {
     this.saxParser = saxParser;
     this.saxEvents = saxEvents;
+    this.NOT_CHAR = NOT_CHAR; // Set for access by SAXParser.parseString()
 }
 SAXScanner.prototype.toString = function() {
     return "SAXScanner";
@@ -212,15 +226,21 @@ SAXScanner.prototype.startParsing = function() {
 };
 
 SAXScanner.prototype.next = function() {
-    this.skipWhiteSpaces();
-    if (this.ch === "<") {
-        this.nextChar(true);
-        this.scanMarkup();
-    } else if (this.elementsStack.length > 0) {
-        this.scanText();
-    //if elementsStack is empty it is text misplaced
+    if (this.elementsStack.length === 0) {
+        this.skipWhiteSpaces();
+        if (this.ch === "<") {
+            this.nextChar(true);
+            this.scanMarkup();
+        } else {
+            this.saxEvents.fatalError("can not have text at root level of the XML", this);
+        }
     } else {
-        this.saxEvents.fatalError("can not have text at root level of the XML", this);
+        if (this.ch === "<") {
+            this.nextChar(true);
+            this.scanMarkup();
+        } else {
+            this.scanText();
+        }
     }
 };
 
@@ -369,7 +389,11 @@ SAXScanner.prototype.scanText = function() {
     }
     //in all cases report the text found, a text found before external entity if present
     var length = this.index - start;
-    this.saxEvents.characters(content, start, length);
+    if (!(NON_WS.test(content))) {
+        this.saxEvents.ignorableWhitespace(content, start, length);
+    } else {
+        this.saxEvents.characters(content, start, length);
+    }
 };
 
 // 14]   	CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
@@ -493,8 +517,8 @@ SAXScanner.prototype.scanComment = function() {
 
 
 SAXScanner.prototype.setEncoding = function (encoding) {
-    if (this.locator) {
-        this.locator.setEncoding(this.encoding || encoding); // Higher priority is given to any encoding set on an InputSource (passed in during parse())
+    if (this.saxParser.contentHandler.locator) {
+        this.saxParser.contentHandler.locator.setEncoding(this.encoding || encoding); // Higher priority is given to any encoding set on an InputSource (passed in during parse())
     }
 };
 
@@ -506,8 +530,8 @@ SAXScanner.prototype.setXMLVersion = function (version) {
             this.saxEvents.fatalError("The XML text specifies version 1.1, but this parser does not support this version.", this);
         }
         this.saxParser.properties['http://xml.org/sax/properties/document-xml-version'] = version;
-        if (this.locator) {
-            this.locator.setXMLVersion(version);
+        if (this.saxParser.contentHandler.locator) {
+            this.saxParser.contentHandler.locator.setXMLVersion(version);
         }
     }
 };
@@ -637,8 +661,8 @@ SAXScanner.prototype.scanXMLDeclOrTextDecl = function() {
     } else {
         if (this.state === STATE_XML_DECL) {
             this.setXMLVersion('1.0'); // Assumed when no declaration present
-            if (this.locator) {
-                this.locator.setEncoding(encoding);
+            if (this.saxParser.contentHandler.locator) {
+                this.saxParser.contentHandler.locator.setEncoding(encoding);
             }
             this.saxParser.features['http://xml.org/sax/features/is-standalone'] = false;
         }
@@ -717,8 +741,10 @@ SAXScanner.prototype.scanExtSubset = function(extSubset) {
         this.startParsing();
         //current char is first <
         try {
-            //should also support conditionalSect
-            this.scanDoctypeDeclIntSubset();
+            while (this.index < this.length) {
+                //should also support conditionalSect
+                this.scanDoctypeDeclIntSubset();
+            }
         } catch(e) {
             if (!(e instanceof EndOfInputException)) {
                 throw e;
@@ -1077,6 +1103,7 @@ SAXScanner.prototype.scanAttType = function() {
             this.saxEvents.error("Invalid character : [" + this.ch + "] in ATTLIST enumeration", this);
             type += this.ch + this.nextCharRegExp(WS);
         }
+        type = "(" + type + ")";
         this.nextChar();
     //NotationType
     } else if (this.isFollowedBy("NOTATION")) {
@@ -1093,6 +1120,7 @@ SAXScanner.prototype.scanAttType = function() {
             this.saxEvents.error("Invalid NOTATION, must be followed by '('", this);
             this.nextCharRegExp(/>/);
         }
+        type = "NOTATION (" + type + ")";
     // StringType | TokenizedType
     } else {
         type = this.nextCharRegExp(WS);
@@ -1208,7 +1236,7 @@ SAXScanner.prototype.scanAttributes = function(qName) {
         }
         atts.setURI(i, namespaceURI);
         //handling special xml: attributes
-        if (namespaceURI === this.namespaceSupport.XMLNS) {
+        if (namespaceURI === NamespaceSupport.XMLNS) {
             switch (atts.getLocalName(i)) {
                 case "base":
                     baseUriAddition = atts.getValue(i);
@@ -1242,7 +1270,7 @@ SAXScanner.prototype.scanAttribute = function(qName, atts) {
                     this.saxEvents.error("multiple declarations for same attribute : [" + attQName.qName + "]", this);
                 } else {
                     //we do not know yet the namespace URI, added when all attributes have been parser, and the type which is added at augmentation by SAXParser
-                    atts.addPrefixedAttribute(undefined, attQName.prefix, attQName.localName, attQName.qName, undefined, value);
+                    atts.addAttribute(undefined, attQName.localName, attQName.qName, undefined, value);
                 }
             }
             this.scanAttribute(qName, atts);
@@ -1495,7 +1523,11 @@ SAXScanner.prototype.nextCharRegExp = function(regExp, continuation) {
         this.ch = this.xml.charAt(this.index);
         if (regExp.test(this.ch)) {
             if (continuation && continuation.pattern.test(this.ch)) {
-                return continuation.cb.call(this);
+                var cb = continuation.cb.call(this);
+                if (cb !== true) {
+                    return cb;
+                }
+                continue;
             }
             return this.xml.substring(oldIndex, this.index);
         }

@@ -82,12 +82,16 @@ Serializer.prototype.processingInstruction = function(target, data) {
     this.string += '<?' + target + ' ' + data + '?>';
 };
 
-Serializer.prototype.ignorableWhitespace = function(ch, start, length) {};
+Serializer.prototype.ignorableWhitespace = function(ch, start, length) {
+    ch = ch.replace("\r\n", "&#10;");
+    this.string += ch;
+};
 
 Serializer.prototype.characters = function(ch, start, length) {
     if (this.cdata) {
         this.string += this.entify(ch);
     } else {
+        ch = ch.replace("\r\n", "&#10;");
         this.string += ch;
     }
 };
