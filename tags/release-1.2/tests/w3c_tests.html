@@ -1,0 +1,290 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <title>W3C Tests</title>
+    <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+    <script type="text/javascript" src="../jssaxparser/InputSource.js"></script>
+    <script type="text/javascript" src="../jssaxparser/sax.js"></script>
+    <script type="text/javascript" src="../jssaxparser/dom_content_handler.js"></script>
+    <script type="text/javascript" src="../jssaxparser/DefaultHandlers.js"></script>
+    <script type="text/javascript" src="../jssaxparser/Serializer.js"></script>
+    <script type="text/javascript" src="../jssaxparser/validation_common/validator_functions.js"></script>
+    <script type="text/javascript" src="../jssaxparser/validation_common/validator_objects.js"></script>
+    <script type="text/javascript" src="../jssaxparser/jsdatatypelibrary-0.2/datatype_library.js"></script>
+    <script type="text/javascript" src="../examples/xml_samples.js"></script>
+    <script type="text/javascript" src="manageWhiteSpace.js"></script>
+    <script type="text/javascript" src="dom_utils.js"></script>
+    <script type="text/javascript" src="jsxmlunit.js"></script>
+    <script type="text/javascript" src="applyXslt.js"></script>
+    <script type="text/javascript" src="jsdiff.js"></script>
+    <script type="text/javascript"><!--//--><![CDATA[//><!--
+
+    /*global document, alert, assertTrue, DomContentHandler, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource, Serializer, XMLReaderFactory, diffString, loadFile */
+	// (Note: change reference to SAXParser above if change name)
+    var output, testResultSummary;
+    //keeps it global, used in all tests
+    var xmlConf;
+    
+    // Keep track of total test errors
+    var notSupportedCt = 0;
+    var failedCt = 0;
+    var testCt = 0;
+    
+    function setUp() {
+        output = document.getElementById("output");
+    }
+    
+    function throwNotFatalException(errorHandler) {
+        if (errorHandler.saxParseExceptions.length > 0) {
+            throw errorHandler.saxParseExceptions[0];
+        }
+    }
+    
+    function isAssumedNotConformant(uri) {
+        switch (uri) {
+            case "valid/sa/012.xml":
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    function testForStrictCharacterData(uri) {
+        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
+        switch (uri) {
+            case "not-wf/sa/030.xml":
+            case "not-wf/sa/031.xml":
+            case "not-wf/sa/032.xml":
+            case "not-wf/sa/033.xml":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    function parseTestCase(uri, strictChars) {
+        var contentHandler2 = new DefaultHandler2();
+        var saxParser2 = XMLReaderFactory.createXMLReader();
+        saxParser2.setHandler(contentHandler2);
+        if (strictChars) {
+            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
+        }
+        try {
+            saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
+        }
+        finally {
+            if (strictChars) {
+                saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
+            }
+        }
+        throwNotFatalException(saxParser2.errorHandler);
+    }
+    
+    function parseTestCase_valid(uri, validOutput, strictChars) {
+        var serializer = new Serializer();
+        var saxParser2 = XMLReaderFactory.createXMLReader();
+        saxParser2.setHandler(serializer);
+        //not yet really supported
+        //saxParser2.setFeature('http://xml.org/sax/features/validation', true);
+        saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization', true);
+        if (strictChars) {
+            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
+        }
+        try {
+            saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
+        }
+        finally {
+            if (strictChars) {
+                saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
+            }
+        }
+        var expected = loadFile("xmlconf/xmltest/" + validOutput);
+        if (expected !== serializer.string) {
+            throw new SAXException("serialization output not correct : " + diffString(expected, serializer.string));
+        }
+        throwNotFatalException(saxParser2.errorHandler);
+    }
+
+    
+    function testParse_xmlconf() {
+        var contentHandler = new DomContentHandler();
+        var saxParser = XMLReaderFactory.createXMLReader();
+        saxParser.setHandler(contentHandler);
+        testCt++;
+        try {
+            saxParser.parse(new InputSource("xmlconf/xmlconf.xml"));
+            throwNotFatalException(saxParser.errorHandler);
+        } catch(e) {
+            assertTrue(e.message, false);
+        }
+        xmlConf = contentHandler.document;
+    }
+    
+    function testParse_jclark_xmltest_valid() {
+        if (!xmlConf) {
+            testParse_xmlconf();
+        }
+        var testcases = xmlConf.getElementsByTagName("TESTCASES");
+        var jclarkTestcase = testcases.item(0);
+        //there must be content of xmlconf\xmltest\xmltest.xml inside
+        var tests = jclarkTestcase.getElementsByTagName("TEST");
+        
+        for (var i = 0 ; i < tests.length ; i++) {
+            var test = tests.item(i);
+            var type = test.getAttribute("TYPE");
+            if (type === "valid") {
+                testCt++;
+                var uri = test.getAttribute("URI");
+                var validOutput = test.getAttribute("OUTPUT");
+                var testLabel = textContent(test);
+                try {
+                    parseTestCase_valid(uri, validOutput);
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>valid<\/td><\/tr>";
+                } catch(e) {
+                    if (isAssumedNotConformant(uri)) {
+                        notSupportedCt++;
+                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
+                    } else {
+                        failedCt++;
+                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED, exception found :" + e.message + "<\/td><\/tr>";
+                    }
+                }
+            }
+        }
+    }
+    
+    function testParse_jclark_xmltest_invalid() {
+        if (!xmlConf) {
+            testParse_xmlconf();
+        }
+        var testcases = xmlConf.getElementsByTagName("TESTCASES");
+        var jclarkTestcase = testcases.item(0);
+        //there must be content of xmlconf\xmltest\xmltest.xml inside
+        var tests = jclarkTestcase.getElementsByTagName("TEST");
+        
+        for (var i = 0 ; i < tests.length ; i++) {
+            var test = tests.item(i);
+            var type = test.getAttribute("TYPE");
+            if (type === "invalid") {
+                testCt++;
+                var uri = test.getAttribute("URI");
+                var testLabel = textContent(test);
+                try {
+                    parseTestCase(uri);
+                    //should have been exceptions
+                    assertTrue("invalid XML not detected in uri : " + uri + ", expected message was : " + testLabel, false);
+                } catch(e) {
+                    //e may be the jsunit exception, in that case test is failed
+                    if (e instanceof SAXException) {
+                        output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+                    } else {
+                        if (isAssumedNotConformant(uri)) {
+                            notSupportedCt++;
+                            output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
+                        } else {
+                            failedCt++;
+                            output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    function testParse_jclark_xmltest_not_wf() {
+        if (!xmlConf) {
+            testParse_xmlconf();
+        }
+        var testcases = xmlConf.getElementsByTagName("TESTCASES");
+        var jclarkTestcase = testcases.item(0);
+        //there must be content of xmlconf\xmltest\xmltest.xml inside
+        var tests = jclarkTestcase.getElementsByTagName("TEST");
+        
+        for (var i = 0 ; i < tests.length ; i++) {
+            var test = tests.item(i);
+            var type = test.getAttribute("TYPE");
+            if (type === "not-wf") {
+                testCt++;
+                var uri = test.getAttribute("URI");
+                var testLabel = textContent(test);
+                try {
+                    parseTestCase(uri, testForStrictCharacterData(uri));
+                    //should have been exceptions
+                    assertTrue("not-wf XML not detected in uri : " + uri + ", test label was : " + testLabel, false);
+                } catch(e) {
+                    //e may be the jsunit exception, in that case test is failed
+                    if (e instanceof SAXException) {
+                        output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+                    } else {
+                        if (isAssumedNotConformant(uri)) {
+                            notSupportedCt++;
+                            output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
+                        } else {
+                            failedCt++;
+                            output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    function testParseIndividual() {
+        //var contentHandler = new DomContentHandler();
+        var serializer = new Serializer();
+        var saxParser = XMLReaderFactory.createXMLReader();
+        //saxParser.setHandler(contentHandler);
+        saxParser.setHandler(serializer);
+        try {
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/047.xml"));
+            throwNotFatalException(saxParser.errorHandler);
+        } catch(e) {
+            assertTrue(e.message, true);
+        }
+        //for breakpoint
+        var a = "A";
+    }
+    
+    function print_total_errs () {
+    
+        var hr = document.createElementNS('http://www.w3.org/1999/xhtml', 'hr');
+        var p = document.createElementNS('http://www.w3.org/1999/xhtml', 'p');
+        testResultSummary = p.innerHTML = 'Total test failures: '+failedCt+'; Total not supported notices: '+notSupportedCt+'; Total tests: '+testCt;
+        p.style.border = 'solid black 2px';
+        p.style.fontSize = '20px';
+        document.getElementById('outputDiv').appendChild(hr);
+        document.getElementById('outputDiv').appendChild(p);
+    }
+    
+    function runAllTests () {
+        setUp();
+        //testParseIndividual();
+        
+        testParse_xmlconf();
+        testParse_jclark_xmltest_valid();
+        testParse_jclark_xmltest_invalid();
+        testParse_jclark_xmltest_not_wf();
+        print_total_errs();
+        
+        alert('Done! '+testResultSummary);
+        
+    }
+    
+    // Brett added to be able to show something in console when error is thrown
+    JsUnitException.prototype.toString = function () {
+        return this.jsUnitMessage;
+    };
+    
+    //--><!]]></script>
+  </head>
+  <body onload="runAllTests()">
+    <p>This is a Test Page for sax.js</p>
+    <div id="outputDiv" style="font-size:xx-small;">
+        <table id="output">
+            <tr><th>uri</th><th>test label</th><th>result message</th></tr>
+            
+            
+        </table>
+    </div>
+  </body>
+</html>
