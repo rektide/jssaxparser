@@ -252,7 +252,7 @@ SAXParser.prototype.getProperty = function (name) { // (java.lang.String)
 // For convenience, when dealing with strings as input, one can simply use our own parseString() instead of
 // XMLReader's parse() which expects an InputSouce (or systemId)
 // Note: The InputSource argument is not fully supported, as the parser currently does not use its methods for parsing
-SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input OR java.lang.String systemId)
+SAXParser.prototype.parse = function (inputOrSystemId, noCache) { // (InputSource input OR java.lang.String systemId)
     // Parse an XML document (void). OR
     // Parse an XML document from a system identifier (URI) (void).
     // may throw java.io.IOException or SAXException
@@ -286,6 +286,9 @@ SAXParser.prototype.parse = function (inputOrSystemId) { // (InputSource input O
     this.systemId = systemId;
     if (!xmlAsString) { // If not set above
         // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
+        if (noCache) {
+            systemId += ((systemId.indexOf('?') === -1) ? '?' : '&') + '_saxQuertyTime=' + new Date().getTime();
+        }
         xmlAsString = SAXParser.loadFile(systemId);
         //get the path to the file
         path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
