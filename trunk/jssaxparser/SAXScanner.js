@@ -954,6 +954,9 @@ SAXScanner.prototype.scanEntityValue = function() {
             entityValue += ref;
             entityValue += this.nextCharRegExp(new RegExp("[" + quote + "%]"));
         }
+        if (/\uFFFF/.test(entityValue)) {
+            return this.saxEvents.fatalError("invalid entity declaration value, must not contain U+FFFF", this);
+        }
         //current char is ending quote
         this.nextChar();
         return entityValue;
@@ -1286,7 +1289,7 @@ SAXScanner.prototype.scanAttValue = function() {
         var quote = this.ch;
         try {
             this.nextChar(true);
-            var attValue = this.nextCharRegExp(new RegExp("[" + quote + "<&]"));
+            var attValue = this.nextCharRegExp(new RegExp("[" + quote + "<&\uFFFF]"));
             //if found a "&"
             while (this.ch === "&") {
                 this.nextChar(true);
@@ -1306,8 +1309,15 @@ SAXScanner.prototype.scanAttValue = function() {
             if (this.ch === "<") {
                 return this.saxEvents.fatalError("invalid attribute value, must not contain &lt;", this);
             }
+            if (this.ch === '\uFFFF') {
+                return this.saxEvents.fatalError("invalid attribute value, must not contain U+FFFF", this);
+            }
             //current char is ending quote
-            this.nextChar();
+            this.nextChar(true);
+            if (/[^\/>"]/.test(this.ch) && !WS.test(this.ch)) { // Extra double-quote and premature slash errors handled elsewhere
+                this.saxEvents.fatalError("Whitespace is required between attribute-value pairs.", this);
+            }
+            this.skipWhiteSpaces();
         //adding a message in that case
         } catch(e) {
             if (e instanceof EndOfInputException) {
@@ -1332,6 +1342,9 @@ SAXScanner.prototype.scanCData = function() {
         // Reports the same as for text
         var start = this.index;
         var cdata = this.nextRegExp(/\]\]>/);
+        if (/\uFFFF/.test(cdata)) {
+            this.saxEvents.fatalError("Character U+FFFF is not allowed within CDATA.", this);
+        }
         var length = this.index - start;
         this.saxEvents.characters(cdata, start, length);
         //goes after final '>'
