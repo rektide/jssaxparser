@@ -72,10 +72,10 @@ var CHAR = "\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD";
 var NOT_CHAR = '[^'+CHAR+']';
 var NOT_A_CHAR = new RegExp(NOT_CHAR);
 var NOT_A_CHAR_ERROR_CB = function () {
-    if ((HIGH_SURR_EXP).test(this.ch)) {
+    if (this.ch.search(HIGH_SURR_EXP) !== -1) {
         var temp_ch = this.ch; // Remember for errors
         this.nextChar(true);
-        if ((LOW_SURR_EXP).test(this.ch)) {
+        if (this.ch.search(LOW_SURR_EXP) !== -1) {
             return true;
         }
         return this.saxEvents.fatalError("invalid XML character, high surrogate, decimal code number '"+temp_ch.charCodeAt(0)+"' not immediately followed by a low surrogate", this);
@@ -182,7 +182,7 @@ SAXScanner.prototype.parseString = function(xml) { // We implement our own for n
     this.relativeBaseUris = [];
     this.saxEvents.startDocument();
     //if all whitespaces, w3c test case xmlconf/xmltest/not-wf/sa/050.xml
-    if (!(NON_WS.test(this.xml))) {
+    if (this.xml.search(NON_WS) === -1) {
         this.saxEvents.fatalError("empty document", this);
     }
     try {
@@ -389,7 +389,7 @@ SAXScanner.prototype.scanText = function() {
     }
     //in all cases report the text found, a text found before external entity if present
     var length = this.index - start;
-    if (!(NON_WS.test(content))) {
+    if (content.search(NON_WS) === -1) {
         this.saxEvents.ignorableWhitespace(content, start, length);
     } else {
         this.saxEvents.characters(content, start, length);
@@ -431,9 +431,9 @@ SAXScanner.prototype.includeEntity = function(entityName, entityStartIndex, repl
             //it seems externalEntity does not take in account xml:base, see xmlconf.xml
             var externalEntity = this.saxEvents.resolveEntity(entityName, replacement.publicId, this.saxParser.baseURI, replacement.systemId);
             //if not only whitespace
-            if (externalEntity !== undefined && NON_WS.test(externalEntity)) {
+            if (externalEntity !== undefined && externalEntity.search(NON_WS) !== -1) {
                 //check for no recursion
-                if (new RegExp("&" + entityName + ";").test(externalEntity)) {
+                if (externalEntity.search(new RegExp("&" + entityName + ";")) !== -1) {
                     this.saxEvents.fatalError("Recursion detected : [" + entityName + "] contains a reference to itself", this);
                 }
                 //there may be another xml declaration at beginning of external entity
@@ -453,7 +453,7 @@ SAXScanner.prototype.includeEntity = function(entityName, entityStartIndex, repl
         }
     } else {
         //check for no recursion
-        if (new RegExp("&" + entityName + ";").test(replacement)) {
+        if (replacement.search(new RegExp("&" + entityName + ";")) !== -1) {
             this.saxEvents.fatalError("Recursion detected : [" + entityName + "] contains a reference to itself", this);
         }
         this.includeText(entityStartIndex, replacement);
@@ -540,7 +540,7 @@ SAXScanner.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, a
     if (this.ch === "?") {
         return false;
     }
-    if (requireWS && !WS.test(this.ch)) {
+    if (requireWS && this.ch.search(WS) === -1) {
         return this.saxEvents.fatalError('The XML Declaration or Text Declaration must possess a space between the version/encoding/standalone information.', this);
     }
     this.skipWhiteSpaces();
@@ -560,7 +560,7 @@ SAXScanner.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, a
             try {
                 this.nextChar(true);
                 var attValue = this.nextRegExp("[" + quote + "]");
-                if (!allowableValues[attPos].test(attValue)) {
+                if (attValue.search(allowableValues[attPos]) === -1) {
                     return this.saxEvents.fatalError('The attribute value "'+attValue+'" does not match the allowable values in an XML or text declaration: '+allowableValues[attPos], this);
                 }
                 //current char is ending quote
@@ -610,7 +610,7 @@ SAXScanner.prototype.scanXMLDeclOrTextDecl = function() {
     // This script will therefore not detect an inconsistency between the encoding of the original document (since
     //    we don't know what it is) and the encoding indicated in its (optional) XML Declaration/Text Declaration
 
-    if ((XML_DECL_BEGIN).test(this.xml.substr(this.index, 6))) {
+    if (this.xml.substr(this.index, 6).search(XML_DECL_BEGIN) !== -1) {
         this.nextNChar(6);
         var standalone = false;
         if (this.state === STATE_XML_DECL) {
@@ -674,7 +674,7 @@ SAXScanner.prototype.scanXMLDeclOrTextDecl = function() {
 // [16] PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 // [17] PITarget ::= Name - (('X' | 'x') ('M' | 'm') ('L' | 'l'))
 SAXScanner.prototype.scanPI = function() {
-    if ((XML_DECL_BEGIN_FALSE).test(this.xml.substr(this.index, 5))) {
+    if (this.xml.substr(this.index, 5).search(XML_DECL_BEGIN_FALSE) !== -1) {
         return this.saxEvents.fatalError("XML Declaration cannot occur past the very beginning of the document.", this);
     }
     this.nextChar(true);
@@ -730,7 +730,7 @@ SAXScanner.prototype.scanDoctypeDecl = function() {
 [31]   	extSubsetDecl	   ::=   	( markupdecl | conditionalSect | DeclSep)*
 */
 SAXScanner.prototype.scanExtSubset = function(extSubset) {
-    if (NON_WS.test(extSubset)) {
+    if (extSubset.search(NON_WS) !== -1) {
         //restart the index
         var currentIndex = this.index;
         var currentXml = this.xml;
@@ -1098,7 +1098,7 @@ SAXScanner.prototype.scanAttType = function() {
         this.nextChar();
         type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
         //removes whitespaces between NOTATION, does not support the invalidity of whitespaces inside Name
-        while (WS.test(this.ch)) {
+        while (this.ch.search(WS) !== -1) {
             this.skipWhiteSpaces();
             type += this.nextCharRegExp(NOT_START_OR_END_CHAR);
         }
@@ -1314,7 +1314,7 @@ SAXScanner.prototype.scanAttValue = function() {
             }
             //current char is ending quote
             this.nextChar(true);
-            if (/[^\/>"]/.test(this.ch) && !WS.test(this.ch)) { // Extra double-quote and premature slash errors handled elsewhere
+            if (/[^\/>"]/.test(this.ch) && this.ch.search(WS) === -1) { // Extra double-quote and premature slash errors handled elsewhere
                 this.saxEvents.fatalError("Whitespace is required between attribute-value pairs.", this);
             }
             this.skipWhiteSpaces();
@@ -1405,11 +1405,11 @@ SAXScanner.prototype.scanEntityRef = function() {
         this.saxEvents.startEntity(entityName);
         this.saxEvents.endEntity(entityName);
         // well-formed documents need not declare any of the following entities: amp, lt, gt, quot.
-        if (NOT_REPLACED_ENTITIES.test(entityName)) {
+        if (entityName.search(NOT_REPLACED_ENTITIES) !== -1) {
             throw new EntityNotReplacedException(entityName);
         }
         //apos is replaced by '
-        if (APOS_ENTITY.test(entityName)) {
+        if (entityName.search(APOS_ENTITY) !== -1) {
             this.includeText(entityStart, "'");
         } else {
             var replacement = this.entities[entityName];
@@ -1468,7 +1468,7 @@ SAXScanner.prototype.endMarkup = function(namespaceURI, qName) {
 [5]   	Name	   ::=   	NameStartChar (NameChar)*
 */
 SAXScanner.prototype.scanName = function() {
-    if (NOT_START_CHAR.test(this.ch)) {
+    if (this.ch.search(NOT_START_CHAR) !== -1) {
         this.saxEvents.fatalError("invalid starting character in Name : [" + this.ch + "]", this);
         return "";
     }
@@ -1494,7 +1494,7 @@ SAXScanner.prototype.nextChar = function(dontSkipWhiteSpace) {
 };
 
 SAXScanner.prototype.skipWhiteSpaces = function() {
-    while (WS.test(this.ch)) {
+    while (this.ch.search(WS) !== -1) {
         this.index++;
         if (this.index >= this.length) {
             throw new EndOfInputException();
@@ -1534,8 +1534,8 @@ for flexibility purpose, current char at end of that method is the character of 
 SAXScanner.prototype.nextCharRegExp = function(regExp, continuation) {
     for (var oldIndex = this.index ; this.index < this.length ; this.index++) {
         this.ch = this.xml.charAt(this.index);
-        if (regExp.test(this.ch)) {
-            if (continuation && continuation.pattern.test(this.ch)) {
+        if (this.ch.search(regExp) !== -1) {
+            if (continuation && this.ch.search(continuation.pattern) !== -1) {
                 var cb = continuation.cb.call(this);
                 if (cb !== true) {
                     return cb;
