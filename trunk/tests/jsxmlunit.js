@@ -37,10 +37,11 @@ knowledge of the CeCILL license and that you accept its terms.
 
 /* comes from https://developer.mozilla.org/En/Code_snippets/LookupNamespaceURI */
 function lookupNamespaceURI (node, prefix) { // adapted directly from http://www.w3.org/TR/DOM-Level-3-Core/namespaces-algorithms.html#lookupNamespaceURIAlgo
-    if (node.lookupNamespaceURI) {
+	var htmlMode = document.contentType; 
+    var xmlnsPattern = /^xmlns:(.*)$/;
+    if (node.lookupNamespaceURI && htmlMode !== 'text/html') {
         return node.lookupNamespaceURI(prefix);
     }
-    var xmlnsPattern = /^xmlns:(.*)$/;
     switch (node.nodeType) {
         case 1: // ELEMENT_NODE (could also just test for Node.ELEMENT_NODE, etc., if supported in all browsers)
             if (node.namespaceURI !== null && node.prefix === prefix)  {
@@ -50,7 +51,8 @@ function lookupNamespaceURI (node, prefix) { // adapted directly from http://www
             if (node.attributes.length) {
                 for (var i=0; i < node.attributes.length; i++) {
                     var att = node.attributes[i];
-                    if (xmlnsPattern.test(att.name) && xmlnsPattern.exec(att.name)[1] === prefix) {
+                    xmlnsPattern.lastIndex = 0; 
+                    if (att.name.search(xmlnsPattern) !== -1 && xmlnsPattern.exec(att.name)[1] === prefix) {
                         if (att.value) {
                             return att.value;
                         }
