@@ -73,7 +73,6 @@ function lookupNamespaceURI (node, prefix) { // adapted directly from http://www
             }
             return null;
         case 9: // DOCUMENT_NODE
-            return lookupNamespaceURI(node.documentElement, prefix);
         case 6: // ENTITY_NODE
         case 12: // NOTATION_NODE
         case 10: // DOCUMENT_TYPE_NODE
