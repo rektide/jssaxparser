@@ -1371,8 +1371,13 @@ SAXScanner.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
         this.nextChar(true);
-        replacement = String.fromCharCode("0x" + charCode);
-        this.includeText(entityStartIndex, replacement);
+        if (this.saxParser.features['http://debeissat.nicolas.free.fr/ns/canonicalize-entities-and-character-references']) {
+            replacement = String.fromCharCode("0x" + charCode);
+            this.includeText(entityStartIndex, replacement);
+        }
+        if (this.saxEvents.startCharacterReference) {
+            this.saxEvents.startCharacterReference(true, charCode);
+        }
     } else {
         while (this.ch !== ";") {
             if (!/\d/.test(this.ch)) {
@@ -1383,8 +1388,13 @@ SAXScanner.prototype.scanCharRef = function() {
             this.nextChar(true);
         }
         this.nextChar(true);
-        replacement = String.fromCharCode(charCode);
-        this.includeText(entityStartIndex, replacement);
+        if (this.saxParser.features['http://debeissat.nicolas.free.fr/ns/canonicalize-entities-and-character-references']) {
+            replacement = String.fromCharCode(charCode);
+            this.includeText(entityStartIndex, replacement);
+        }
+        if (this.saxEvents.startCharacterReference) {
+            this.saxEvents.startCharacterReference(false, charCode);
+        }
     }
 };
 

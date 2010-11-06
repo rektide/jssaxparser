@@ -198,6 +198,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation'] = false;
     //without that property sax_tests.html does not work as Firefox will not normalize attribute value same way
     this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization'] = false;
+    this.features['http://debeissat.nicolas.free.fr/ns/canonicalize-entities-and-character-references'] = true; // Todo: so far only implemented for charrefs
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
