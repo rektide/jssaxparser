@@ -1359,7 +1359,7 @@ SAXScanner.prototype.scanCData = function() {
 // [66] CharRef ::= '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'
 // current ch is char after "&#",  returned current char is after ";"
 SAXScanner.prototype.scanCharRef = function() {
-    var returned, replacement, charCode = "", entityStartIndex = this.index - 2;
+    var replacement, charCode = "", entityStartIndex = this.index - 2;
     if (this.ch === "x") {
         this.nextChar(true);
         while (this.ch !== ";") {
