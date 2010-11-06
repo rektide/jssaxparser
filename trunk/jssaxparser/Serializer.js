@@ -144,6 +144,11 @@ Serializer.prototype.startDTD = function(name, publicId, systemId) {
 
 Serializer.prototype.startEntity = function(name) {};
 
+// Not a standard SAX method
+Serializer.prototype.startCharacterReference = function(hex, number) {
+    //this.string += '&#' + (hex ? 'x' : '') + number + ';';
+};
+
 
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below

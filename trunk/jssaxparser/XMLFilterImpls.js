@@ -308,6 +308,13 @@ XMLFilterImpl2.prototype.startEntity = function(name) {
     }
     return undefined;
 };
+XMLFilterImpl2.prototype.startCharacterReference = function(hex, number) {
+    if (this.parent && this.parent.lexicalHandler) {
+        return this.parent.lexicalHandler.startCharacterReference.call(this.parent.lexicalHandler, hex, number);
+    }
+    return undefined;
+};
+
 // INTERFACE: EntityResolver: http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html
 // Could implement this by checking for last two arguments missing in EntityResolver2 resolveEntity() below
 // XMLFilterImpl2.prototype.resolveEntity = function (publicId, systemId) {};
