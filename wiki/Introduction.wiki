@@ -1,0 +1,38 @@
+#labels Featured,Phase-Deploy
+= Javascript SAX 2 Parser =
+
+== Introduction ==
+
+That parser is able to read XML and its associated DTD, and throw the events of :
+* contentHandler
+* lexicalHandler
+* errorHandler
+* declarationHandler
+* dtdHandler
+* entityResolver
+conforming to specification http://www.saxproject.org/ 
+
+
+== How to use it ==
+
+=== Import library ===
+
+{{{
+<script type="text/javascript" src="../jssaxparser/sax.js"></script>
+<script type="text/javascript" src="../jssaxparser/DefaultHandlers.js"></script>
+}}}
+
+=== Use it ===
+
+A simple example is :
+
+{{{
+var contentHandler = new DefaultHandler2();
+
+var saxParser = XMLReaderFactory.createXMLReader();
+
+saxParser.setHandler(contentHandler);
+saxParser.parseString(xml);
+}}}
+
+Here, contentHandler is an instance of DefaultHandler2, receiving all events as defined at http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
