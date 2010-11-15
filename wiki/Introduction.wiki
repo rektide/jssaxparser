@@ -1,16 +1,28 @@
 #labels Featured,Phase-Deploy
 = Javascript SAX 2 Parser =
 
+
+
 == Introduction ==
 
-That parser is able to read XML and its associated DTD, and throw the events of :
-* contentHandler
-* lexicalHandler
-* errorHandler
-* declarationHandler
-* dtdHandler
-* entityResolver
-conforming to specification http://www.saxproject.org/ 
+That parser is able to read XML and its associated DTD. It will throw the events of :
+
+* [http://www.saxproject.org/apidoc/org/xml/sax/ContentHandler.html contentHandler]
+
+* [http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html errorHandler]
+
+* [http://www.saxproject.org/apidoc/org/xml/sax/DTDHandler.html dtdHandler]
+
+* [http://www.saxproject.org/apidoc/org/xml/sax/EntityResolver.html entityResolver]
+
+* [http://www.saxproject.org/apidoc/org/xml/sax/ext/DeclHandler.html declarationHandler]
+
+* [http://www.saxproject.org/apidoc/org/xml/sax/ext/LexicalHandler.html lexicalHandler]
+
+
+conforming to specification at http://www.saxproject.org/ .
+
+
 
 
 == How to use it ==
@@ -88,4 +100,3 @@ function start() {
 == Any question ? ==
 
 Do not hesitate to use that wiki or fill an issue.
-
