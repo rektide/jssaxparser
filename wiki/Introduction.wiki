@@ -36,3 +36,56 @@ saxParser.parseString(xml);
 }}}
 
 Here, contentHandler is an instance of DefaultHandler2, receiving all events as defined at http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
+
+=== Do something ===
+
+Now you might want to do something with that XML, then you have to implement the methods of contentHandler :
+
+{{{
+contentHandler.startElement = function(namespaceURI, localName, qName, atts) {
+    document.getElementById("result").innerHTML += "<br/>startElement : [" + namespaceURI + "], [" + localName + "], [" + qName + "]";
+};
+}}}
+
+
+=== The whole page ===
+
+Is commited under jssaxparser/examples/simple.html :
+
+{{{
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+	<head>
+		<script type="text/javascript" src="../jssaxparser/sax.js"></script>
+		<script type="text/javascript" src="../jssaxparser/DefaultHandlers.js"></script>
+		<script type="text/javascript">
+
+function start() {
+
+	var contentHandler = new DefaultHandler2();
+
+	contentHandler.startElement = function(namespaceURI, localName, qName, atts) {
+		document.getElementById("result").innerHTML += "<br/>startElement : [" + namespaceURI + "], [" + localName + "], [" + qName + "]";
+	};
+
+	var saxParser = XMLReaderFactory.createXMLReader();
+
+	saxParser.setHandler(contentHandler);
+	saxParser.parseString("<root><tag>value</tag></root>");
+}
+		</script>
+	</head>
+
+	<body onload="start()">
+		<div id="result"></div>
+
+	</body>
+</html>
+}}}
+
+
+== Any question ? ==
+
+Do not hesitate to use that wiki or fill an issue.
+
