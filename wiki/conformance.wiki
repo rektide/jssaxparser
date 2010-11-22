@@ -16,4 +16,4 @@ The other tests suites are under analysis.
 
 == Performance ==
 
-There is a real challenge to preserve conformance against performance. A "light" version of jssaxparser, without DTD validation, less respecting UTF characters conventions and serialization concerns, will be released.
+There is a real challenge to preserve conformance against performance. A "light" version of jssaxparser, without DTD validation, less respecting UTF characters conventions and serialization requirements, will be released.
