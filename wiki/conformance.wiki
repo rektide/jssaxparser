@@ -1,3 +1,4 @@
+#labels Featured,Phase-Design,Phase-QA,Phase-Support
 = Conformance =
 
 Several test suites demonstrate the conformance of that parser with w3c XML specifications.
@@ -15,4 +16,4 @@ The other tests suites are under analysis.
 
 == Performance ==
 
-There is a real challenge to preserve conformance against performance. A "light" version of jssaxparser, without DTD validation and less respecting UTF characters conventions, will be released.
+There is a real challenge to preserve conformance against performance. A "light" version of jssaxparser, without DTD validation, less respecting UTF characters conventions and serialization concerns, will be released.
