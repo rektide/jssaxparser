@@ -41,28 +41,9 @@ function throwNotFatalException(errorHandler) {
     }
 }
 
-function parseTestCase(uri, strictChars) {
-    var contentHandler2 = new DefaultHandler2();
-    contentHandler2.setDocumentLocator(new Locator2Impl());
-    var saxParser2 = XMLReaderFactory.createXMLReader();
-    saxParser2.setHandler(contentHandler2);
-    if (strictChars) {
-        saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
-    }
-    try {
-        saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
-    }
-    finally {
-        if (strictChars) {
-            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
-        }
-    }
-    throwNotFatalException(saxParser2.errorHandler);
-}
-
-    
 function testParse_xmlconf() {
     var contentHandler = new DomContentHandler();
+    contentHandler.setDocumentLocator(new Locator2Impl());
     var saxParser = XMLReaderFactory.createXMLReader();
     saxParser.setHandler(contentHandler);
     testCt++;
@@ -75,6 +56,25 @@ function testParse_xmlconf() {
     xmlConf = contentHandler.document;
 }
 
+function parseTestCase(uri, strictChars) {
+    var contentHandler2 = new DefaultHandler2();
+    contentHandler2.setDocumentLocator(new Locator2Impl());
+    var saxParser2 = XMLReaderFactory.createXMLReader();
+    saxParser2.setHandler(contentHandler2);
+    if (strictChars) {
+        saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
+    }
+    try {
+        saxParser2.parse(new InputSource(uri));
+    }
+    finally {
+        if (strictChars) {
+            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
+        }
+    }
+    throwNotFatalException(saxParser2.errorHandler);
+}
+
 function parseTestCase_invalid(uri, strictChars) {
     var contentHandler2 = new DefaultHandler2();
     contentHandler2.setDocumentLocator(new Locator2Impl());
@@ -85,7 +85,7 @@ function parseTestCase_invalid(uri, strictChars) {
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
     }
     try {
-        saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
+        saxParser2.parse(new InputSource(uri));
     }
     finally {
         if (strictChars) {
@@ -107,14 +107,14 @@ function parseTestCase_valid(uri, validOutput, strictChars) {
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
     }
     try {
-        saxParser2.parse(new InputSource("xmlconf/xmltest/" + uri));
+        saxParser2.parse(new InputSource(uri));
     }
     finally {
         if (strictChars) {
             saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
         }
     }
-    var expected = loadFile("xmlconf/xmltest/" + validOutput);
+    var expected = loadFile(validOutput);
     if (expected !== serializer.string) {
         throw new SAXException("serialization output not correct : " + diffString(expected, serializer.string));
     }
@@ -144,47 +144,60 @@ function prepareTestParse(testCaseId) {
     }
     //there must be content of xmlconf\xmltest\xmltest.xml inside
     return testcase.getElementsByTagName("TEST");
-    
 }
 
-    function testParse_xmltest_valid(testCaseId) {
-        var tests = prepareTestParse(testCaseId);
-        for (var i = 0 ; i < tests.length ; i++) {
-            var test = tests.item(i);
-            var type = test.getAttribute("TYPE");
-            if (type === "valid") {
-                testCt++;
-                var uri = test.getAttribute("URI");
-                var validOutput = test.getAttribute("OUTPUT");
-                var testLabel = textContent(test);
-                try {
-                    parseTestCase_valid(uri, validOutput);
-                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>valid<\/td><\/tr>";
-                } catch(e) {
-                    if (isAssumedNotConformant(uri)) {
-                        notSupportedCt++;
-                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
-                    } else {
-                        failedCt++;
-                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED, exception found :" + e.message + "<\/td><\/tr>";
-                    }
+function removeFileName(path) {
+    var idx = path.lastIndexOf('/');
+    return path.substring(0, idx + 1);
+}
+
+function getBaseUri(node, uri) {
+    //remove eventual file name at the end of the path
+    var baseUri = removeFileName(node.custBaseURI);
+    return baseUri + uri;
+}
+
+function testParse_xmltest_valid(testCaseId) {
+    var tests = prepareTestParse(testCaseId);
+    for (var i = 0 ; i < tests.length ; i++) {
+        var test = tests.item(i);
+        var type = test.getAttribute("TYPE");
+        if (type === "valid") {
+            testCt++;
+            var uri = test.getAttribute("URI");
+            var parentUri = removeFileName(test.custBaseURI);
+            var uriBased = parentUri + uri;
+            var validOutput = parentUri + test.getAttribute("OUTPUT");
+            var testLabel = textContent(test);
+            try {
+                parseTestCase_valid(uriBased, validOutput);
+                output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>valid<\/td><\/tr>";
+            } catch(e) {
+                if (isAssumedNotConformant(uri)) {
+                    notSupportedCt++;
+                    output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
+                } else {
+                    failedCt++;
+                    output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED, exception found :" + e.message + "<\/td><\/tr>";
                 }
             }
         }
     }
+}
     
-    function testParse_xmltest_invalid(testCaseId) {
-        var tests = prepareTestParse(testCaseId);
-        
+function testParse_xmltest_invalid(testCaseId) {
+    var tests = prepareTestParse(testCaseId);
+    
         for (var i = 0 ; i < tests.length ; i++) {
             var test = tests.item(i);
             var type = test.getAttribute("TYPE");
             if (type === "invalid") {
                 testCt++;
                 var uri = test.getAttribute("URI");
+                var uriBased = getBaseUri(test, uri);
                 var testLabel = textContent(test);
                 try {
-                    parseTestCase_invalid(uri);
+                    parseTestCase_invalid(uriBased);
                     //should have been exceptions
                     assertTrue("invalid XML not detected in uri : " + uri + ", expected message was : " + testLabel, false);
                 } catch(e) {
@@ -205,11 +218,11 @@ function prepareTestParse(testCaseId) {
                 }
             }
         }
-    }
+}
 
 
 
-    function testParse_xmltest_not_wf(testCaseId) {
+function testParse_xmltest_not_wf(testCaseId) {
         var tests = prepareTestParse(testCaseId);
         
         for (var i = 0 ; i < tests.length ; i++) {
@@ -218,9 +231,10 @@ function prepareTestParse(testCaseId) {
             if (type === "not-wf") {
                 testCt++;
                 var uri = test.getAttribute("URI");
+                var uriBased = getBaseUri(test, uri);
                 var testLabel = textContent(test);
                 try {
-                    parseTestCase(uri, testForStrictCharacterData(uri));
+                    parseTestCase(uriBased, testForStrictCharacterData(uri));
                     //should have been exceptions
                     assertTrue("not-wf XML not detected in uri : " + uri + ", test label was : " + testLabel, false);
                 } catch(e) {
@@ -241,7 +255,7 @@ function prepareTestParse(testCaseId) {
                 }
             }
         }
-    }
+}
     
 
 

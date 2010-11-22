@@ -883,6 +883,10 @@ SAXScanner.prototype.scanEntityDecl = function() {
                 } else {
                     this.parameterEntities[entityName] = externalId;
                 }
+            } else {
+                var ignored = this.nextGT();
+                //an XML processor MAY issue a warning if entities are declared multiple times.
+                this.saxEvents.warning("entity : [" + entityName + "] is declared several times, only first value : [" + this.parameterEntities[entityName] + "] is effective, declaration : [" + ignored + "] is ignored");
             }
         } else {
             entityName = this.scanName();
@@ -906,6 +910,10 @@ SAXScanner.prototype.scanEntityDecl = function() {
                         this.saxEvents.internalEntityDecl(entityName, entityValue);
                     }
                 }
+            } else {
+                var ignored = this.nextGT();
+                //an XML processor MAY issue a warning if entities are declared multiple times.
+                this.saxEvents.warning("entity : [" + entityName + "] is declared several times, only first value : [" + this.entities[entityName] + "] is effective, declaration : [" + ignored + "] is ignored");
             }
         }
         return true;
@@ -1004,6 +1012,7 @@ SAXScanner.prototype.scanElementDecl = function() {
         var name = this.scanName();
         this.nextChar();
         /*
+TODO
         The content model will consist of the string "EMPTY", the string "ANY", or a parenthesised group, optionally followed by an occurrence indicator. The model will be normalized so that all parameter entities are fully resolved and all whitespace is removed,and will include the enclosing parentheses. Other normalization (such as removing redundant parentheses or simplifying occurrence indicators) is at the discretion of the parser.
         */
         var model = this.nextCharRegExp(/>/);
@@ -1572,8 +1581,6 @@ SAXScanner.prototype.isFollowedBy = function(str) {
 
 SAXScanner.prototype.nextGT = function() {
     var content = this.nextCharRegExp(/>/);
-    this.index++;
-    this.ch = this.xml.charAt(this.index);
     return content;
 };
 

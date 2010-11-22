@@ -113,6 +113,21 @@ function _addNsDecls () { // Will add namespaces (for true XHTML) where they are
         this.currentAttNodes = {};
     }
 }
+function _setBaseUri(atts) {
+    this.currentElement.custBaseURI = this.currentElement.parentNode.custBaseURI;
+    for (var i = 0 ; i < atts.getLength() ; i++) {
+        var namespaceURI = atts.getURI(i);
+        if (namespaceURI === "http://www.w3.org/XML/1998/namespace") {
+            var localName = atts.getLocalName(i);
+            if (localName === "base") {
+                var xmlBase = atts.getValue(i);
+                //remove eventual file name at the end of URI and append xmlBase
+                var idx = this.currentElement.custBaseURI.lastIndexOf('/');
+                this.currentElement.custBaseURI = this.currentElement.custBaseURI.substring(0, idx + 1) + xmlBase;
+            }
+        }
+    }
+}
 
 // CLASS (could be renamed or aliased to DefaultHandler2): http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
 function DomContentHandler() {
@@ -132,6 +147,10 @@ DomContentHandler.prototype.toString = function () {
 //  http://www.saxproject.org/apidoc/org/xml/sax/ext/DefaultHandler2.html
 DomContentHandler.prototype.startDocument = function() {
     this.document = _createDocument();
+    if (this.locator) {
+        //baseURI is read only (and not supported on IE)
+        this.document.custBaseURI = this.locator.getSystemId();
+    }
 };
 DomContentHandler.prototype.startElement = function(namespaceURI, localName, qName, atts) {
     var element;
@@ -144,6 +163,7 @@ DomContentHandler.prototype.startElement = function(namespaceURI, localName, qNa
     this.currentElement = element;
     _addAtts.call(this, atts);
     _addNsDecls.call(this);
+    _setBaseUri.call(this, atts);
 };
 DomContentHandler.prototype.endElement = function(namespaceURI, localName, qName) {
     this.currentElement = this.currentElement.parentNode;
