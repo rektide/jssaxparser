@@ -184,6 +184,8 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
     this.features['http://xml.org/sax/features/xmlns-uris'] = false;
     this.features['http://xml.org/sax/features/xml-1.1'] = false; // Not supported yet
 
+    this.features['http://apache.org/xml/features/nonvalidating/load-external-dtd'] = false;
+
     // Our custom features (as for other features, retrieve/set publicly via getFeature/setFeature):
     // We are deliberately non-conformant by default (for performance reasons)
     this.features['http://debeissat.nicolas.free.fr/ns/character-data-strict'] = false;
@@ -307,6 +309,9 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     } else {
         this.saxScanner.CHAR_DATA_REGEXP = /[<&\]]/;
     }
+    if (!(this.features['http://apache.org/xml/features/nonvalidating/load-external-dtd'])) {
+        this.saxScanner.loadExternalDtd = function(externalId) {};
+    }
     if (this.features['http://xml.org/sax/features/validation']) {
         this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation'] = true;
         saxEvents.endDocument = this.endDocument_validating;
@@ -356,7 +361,8 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     saxEvents.warning = this.warning;
     saxEvents.error = this.error;
     saxEvents.fatalError = this.fatalError;
-    this.saxScanner.parseString(xmlAsString);
+    var reader = new StringReader(xmlAsString);
+    this.saxScanner.parse(reader);
 };
 
 /* convenient method in order to set all handlers at once */
@@ -801,25 +807,23 @@ SAXParser.getSAXParseException = function(message, locator, saxScanner) {
 SAXParser.prototype.warning = function(message, saxScanner) {
     var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
-        return this.parent.errorHandler.warning.call(this.parent.errorHandler, saxParseException);
+        this.parent.errorHandler.warning.call(this.parent.errorHandler, saxParseException);
     }
-    return undefined;
 };
 
 SAXParser.prototype.error = function(message, saxScanner) {
     var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
-        return this.parent.errorHandler.error.call(this.parent.errorHandler, saxParseException);
+        this.parent.errorHandler.error.call(this.parent.errorHandler, saxParseException);
     }
-    return undefined;
 };
 
 SAXParser.prototype.fatalError = function(message, saxScanner) {
     var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
-        return this.parent.errorHandler.fatalError.call(this.parent.errorHandler, saxParseException);
+        this.parent.errorHandler.fatalError.call(this.parent.errorHandler, saxParseException);
     }
-    return undefined;
+    throw saxParseException;
 };
 
 
@@ -916,6 +920,20 @@ XMLReaderFactory.checkDependencies = function() {
             this.importJS("XMLFilterImpls.js");
         } catch(e4) {
             throw new SAXException("implementation of XMLFilterImpl, like XMLFilterImpls.js, not provided and could not be dynamically loaded because of exception", e4);
+        }
+    }
+    if (typeof that.Reader !== 'function') {
+        try {
+            this.importJS("Reader.js");
+        } catch(e4) {
+            throw new SAXException("implementation of Reader, like Reader.js, not provided and could not be dynamically loaded because of exception", e5);
+        }
+    }
+    if (typeof that.ReaderWrapper !== 'function') {
+        try {
+            this.importJS("ReaderWrapper.js");
+        } catch(e4) {
+            throw new SAXException("implementation of ReaderWrapper.js, like ReaderWrapper.js, not provided and could not be dynamically loaded because of exception", e6);
         }
     }
 };

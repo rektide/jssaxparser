@@ -91,11 +91,9 @@
     function runAllTests () {
         setUp();
         //testParseIndividual();
-        
-        testParse_xmlconf();
-        testParse_xmltest_valid(1);
-	testParse_xmltest_invalid(1);
-        testParse_xmltest_not_wf(1);
+
+        testParse(1);
+
         print_total_errs();
         
         alert('Done! '+testResultSummary);

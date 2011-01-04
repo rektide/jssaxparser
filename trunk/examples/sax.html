@@ -17,11 +17,12 @@
         //var xml = loadRelaxng3();
 		
 		function start() {
+			var textarea = document.getElementById("xml");
 			var div = document.getElementById("msg");
-            div.innerHTML = "";
+                        div.innerHTML = "";
 			var contentHandler = new DummyContentHandler(div);
 			var saxParser = new SAXParser(contentHandler, contentHandler, contentHandler, contentHandler, contentHandler);
-            saxParser.parseString(xml);
+                        saxParser.parseString(textarea.value);
 		}
 		
 		</script>
@@ -29,6 +30,14 @@
 	</head>
 	
 	<body>
+                <textarea id="xml" cols="60" rows="20"><?xml version="1.0"?>
+<rootmarkup id="wer" type="eg"> \
+			<firstmarkupunderroot>efs</firstmarkupunderroot> \
+			<secondmarkupunderroot name="we"> \
+				<firstchoice choice="sf"/> \
+			</secondmarkupunderroot> \
+		</rootmarkup>
+                </textarea>
 		<div id="msg"></div>
 		<div>
 			<input type="button" onclick="start()" value="start"/>

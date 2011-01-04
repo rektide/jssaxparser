@@ -92,10 +92,8 @@
         setUp();
         //testParseIndividual();
         
-        testParse_xmlconf();
-        testParse_xmltest_valid(2);
-	testParse_xmltest_invalid(2);
-        testParse_xmltest_not_wf(2);
+        testParse(2);
+
         print_total_errs();
         
         alert('Done! '+testResultSummary);

@@ -66,13 +66,22 @@ function parseTestCase(uri, strictChars) {
     }
     try {
         saxParser2.parse(new InputSource(uri));
-    }
-    finally {
-        if (strictChars) {
-            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
-        }
-    }
+    } finally {}
     throwNotFatalException(saxParser2.errorHandler);
+}
+
+
+function parseTestCaseError(uri, strictChars) {
+    var contentHandler2 = new DefaultHandler2();
+    contentHandler2.setDocumentLocator(new Locator2Impl());
+    var saxParser2 = XMLReaderFactory.createXMLReader();
+    saxParser2.setHandler(contentHandler2);
+    if (strictChars) {
+        saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
+    }
+    try {
+        saxParser2.parse(new InputSource(uri));
+    } finally {}
 }
 
 function parseTestCase_invalid(uri, strictChars) {
@@ -86,12 +95,7 @@ function parseTestCase_invalid(uri, strictChars) {
     }
     try {
         saxParser2.parse(new InputSource(uri));
-    }
-    finally {
-        if (strictChars) {
-            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
-        }
-    }
+    } finally {}
     throwNotFatalException(saxParser2.errorHandler);
 }
 
@@ -108,12 +112,7 @@ function parseTestCase_valid(uri, validOutput, strictChars) {
     }
     try {
         saxParser2.parse(new InputSource(uri));
-    }
-    finally {
-        if (strictChars) {
-            saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', false);
-        }
-    }
+    } finally {}
     var expected = loadFile(validOutput);
     if (expected !== serializer.string) {
         throw new SAXException("serialization output not correct : " + diffString(expected, serializer.string));
@@ -157,7 +156,7 @@ function getBaseUri(node, uri) {
     return baseUri + uri;
 }
 
-function testParse_xmltest_valid(testCaseId) {
+function testParse_valid(testCaseId) {
     var tests = prepareTestParse(testCaseId);
     for (var i = 0 ; i < tests.length ; i++) {
         var test = tests.item(i);
@@ -185,78 +184,115 @@ function testParse_xmltest_valid(testCaseId) {
     }
 }
     
-function testParse_xmltest_invalid(testCaseId) {
+function testParse_invalid(testCaseId) {
+    var tests = prepareTestParse(testCaseId);    
+    for (var i = 0 ; i < tests.length ; i++) {
+        var test = tests.item(i);
+        var type = test.getAttribute("TYPE");
+        if (type === "invalid") {
+            testCt++;
+            var uri = test.getAttribute("URI");
+            var uriBased = getBaseUri(test, uri);
+            var testLabel = textContent(test);
+            try {
+                parseTestCase_invalid(uriBased);
+                //should have been exceptions
+                assertTrue("invalid XML not detected in uri : " + uri + ", expected message was : " + testLabel, false);
+            } catch(e) {
+                //e may be the jsunit exception, in that case test is failed
+                if (e instanceof SAXParseException) {
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + " at line " + e.getLineNumber() + " at column " + e.getColumnNumber() + "<\/td><\/tr>";
+                } else if (e instanceof SAXException) {
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+                } else {
+                    if (isAssumedNotConformant(uri)) {
+                        notSupportedCt++;
+                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
+                    } else {
+                        failedCt++;
+                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+function testParse_not_wf(testCaseId) {
     var tests = prepareTestParse(testCaseId);
-    
-        for (var i = 0 ; i < tests.length ; i++) {
-            var test = tests.item(i);
-            var type = test.getAttribute("TYPE");
-            if (type === "invalid") {
-                testCt++;
-                var uri = test.getAttribute("URI");
-                var uriBased = getBaseUri(test, uri);
-                var testLabel = textContent(test);
-                try {
-                    parseTestCase_invalid(uriBased);
-                    //should have been exceptions
-                    assertTrue("invalid XML not detected in uri : " + uri + ", expected message was : " + testLabel, false);
-                } catch(e) {
-                    //e may be the jsunit exception, in that case test is failed
-                    if (e instanceof SAXParseException) {
-                        output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + " at line " + e.getLineNumber() + " at column " + e.getColumnNumber() + "<\/td><\/tr>";
-                    } else if (e instanceof SAXException) {
-                        output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+    for (var i = 0 ; i < tests.length ; i++) {
+        var test = tests.item(i);
+        var type = test.getAttribute("TYPE");
+        if (type === "not-wf") {
+            testCt++;
+            var uri = test.getAttribute("URI");
+            var uriBased = getBaseUri(test, uri);
+            var testLabel = textContent(test);
+            try {
+                parseTestCase(uriBased, testForStrictCharacterData(uri));
+                //should have been exceptions
+                assertTrue("not-wf XML not detected in uri : " + uri + ", test label was : " + testLabel, false);
+            } catch(e) {
+                //e may be the jsunit exception, in that case test is failed
+                if (e instanceof SAXParseException) {
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + " at line " + e.getLineNumber() + " at column " + e.getColumnNumber() + "<\/td><\/tr>";
+                } else if (e instanceof SAXException) {
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+                } else {
+                    if (isAssumedNotConformant(uri)) {
+                        notSupportedCt++;
+                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                     } else {
-                        if (isAssumedNotConformant(uri)) {
-                            notSupportedCt++;
-                            output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
-                        } else {
-                            failedCt++;
-                            output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
-                        }
+                        failedCt++;
+                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                     }
                 }
             }
         }
+    }
 }
 
-
-
-function testParse_xmltest_not_wf(testCaseId) {
-        var tests = prepareTestParse(testCaseId);
-        
-        for (var i = 0 ; i < tests.length ; i++) {
-            var test = tests.item(i);
-            var type = test.getAttribute("TYPE");
-            if (type === "not-wf") {
-                testCt++;
-                var uri = test.getAttribute("URI");
-                var uriBased = getBaseUri(test, uri);
-                var testLabel = textContent(test);
-                try {
-                    parseTestCase(uriBased, testForStrictCharacterData(uri));
-                    //should have been exceptions
-                    assertTrue("not-wf XML not detected in uri : " + uri + ", test label was : " + testLabel, false);
-                } catch(e) {
-                    //e may be the jsunit exception, in that case test is failed
-                    if (e instanceof SAXParseException) {
-                        output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + " at line " + e.getLineNumber() + " at column " + e.getColumnNumber() + "<\/td><\/tr>";
-                    } else if (e instanceof SAXException) {
-                        output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+function testParse_error(testCaseId) {
+    var tests = prepareTestParse(testCaseId);
+    for (var i = 0 ; i < tests.length ; i++) {
+        var test = tests.item(i);
+        var type = test.getAttribute("TYPE");
+        if (type === "error") {
+            testCt++;
+            var uri = test.getAttribute("URI");
+            var uriBased = getBaseUri(test, uri);
+            var testLabel = textContent(test);
+            try {
+                parseTestCaseError(uriBased, testForStrictCharacterData(uri));
+                //should have been exceptions
+                assertTrue("error in XML not detected in uri : " + uri + ", test label was : " + testLabel, false);
+            } catch(e) {
+                //e may be the jsunit exception, in that case test is failed
+                if (e instanceof SAXParseException) {
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + " at line " + e.getLineNumber() + " at column " + e.getColumnNumber() + "<\/td><\/tr>";
+                } else if (e instanceof SAXException) {
+                    output.innerHTML += "<tr><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>" + e.message + "<\/td><\/tr>";
+                } else {
+                    if (isAssumedNotConformant(uri)) {
+                        notSupportedCt++;
+                        output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
                     } else {
-                        if (isAssumedNotConformant(uri)) {
-                            notSupportedCt++;
-                            output.innerHTML += "<tr style=\"background-color: orange\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>NOT SUPPORTED<\/td><\/tr>";
-                        } else {
-                            failedCt++;
-                            output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
-                        }
+                        failedCt++;
+                        output.innerHTML += "<tr style=\"background-color: red\"><td>" + uri + "<\/td><td>" + testLabel + "<\/td><td>FAILED<\/td><\/tr>";
                     }
                 }
             }
         }
+    }
 }
-    
 
-
+function testParse(testCaseId) {
+    testParse_xmlconf();
+    testParse_valid(testCaseId);
+    testParse_invalid(testCaseId);
+    testParse_not_wf(testCaseId);
+    testParse_error(testCaseId);
+}
 

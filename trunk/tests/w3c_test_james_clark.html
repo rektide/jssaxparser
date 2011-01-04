@@ -79,7 +79,7 @@
         saxParser.setFeature('http://xml.org/sax/features/validation', true);
         saxParser.setFeature('http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization', true);
         try {
-            saxParser.parse(new InputSource("xmlconf/xmltest/valid/sa/044.xml"));
+            saxParser.parse(new InputSource("xmlconf/xmltest/not-wf/not-sa/005.xml"));
             throwNotFatalException(saxParser.errorHandler);
         } catch(e) {
             assertTrue(e.message, true);
@@ -92,10 +92,8 @@
         setUp();
         //testParseIndividual();
         
-        testParse_xmlconf();
-        testParse_xmltest_valid(0);
-	testParse_xmltest_invalid(0);
-        testParse_xmltest_not_wf(0);
+        testParse(0);
+
         print_total_errs();
         
         alert('Done! '+testResultSummary);
