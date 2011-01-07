@@ -45,6 +45,7 @@ function testParse_xmlconf() {
     var contentHandler = new DomContentHandler();
     contentHandler.setDocumentLocator(new Locator2Impl());
     var saxParser = XMLReaderFactory.createXMLReader();
+    saxParser.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', true);
     saxParser.setHandler(contentHandler);
     testCt++;
     try {
@@ -60,6 +61,7 @@ function parseTestCase(uri, strictChars) {
     var contentHandler2 = new DefaultHandler2();
     contentHandler2.setDocumentLocator(new Locator2Impl());
     var saxParser2 = XMLReaderFactory.createXMLReader();
+    saxParser2.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', true);
     saxParser2.setHandler(contentHandler2);
     if (strictChars) {
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
@@ -75,6 +77,7 @@ function parseTestCaseError(uri, strictChars) {
     var contentHandler2 = new DefaultHandler2();
     contentHandler2.setDocumentLocator(new Locator2Impl());
     var saxParser2 = XMLReaderFactory.createXMLReader();
+    saxParser2.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', true);
     saxParser2.setHandler(contentHandler2);
     if (strictChars) {
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
@@ -90,6 +93,7 @@ function parseTestCase_invalid(uri, strictChars) {
     var saxParser2 = XMLReaderFactory.createXMLReader();
     saxParser2.setHandler(contentHandler2);
     saxParser2.setFeature('http://xml.org/sax/features/validation', true);
+    saxParser2.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', true);
     if (strictChars) {
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);
     }
@@ -106,6 +110,7 @@ function parseTestCase_valid(uri, validOutput, strictChars) {
     var saxParser2 = XMLReaderFactory.createXMLReader();
     saxParser2.setHandler(serializer);
     saxParser2.setFeature('http://xml.org/sax/features/validation', true);
+    saxParser2.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', true);
     saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization', true);
     if (strictChars) {
         saxParser2.setFeature('http://debeissat.nicolas.free.fr/ns/character-data-strict', true);

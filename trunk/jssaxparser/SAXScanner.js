@@ -864,8 +864,8 @@ SAXScanner.prototype.scanDoctypeDeclIntSubset = function() {
                         !this.scanAttlistDecl() && !this.scanNotationDecl()) {
                     //no present support for other declarations
                     this.nextCharWhileNot(">");
+                    this.nextChar();
                 }
-                this.nextChar();
                 if (this.ch !== ">") {
                     this.saxEvents.fatalError("invalid markup declaration inside doctype declaration, must end with &gt;", this);
                 }
@@ -893,6 +893,8 @@ SAXScanner.prototype.scanDoctypeDeclIntSubset = function() {
 [75]   	ExternalID	   ::=   	'SYSTEM' S  SystemLiteral
 			| 'PUBLIC' S PubidLiteral S SystemLiteral
 [76]   	NDataDecl	   ::=   	S 'NDATA' S Name
+current char is first char of declaration
+ending char is >
 */
 SAXScanner.prototype.scanEntityDecl = function() {
     var entityName, externalId, entityValue;
@@ -945,6 +947,7 @@ SAXScanner.prototype.scanEntityDecl = function() {
                 this.saxEvents.warning("entity : [" + entityName + "] is declared several times, only first value : [" + this.entities[entityName] + "] is effective, declaration : [" + ignored + "] is ignored");
             }
         }
+        this.nextChar();
         return true;
     }
     return false;
@@ -1035,6 +1038,7 @@ SAXScanner.prototype.scanPeRef = function(entityName) {
 [51]    	Mixed	   ::=   	'(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'
 			| '(' S? '#PCDATA' S? ')'
 [47]   	children	   ::=   	(choice | seq) ('?' | '*' | '+')?
+ending char is >
 */
 SAXScanner.prototype.scanElementDecl = function() {
     if (this.matchStr("ELEMENT")) {
@@ -1042,10 +1046,11 @@ SAXScanner.prototype.scanElementDecl = function() {
         var name = this.scanName();
         this.nextChar();
         /*
-TODO
+TODO specs :
         The content model will consist of the string "EMPTY", the string "ANY", or a parenthesised group, optionally followed by an occurrence indicator. The model will be normalized so that all parameter entities are fully resolved and all whitespace is removed,and will include the enclosing parentheses. Other normalization (such as removing redundant parentheses or simplifying occurrence indicators) is at the discretion of the parser.
         */
         var model = this.nextCharWhileNot(">");
+        this.nextChar();
         this.saxEvents.elementDecl(name, model);
         return true;
     }
@@ -1054,6 +1059,8 @@ TODO
 
 /*
 [52]   	AttlistDecl	   ::=   	'<!ATTLIST' S  Name  AttDef* S? '>'
+current char is first char of declaration
+ending char is >
 */
 SAXScanner.prototype.scanAttlistDecl = function() {
     if (this.matchStr("ATTLIST")) {
@@ -1098,6 +1105,8 @@ SAXScanner.prototype.scanAttDef = function(eName) {
             var quote = this.ch;
             this.nextChar(true);
             attValue = this.nextCharRegExp(new RegExp("[" + quote + "<%]"));
+            //current char is before quote, < or %
+            this.nextChar(true);
             //if found a "%" must replace it, PeRef are replaced here but not EntityRef
             // Included in Literal here (not parsed as the literal can not be terminated by quote)
             while (this.ch === "%") {
@@ -1109,6 +1118,8 @@ SAXScanner.prototype.scanAttDef = function(eName) {
             if (this.ch === "<") {
                 this.saxEvents.fatalError("invalid attribute value, must not contain &lt;", this);
             }
+            //so current char is quote
+            this.nextChar();
         }
     }
     this.saxEvents.attributeDecl(eName, aName, type, mode, attValue);
@@ -1135,7 +1146,8 @@ SAXScanner.prototype.scanAttType = function() {
     if (this.ch === "(") {
         this.nextChar();
         type = this.nextCharRegExp(NOT_START_OR_END_CHAR);
-        //removes whitespaces between NOTATION, does not support the invalidity of whitespaces inside Name
+        this.nextChar(true);
+        //removes whitespaces between Nmtoken, does not support the invalidity of whitespaces inside names
         while (this.ch.search(WS) !== -1) {
             this.skipWhiteSpaces();
             type += this.nextCharRegExp(NOT_START_OR_END_CHAR);
