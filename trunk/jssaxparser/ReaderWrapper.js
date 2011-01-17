@@ -65,13 +65,15 @@ ReaderWrapper.prototype.peek = function () {
 
 ReaderWrapper.prototype.peekLen = function (len) {
     var returned = "", i, j;
-    for (i = 0 ; i < this.peeked.length ; i++) {
+    for (i = 0 ; i < this.peeked.length && i < len; i++) {
         returned += this.peeked[i];
     }
     len -= i;
-    returned += this.reader.read(returned, 0, len);
-    for(j = 0 ; j < len ; j++) {
-         this.peeked.push(returned.charAt(j));
+    if (len > 0) {
+       returned += this.reader.read(returned, 0, len);
+       for(j = 0 ; j < len ; j++) {
+           this.peeked.push(returned.charAt(j));
+       }
     }
     return returned;
 }

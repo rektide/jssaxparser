@@ -89,7 +89,8 @@ var WS_CHAR = '['+WS_CHARS+']'; // \s is too inclusive
 var WS = new RegExp(WS_CHAR);
 var NON_WS = new RegExp('[^'+WS_CHARS+']');
 //in the case of XML declaration document has not yet been processed, token is on <
-var XML_DECL_BEGIN = new RegExp("<\\?xml"+WS_CHAR);
+var XML_DECL_BEGIN_STR = "<\\?xml"+WS_CHAR;
+var XML_DECL_BEGIN = new RegExp(XML_DECL_BEGIN_STR);
 // in the case of detection of double XML declation, token is on ?
 var XML_DECL_BEGIN_FALSE = new RegExp("xml("+WS_CHAR+'|\\?)', 'i');
 
@@ -207,6 +208,8 @@ SAXScanner.prototype.parse = function(reader) { // We implement our own for now,
 
 /*
 scan XML declaration, test first character of document, and if right goes to character after <
+in case external subset, ending character is before first markup of document, otherwise
+ending character is first markup of document
 */
 SAXScanner.prototype.startParsing = function() {
     try {
@@ -230,9 +233,6 @@ SAXScanner.prototype.startParsing = function() {
                 throw e;
             }
         }
-    }
-    if (this.ch !== "<") {
-        this.saxEvents.fatalError("Invalid first character in document, external entity or external subset : [" + this.ch + "]", this);
     }
 };
 
@@ -390,7 +390,7 @@ SAXScanner.prototype.scanText = function() {
     var content = this.scanCharData();
     //in case of external entity, the process is reinitialized??
     //if found a "&"
-    while (this.ch === "&") {
+    while (this.isFollowedByCh("&")) {
         this.nextChar(true);
         try {
             this.scanRef();
@@ -462,7 +462,10 @@ SAXScanner.prototype.includeEntity = function(entityName, replacement) {
                 this.includeText(externalEntity);
                 var oldState = this.state;
                 this.state = STATE_EXT_ENT;
-                this.startParsing();
+                //if external entity begins with XML declaration, can begin processing otherwise stay at current char
+                if (this.matchRegExp(7, new RegExp(";" + XML_DECL_BEGIN_STR), true)) {
+                    this.startParsing();
+                }
                 this.state = oldState;
             }
         } catch(e) {
@@ -475,13 +478,13 @@ SAXScanner.prototype.includeEntity = function(entityName, replacement) {
             this.saxEvents.fatalError("Recursion detected : [" + entityName + "] contains a reference to itself", this);
         }
         this.includeText(replacement);
+        this.nextChar(true);
     }
 };
 
 SAXScanner.prototype.includeText = function(replacement) {
     // entity is replaced and its replacement is parsed, see http://www.w3.org/TR/REC-xml/#included
     this.reader.unread(replacement);
-    this.nextChar(true);
 };
 
 /*
@@ -667,7 +670,10 @@ SAXScanner.prototype.scanXMLDeclOrTextDecl = function() {
         if (this.ch !== ">") {
             return this.saxEvents.fatalError("invalid markup inside XML or text declaration; must end with &gt;", this);
         }
-        this.nextChar();
+        //in case start parsing of external entity, does not go to next '<' as it will be done in next() function
+        if (this.state !== STATE_EXT_ENT) {
+            this.nextChar();
+        }
         return true;
     } else {
         if (this.state === STATE_XML_DECL) {
@@ -768,8 +774,7 @@ SAXScanner.prototype.scanDoctypeDecl = function() {
 SAXScanner.prototype.scanExtSubset = function(extSubset) {
     if (extSubset.search(NON_WS) !== -1) {
         var oldReader = this.reader;
-        this.reader = new StringReader(extSubset);
-        this.nextChar(true);
+        this.reader = new ReaderWrapper(new StringReader(extSubset));
         this.startParsing();
         //current char is first <
         try {
@@ -1393,7 +1398,7 @@ SAXScanner.prototype.scanAttValue = function() {
 // [21]   	CDEnd	   ::=   	']]>'
 /*
 beginning char is <
-ending char is after ]]>
+ending char is > of ]]>
 */
 SAXScanner.prototype.scanCData = function() {
     if (this.matchStr("[CDATA[")) {
@@ -1613,16 +1618,17 @@ if current char + next length - 1 chars match regexp
 current char is first of regexp
 ending char is the last matching the regexp 
 */
-SAXScanner.prototype.matchRegExp = function(l, regExp) {
+SAXScanner.prototype.matchRegExp = function(l, regExp, dontConsume) {
     var len = l - 1;
     var follow = this.ch + this.reader.peekLen(len);
     if (follow.search(regExp) === 0) {
-        this.reader.skip(len);
-        this.ch = follow.charAt(len);
+        if (!dontConsume) {
+            this.reader.skip(len);
+            this.ch = follow.charAt(len);
+        }
         return true;
     }
     return false;
-    
 }
 
 /*
