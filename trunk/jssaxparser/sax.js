@@ -301,6 +301,13 @@ SAXParser.prototype.parse = function (inputOrSystemId, noCache) { // (InputSourc
 };
 
 SAXParser.prototype.parseString = function (xmlAsString) {
+    var reader = new StringReader(xmlAsString);
+    var readerWrapper = new ReaderWrapper(reader);
+    this.initReaders(readerWrapper, reader);
+    this.saxScanner.parse(readerWrapper);
+};
+
+SAXParser.prototype.initReaders = function (readerWrapper, reader) {
     var saxEvents = new XMLFilterImpl2(this);
     this.saxScanner = new SAXScanner(this, saxEvents);
     this.saxScanner.namespaceSupport = this.namespaceSupport;
@@ -338,22 +345,23 @@ SAXParser.prototype.parseString = function (xmlAsString) {
         this.getAttributesInstance = this.getAttributes1Instance;
     }
     if (this.contentHandler.locator) {
-        this.contentHandler.locator.saxScanner = this.saxScanner;
+        this.contentHandler.locator.reader = reader;
         this.contentHandler.locator.setSystemId(this.systemId);
-        var oldStartDTD = saxEvents.startDTD;
+        saxEvents.startDTDOld = saxEvents.startDTD;
         saxEvents.startDTD = function(name, publicId, systemId) {
             // Check: name or publicId ?
             this.getContentHandler().locator.setPublicId(name);
+            return this.startDTDOld(name, publicId, systemId);
 	}
         this.contentHandler.locator.getColumnNumberOld = this.contentHandler.locator.getColumnNumber;
         this.contentHandler.locator.getLineNumberOld = this.contentHandler.locator.getLineNumber;
         this.contentHandler.locator.getColumnNumber = function () {
-            var columnNumber = this.saxScanner.index - this.saxScanner.xml.substring(0, this.saxScanner.index).lastIndexOf("\n");
+            var columnNumber = this.reader.nextIdx - this.reader.s.substring(0, this.reader.nextIdx).lastIndexOf("\n");
             this.setColumnNumber(columnNumber);
             return this.getColumnNumberOld();
         };
         this.contentHandler.locator.getLineNumber = function () {
-            var lineNumber = this.saxScanner.xml.substring(0, this.saxScanner.index).split("\n").length;
+            var lineNumber = this.reader.s.substring(0, this.reader.nextIdx).split("\n").length;
             this.setLineNumber(lineNumber);
             return this.getLineNumberOld();
         };
@@ -361,9 +369,7 @@ SAXParser.prototype.parseString = function (xmlAsString) {
     saxEvents.warning = this.warning;
     saxEvents.error = this.error;
     saxEvents.fatalError = this.fatalError;
-    var reader = new StringReader(xmlAsString);
-    this.saxScanner.parse(reader);
-};
+}
 
 /* convenient method in order to set all handlers at once */
 SAXParser.prototype.setHandler = function (handler) { // (ContentHandler/LexicalHandler/ErrorHandler/DeclarationHandler/DtdHandler)/EntityResolver(2)
