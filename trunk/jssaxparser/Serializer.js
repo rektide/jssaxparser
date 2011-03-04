@@ -83,7 +83,10 @@ Serializer.prototype.processingInstruction = function(target, data) {
 };
 
 Serializer.prototype.ignorableWhitespace = function(ch, start, length) {
+    //in output test suite of W3C, space characters inside document are &#10;
     ch = ch.replace("\r\n", "&#10;");
+    ch = ch.replace("\n", "&#10;");
+    ch = ch.replace("\r", "&#13;");
     this.string += ch;
 };
 
@@ -91,7 +94,10 @@ Serializer.prototype.characters = function(ch, start, length) {
     if (this.cdata) {
         this.string += this.entify(ch);
     } else {
+    //in output test suite of W3C, space characters inside document are &#10;
         ch = ch.replace("\r\n", "&#10;");
+        ch = ch.replace("\n", "&#10;");
+        ch = ch.replace("\r", "&#13;");
         this.string += ch;
     }
 };
@@ -163,10 +169,10 @@ Serializer.prototype.notationDecl = function (name, publicId, systemId) {
     this.dtdDumped = true;
     this.dtd += '<!NOTATION ' + name;
     if (publicId) {
-        this.dtd += ' PUBLIC ';
+        this.dtd += " PUBLIC '" + publicId + "'>\n";
     }
     if (systemId) {
-        this.dtd += "'" + systemId + "'>\n";
+        this.dtd += " SYSTEM '" + systemId + "'>\n";
     }
 };
 

@@ -180,7 +180,7 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
                                                                                                                     typeof locator.getEncoding === 'function'
                                                                                                                 ); // Not supported yet
     this.features['http://xml.org/sax/features/use-entity-resolver2'] = true;
-    this.features['http://xml.org/sax/features/validation'] = false; // Not supported yet
+    this.features['http://xml.org/sax/features/validation'] = false;
     this.features['http://xml.org/sax/features/xmlns-uris'] = false;
     this.features['http://xml.org/sax/features/xml-1.1'] = false; // Not supported yet
 
@@ -332,7 +332,13 @@ SAXParser.prototype.initReaders = function (readerWrapper, reader) {
         saxEvents.startDTD = this.startDTD_augmenting;
         saxEvents.elementDecl = this.elementDecl_augmenting;
         saxEvents.attributeDecl = this.attributeDecl_augmenting;
-        saxEvents.startElement = this.startElement_augmenting;
+        if (this.features['http://xml.org/sax/features/validation']) {
+            saxEvents.augmenting_elm = this.augmenting_elm;
+            saxEvents.startElement = this.startElement_validating;
+        } else {
+            saxEvents.augmenting_elm = this.augmenting_elm;
+            saxEvents.startElement = this.startElement_augmenting;
+        }
         saxEvents.endElement = this.endElement_augmenting;
         saxEvents.characters = this.characters_augmenting;
     }
@@ -691,11 +697,7 @@ SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode
     return undefined;
 };
 
-/*
-sets the type of the attributes from DTD
-and the default values of non present attributes
-*/
-SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, qName, atts) {
+SAXParser.prototype.augmenting_elm = function(namespaceURI, localName, qName, atts) {
     var attributeNodes = [];
     for (var i = 0 ; i < atts.getLength() ; i++) {
         var newAtt = new AttributeNode(new QName(atts.getURI(i), atts.getLocalName(i)), atts.getValue(i));
@@ -750,20 +752,49 @@ SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, 
         newElement.setParentNode(this.currentElementNode);
         this.currentElementNode = newElement;
     }
-    this.resultPattern = this.validatorFunctions.childDeriv(this.context, this.pattern, this.childNode);
+}
+
+/*
+sets the type of the attributes from DTD
+and the default values of non present attributes
+*/
+SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, qName, atts) {
+    //may not have any DTD
+    if (this.context) {
+        this.augmenting_elm(namespaceURI, localName, qName, atts);
+    }
     return this.parent.contentHandler.startElement.call(this.parent.contentHandler, namespaceURI, localName, qName, atts);
 };
 
+SAXParser.prototype.startElement_validating = function(namespaceURI, localName, qName, atts) {
+    //may not have any DTD
+    if (this.context) {
+        this.augmenting_elm(namespaceURI, localName, qName, atts);
+        this.resultPattern = this.validatorFunctions.childDeriv(this.context, this.pattern, this.childNode);
+        if (this.resultPattern instanceof NotAllowed && !(this.resultPattern instanceof MissingContent)) {
+            var str = "document not valid, message is : [" + this.resultPattern.message + "]";
+            if (this.resultPattern.pattern) {
+                str += ", expected was : [" + this.resultPattern.pattern.toHTML() + "], found is : [" + this.resultPattern.childNode.toHTML() + "]";
+            }
+            this.warning(str);
+        }
+    }
+    return this.parent.contentHandler.startElement.call(this.parent.contentHandler, namespaceURI, localName, qName, atts);
+}
+
 SAXParser.prototype.endElement_augmenting = function(namespaceURI, localName, qName) {
-    if (this.currentElementNode.parentNode) {
+    if (this.currentElementNode && this.currentElementNode.parentNode) {
         this.currentElementNode = this.currentElementNode.parentNode;
     }
     return this.parent.contentHandler.endElement.call(this.parent.contentHandler, namespaceURI, localName, qName);
 };
 
 SAXParser.prototype.characters_augmenting = function(ch, start, length) {
-    var newText = new TextNode(ch);
-    this.currentElementNode.childNodes.push(newText);
+    //may not have any DTD
+    if (this.context) {
+        var newText = new TextNode(ch);
+        this.currentElementNode.childNodes.push(newText);
+    }
     return this.parent.contentHandler.characters.call(this.parent.contentHandler, ch, start, length);
 };
 
@@ -820,6 +851,7 @@ SAXParser.prototype.warning = function(message, saxScanner) {
 SAXParser.prototype.error = function(message, saxScanner) {
     var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
     if (this.parent && this.parent.errorHandler) {
+
         this.parent.errorHandler.error.call(this.parent.errorHandler, saxParseException);
     }
 };

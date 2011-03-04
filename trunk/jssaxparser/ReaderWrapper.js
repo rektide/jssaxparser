@@ -44,23 +44,24 @@ function ReaderWrapper(reader) {
 ReaderWrapper.WS = new RegExp('[\\t\\n\\r ]');
 
 ReaderWrapper.prototype.peekLen = function (len) {
-    var returned = "", lenRead, i, j;
-    for (i = 0 ; i < this.peeked.length && i < len; i++) {
-        returned += this.peeked[i];
+    var peekedLen = this.peeked.length;
+    if (len <= peekedLen) {
+        return this.peeked.slice(-len).reverse().join("");
     }
-    lenRead = len - i;
-    if (len > 0) {
-       returned += this.reader.read(returned, 0, lenRead);
-       for(j = i ; j < len ; j++) {
-           this.peeked.push(returned.charAt(j));
-       }
+    var returned = this.peeked.slice(0).reverse().join("");
+    var lenToRead = len - peekedLen;
+    //completes with read characters from reader
+    var newRead = this.reader.read(returned, 0, lenToRead);
+    returned += newRead;
+    for (var i = 0; i < lenToRead; i++) {
+        this.peeked.unshift(newRead.charAt(i));
     }
     return returned;
 }
 
 ReaderWrapper.prototype.skip = function (n) {
-    for (var i = 0 ; this.peeked.length !== 0 && i < n; i++) {
-        this.peeked.shift();
+    for (var i = 0; this.peeked.length !== 0 && i < n; i++) {
+        this.peeked.pop();
     }
     n -= i;
     if (n) {
@@ -76,7 +77,7 @@ consumes first char of peeked array, or consumes next char of Reader
 */
 ReaderWrapper.prototype.next = function () {
     if (this.peeked.length !== 0) {
-         return this.peeked.shift();
+         return this.peeked.pop();
     }
     return this.reader.read();
 };
@@ -88,11 +89,12 @@ if peeked buffer is not empty take the first one
 else take next char of Reader and keep it in peeked
 */
 ReaderWrapper.prototype.peek = function () {
-    if (this.peeked.length !== 0) {
-         return this.peeked[0];
+    var peekedLen = this.peeked.length;
+    if (peekedLen !== 0) {
+         return this.peeked[peekedLen - 1];
     }
     var returned = this.reader.read();
-    this.peeked.push(returned);
+    this.peeked[0] = returned;
     return returned;
 };
 
@@ -210,8 +212,10 @@ ReaderWrapper.prototype.unequals = function(ch) {
 };
 
 ReaderWrapper.prototype.unread = function (str) {
-    for(var i = 0 ; i < str.length ; i++) {
-        this.peeked.push(str.charAt(i));
+    var i = str.length;
+    //http://www.scottlogic.co.uk/2010/10/javascript-array-performance/
+    while (i--) {
+        this.peeked[this.peeked.length] = str.charAt(i);
     }
 };
 

@@ -147,7 +147,7 @@ ValidatorFunctions.prototype.childDeriv = function(context, pattern, childNode) 
         this.debug("ending validation of childNode", p2, childNode);
         var p3 = this.startTagCloseDeriv(p2, childNode);
         this.debug("validation of children nodes", p3, childNode);
-        var p4 = this.childrenDeriv(childNode.context, p3, childNode.childNodes);
+        var p4 = this.childrenDeriv(childNode.context, p3, cloneArray(childNode.childNodes));
         this.debug("end of validation", p4, childNode);
         return this.endTagDeriv(p4, childNode);
     }
@@ -716,7 +716,7 @@ ValidatorFunctions.prototype.endTagDeriv = function(pattern, childNode) {
         if (this.nullable(pattern.pattern1)) {
             return pattern.pattern2;
         } else {
-            return new NotAllowed("missing content", pattern.pattern1, childNode);
+            return new MissingContent("missing content", pattern.pattern1, childNode);
         }
     } else if (pattern instanceof NotAllowed) {
         return pattern;

@@ -96,6 +96,10 @@ var XML_DECL_BEGIN_FALSE = new RegExp("^xml("+WS_CHAR+'|\\?)', 'i');
 
 var NOT_REPLACED_ENTITIES = /^amp$|^lt$|^gt$|^quot$/;
 var APOS_ENTITY = /^apos$/;
+var CHAR_REF_ESCAPED = /^"$|^'$/;
+var charRefEscaped = {};
+charRefEscaped["'"] = "&apos;";
+charRefEscaped['"'] = "&quot;";
 
 
 // CUSTOM EXCEPTION CLASSES
@@ -550,7 +554,9 @@ SAXScanner.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, a
         }
         return this.saxEvents.fatalError('The attribute name "'+attName+'" does not match the allowable names in an XML or text declaration: '+allowableAtts.join(', '), this);
     }
+    this.reader.skipWhiteSpaces();
     if (this.reader.matchChar("=")) {
+        this.reader.skipWhiteSpaces();
         if (this.reader.equals('"') || this.reader.equals("'")) {
             try {
                 var attValue = this.reader.quoteContent();
@@ -749,8 +755,10 @@ SAXScanner.prototype.scanExtSubset = function(extSubset) {
         this.startParsing();
         //current char is first <
         try {
-            //should also support conditionalSect
-            this.scanDoctypeDeclIntSubset();
+            while(true) {
+                //should also support conditionalSect
+                this.scanDoctypeDeclIntSubset();
+            }
         } catch(e) {
             if (!(e instanceof EndOfInputException)) {
                 throw e;
@@ -1136,6 +1144,7 @@ SAXScanner.prototype.scanAttType = function() {
         } else {
             this.saxEvents.error("Invalid NOTATION, must be followed by '('", this);
             this.reader.nextCharWhileNot(">");
+            this.reader.nextChar();
         }
         type = "NOTATION (" + type + ")";
     // StringType | TokenizedType
@@ -1170,6 +1179,7 @@ SAXScanner.prototype.scanNotationDecl = function() {
         } else {
             this.scanExternalId(externalId);
         }
+        this.reader.nextChar();
         this.saxEvents.notationDecl(name, externalId.publicId, externalId.systemId);
         return true;
     }
@@ -1201,13 +1211,13 @@ SAXScanner.prototype.scanQName = function(defaultPrefix) {
         defaultPrefix = splitResult[0];
         localName = splitResult[1];
     }
+    this.reader.skipWhiteSpaces();
     return new Sax_QName(defaultPrefix, localName);
 };
 
 SAXScanner.prototype.scanElement = function() {
     var qName = this.scanQName("");
     this.elementsStack.push(qName.qName);
-    this.reader.skipWhiteSpaces();
     var atts = this.scanAttributes(qName);
     var namespaceURI = null;
     try {
@@ -1274,7 +1284,6 @@ SAXScanner.prototype.scanAttribute = function(qName, atts) {
     this.reader.skipWhiteSpaces();
     if (this.reader.unequals(">") && this.reader.unequals("/")) {
         var attQName = this.scanQName(null);
-        this.reader.skipWhiteSpaces();
         if (this.reader.matchChar("=")) {
             this.reader.skipWhiteSpaces();
             var value = this.scanAttValue();
@@ -1360,10 +1369,10 @@ SAXScanner.prototype.scanCData = function() {
     if (this.reader.matchStr("[CDATA[")) {
         this.saxEvents.startCDATA();
         this.reader.skipWhiteSpaces();
-        var cdata = "";
+        var cdata = this.reader.nextCharWhileNot("]");
         while (!(this.reader.matchStr("]]>"))) {
-            //current char is included in cdata, no need to be tested
-            cdata += this.reader.nextCharWhileNot("]");
+            this.reader.nextChar(true);
+            cdata += "]" + this.reader.nextCharWhileNot("]");
         }
         if (/\uFFFF/.test(cdata)) {
             this.saxEvents.fatalError("Character U+FFFF is not allowed within CDATA.", this);
@@ -1409,6 +1418,9 @@ SAXScanner.prototype.scanCharRef = function() {
         this.reader.nextChar(true);
         if (this.saxParser.features['http://debeissat.nicolas.free.fr/ns/canonicalize-entities-and-character-references']) {
             replacement = String.fromCharCode(charCode);
+            if (replacement.search(CHAR_REF_ESCAPED) !== -1) {
+                replacement = charRefEscaped[replacement];
+            }
             this.includeText(replacement);
         }
         if (this.saxEvents.startCharacterReference) {
@@ -1433,7 +1445,7 @@ SAXScanner.prototype.scanEntityRef = function() {
         this.reader.nextChar(true);
         this.saxEvents.startEntity(entityName);
         this.saxEvents.endEntity(entityName);
-        // well-formed documents need not declare any of the following entities: amp, lt, gt, quot.
+        // well-formed documents does not need to declare any of the following entities: amp, lt, gt, quot.
         if (entityName.search(NOT_REPLACED_ENTITIES) !== -1) {
             throw new EntityNotReplacedException(entityName);
         }

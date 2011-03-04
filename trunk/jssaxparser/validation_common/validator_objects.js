@@ -262,6 +262,28 @@ NotAllowed.prototype.toString = function() {
     return "NotAllowed";
 };
 
+function MissingContent(message, pattern, childNode, priority) {
+    this.message = message;
+    this.pattern = pattern;
+    this.childNode = childNode;
+    this.priority = priority;
+}
+MissingContent.prototype = new NotAllowed();
+MissingContent.constructor = NotAllowed;
+MissingContent.prototype.toHTML = function() {
+    var string = "<table><tr><th>MissingContent</th></tr><tr><td>message</td><td>" + this.message + "</td></tr><tr><td>pattern</td><td>" + this.pattern.toHTML() + "</td></tr><tr><td>childNode</td><td>";
+    //childNode may be a string directly
+    if (this.childNode.toHTML) {
+        string += this.childNode.toHTML();
+    } else {
+        string += this.childNode;
+    }
+    return string + "</td></tr></table>";
+};
+MissingContent.prototype.toString = function() {
+    return "MissingContent";
+};
+
 function Text() {}
 Text.prototype.toHTML = function() {
     return "<table><tr><th>Text</th></tr></table>";
