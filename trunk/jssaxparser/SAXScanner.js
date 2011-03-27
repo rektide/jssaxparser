@@ -102,6 +102,7 @@ charRefEscaped["'"] = "&apos;";
 charRefEscaped['"'] = "&quot;";
 
 
+
 // CUSTOM EXCEPTION CLASSES
 // Our own exception class; should this perhaps extend SAXParseException?
 function EndOfInputException() {}
@@ -1094,14 +1095,7 @@ SAXScanner.prototype.scanAttDef = function(eName) {
         }
         if (this.reader.equals('"') || this.reader.equals("'")) {
             var quote = this.reader.next();
-            attValue = this.reader.nextCharRegExp(new RegExp("[" + quote + "<%]"));
-            //if found a "%" must replace it, PeRef are replaced here but not EntityRef
-            // Included in Literal here (not parsed as the literal can not be terminated by quote)
-            while (this.reader.matchChar("%")) {
-                var ref = this.scanPeRef();
-                attValue += ref;
-                attValue += this.reader.nextCharRegExp(new RegExp("[" + quote + "<%]"));
-            }
+            attValue = this.reader.nextCharRegExp(new RegExp("[" + quote + "<]"));
             if (this.reader.equals("<")) {
                 this.saxEvents.fatalError("invalid attribute value, must not contain &lt;", this);
             }

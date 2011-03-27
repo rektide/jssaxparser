@@ -86,10 +86,16 @@ Serializer.prototype.processingInstruction = function(target, data) {
 
 Serializer.prototype.ignorableWhitespace = function(ch, start, length) {
     //in output test suite of W3C, space characters inside document are &#10;
-    ch = ch.replace("\r\n", "&#10;");
-    ch = ch.replace("\n", "&#10;");
-    ch = ch.replace("\r", "&#13;");
-    this.string += ch;
+    ch = ch.replace(/\r\n/g, "\n");
+    for (var i = 0; i < ch.length; i++) {
+        var charCode = ch.charCodeAt(i);
+        if (charCode !== 32) {
+            this.string += "&#" + ch.charCodeAt(i) + ";";
+        } else {
+            this.string += ch.charAt(i);
+        }
+    }
+    //this.string += ch;
 };
 
 Serializer.prototype.characters = function(ch, start, length) {
@@ -97,9 +103,9 @@ Serializer.prototype.characters = function(ch, start, length) {
         this.string += this.entify(ch);
     } else {
     //in output test suite of W3C, space characters inside document are &#10;
-        ch = ch.replace("\r\n", "&#10;");
-        ch = ch.replace("\n", "&#10;");
-        ch = ch.replace("\r", "&#13;");
+        ch = ch.replace(/\r\n/g, "&#10;");
+        ch = ch.replace(/\n/g, "&#10;");
+        ch = ch.replace(/\r/g, "&#13;");
         this.string += this.entify(ch);
     }
 };

@@ -325,7 +325,7 @@ SAXParser.prototype.initReaders = function (readerWrapper, reader) {
     }
     if (this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization']) {
         this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation'] = true;
-        saxEvents.normalizeAttValue = SAXParser.whitespaceCollapse;
+        saxEvents.normalizeAttValue = SAXParser.attWhitespaceCollapse;
     }
     if (this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation']) {
         saxEvents.startDocument = this.startDocument_augmenting;
@@ -614,11 +614,14 @@ SAXParser.prototype.elementDecl_augmenting = function(name, model) {
     return undefined;
 };
 
-SAXParser.whitespaceCollapse = function(type, value) {
-    value = value.replace(/[\t\n\r ]+/g, " ");
-    if (type !== "CDATA") {
+SAXParser.attWhitespaceCollapse = function(type, value) {
+    value = value.replace(/\r\n/g, " ");
+    value = value.replace(/\r/g, " ");
+    value = value.replace(/[\t\n]/g, " ");
+    if (type !== "string") {
+        value = value.replace(/\s+/g, " ");
         //removes leading and trailing space
-        value = value.replace(/^ /, "").replace(/ $/, "");
+        value = value.replace(/^\s/, "").replace(/\s$/, "");
     }
     return value;
 };
@@ -662,7 +665,12 @@ SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode
     if (SAXParser.isAlreadyDeclared(aName, alreadyDeclaredAttributes)) {
         this.warning("attribute : [" + aName + "] under element : [" + eName + "] is already declared", this.parent.saxScanner);
     } else {
-        var datatype = new Datatype("http://www.w3.org/2001/XMLSchema-datatypes", "string");
+        var datatype;
+        if (type === "NMTOKENS" || type === "NMTOKEN") {
+            datatype = new Datatype("http://www.w3.org/2001/XMLSchema-datatypes", type);
+        } else {
+            datatype = new Datatype("http://www.w3.org/2001/XMLSchema-datatypes", "string");
+        }
         var paramList = [];
         //if it is an enumeration
         if (/^\(.+\)$/.test(type)) {
@@ -716,7 +724,7 @@ SAXParser.prototype.augmenting_elm = function(namespaceURI, localName, qName, at
                 this.atts.setDeclared(this.index, true);
                 this.atts.setSpecified(this.index, true);
             }
-        }
+        };
         attributeNodes.push(newAtt);
     }
     var newElement = new ElementNode(new QName(namespaceURI, localName), this.instanceContext, attributeNodes, []);
@@ -743,7 +751,7 @@ SAXParser.prototype.augmenting_elm = function(namespaceURI, localName, qName, at
             atts.setSpecified(index, false);
         }
         this.attributeNodes.push(new AttributeNode(qName, value));
-    }
+    };
     //this.childNode must be an ElementNode
     if (!this.childNode) {
         this.childNode = this.currentElementNode = newElement;
@@ -780,7 +788,7 @@ SAXParser.prototype.startElement_validating = function(namespaceURI, localName, 
         }
     }
     return this.parent.contentHandler.startElement.call(this.parent.contentHandler, namespaceURI, localName, qName, atts);
-}
+};
 
 SAXParser.prototype.endElement_augmenting = function(namespaceURI, localName, qName) {
     if (this.currentElementNode && this.currentElementNode.parentNode) {
