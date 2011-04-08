@@ -198,9 +198,8 @@ function SAXParser (contentHandler, lexicalHandler, errorHandler, declarationHan
         that feature is automatically enabled if validation of attribute-whitespace-normalization is activated
     */
     this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation'] = false;
-    //without that property sax_tests.html does not work as Firefox will not normalize attribute value same way
+    //without that property sax_vs_browser.html.html does not work as Firefox will not normalize attribute value properly
     this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization'] = false;
-    this.features['http://debeissat.nicolas.free.fr/ns/canonicalize-entities-and-character-references'] = true; // Todo: so far only implemented for charrefs
 
     this.properties = {}; // objects
     this.properties['http://xml.org/sax/properties/declaration-handler'] = this.declarationHandler = declarationHandler;
@@ -324,8 +323,10 @@ SAXParser.prototype.initReaders = function (readerWrapper, reader) {
         saxEvents.endDocument = this.endDocument_validating;
     }
     if (this.features['http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization']) {
-        this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation'] = true;
-        saxEvents.normalizeAttValue = SAXParser.attWhitespaceCollapse;
+        saxEvents.attWhitespaceNormalize = SAXParser.attWhitespaceNormalize;
+        if (this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation']) {
+            saxEvents.attWhitespaceCollapse = SAXParser.attWhitespaceCollapse;
+        }
     }
     if (this.features['http://debeissat.nicolas.free.fr/ns/instance-augmentation']) {
         saxEvents.startDocument = this.startDocument_augmenting;
@@ -464,6 +465,7 @@ SAXParser.prototype.startDocument_augmenting = function() {
 
 SAXParser.prototype.startDTD_augmenting = function(name, publicId, systemId) {
     this.pattern = this.elements[name] = new Element(new Name(null, name));
+
     this.context = new Context(publicId, []);
     if (this.parent && this.parent.lexicalHandler) {
         return this.parent.lexicalHandler.startDTD.call(this.parent.lexicalHandler, name, publicId, systemId);
@@ -614,10 +616,12 @@ SAXParser.prototype.elementDecl_augmenting = function(name, model) {
     return undefined;
 };
 
-SAXParser.attWhitespaceCollapse = function(type, value) {
+SAXParser.attWhitespaceNormalize = function(value) {
     value = value.replace(/\r\n/g, " ");
-    value = value.replace(/\r/g, " ");
-    value = value.replace(/[\t\n]/g, " ");
+    return value.replace(/[\t\n\r]/g, " ");
+};
+
+SAXParser.attWhitespaceCollapse = function(type, value) {
     if (type !== "string") {
         value = value.replace(/\s+/g, " ");
         //removes leading and trailing space
@@ -639,6 +643,23 @@ SAXParser.addAttributesIn = function(pattern, attributes) {
             SAXParser.addAttributesIn(pattern.pattern2, attributes);
         } else if (pattern instanceof Attribute) {
             attributes.push(pattern);
+        }
+    }
+};
+
+SAXParser.augmentAttributes = function(elementNode, pattern) {
+    if (pattern) {
+        if (pattern instanceof Choice) {
+            SAXParser.augmentAttributes(elementNode, pattern.pattern1);
+            SAXParser.augmentAttributes(elementNode, pattern.pattern2);
+        } else if (pattern instanceof Interleave) {
+            SAXParser.augmentAttributes(elementNode, pattern.pattern1);
+            SAXParser.augmentAttributes(elementNode, pattern.pattern2);
+        } else if (pattern instanceof Group) {
+            SAXParser.augmentAttributes(elementNode, pattern.pattern1);
+            SAXParser.augmentAttributes(elementNode, pattern.pattern2);
+        } else if (pattern instanceof Attribute) {
+            elementNode.addAttribute(pattern);
         }
     }
 };
@@ -688,7 +709,8 @@ SAXParser.prototype.attributeDecl_augmenting = function(eName, aName, type, mode
         if (mode !== "#REQUIRED") {
             //if a default value is provided
             if (value) {
-                attributePattern.defaultValue = new Value(datatype, value, this.context);
+                var valueNormalized = SAXParser.attWhitespaceCollapse(type, value);
+                attributePattern.defaultValue = new Value(datatype, valueNormalized, this.context);
             }
             attributePattern = new Choice(attributePattern, new Empty());
         }
@@ -712,12 +734,12 @@ SAXParser.prototype.augmenting_elm = function(namespaceURI, localName, qName, at
         newAtt.atts = atts;
         newAtt.index = i;
         //may need normalization
-        newAtt.normalizeAttValue = this.normalizeAttValue;
+        newAtt.attWhitespaceCollapse = this.attWhitespaceCollapse;
         newAtt.setType = function(type) {
             this.atts.setType(this.index, type);
-            if (this.normalizeAttValue) {
+            if (this.attWhitespaceCollapse) {
                 var oldValue = this.atts.getValue(this.index);
-                var newValue = this.normalizeAttValue(type, oldValue);
+                var newValue = this.attWhitespaceCollapse(type, oldValue);
                 this.atts.setValue(this.index, newValue);
             }
             if (this.atts.setDeclared) {
@@ -760,7 +782,7 @@ SAXParser.prototype.augmenting_elm = function(namespaceURI, localName, qName, at
         newElement.setParentNode(this.currentElementNode);
         this.currentElementNode = newElement;
     }
-}
+};
 
 /*
 sets the type of the attributes from DTD
@@ -770,6 +792,11 @@ SAXParser.prototype.startElement_augmenting = function(namespaceURI, localName, 
     //may not have any DTD
     if (this.context) {
         this.augmenting_elm(namespaceURI, localName, qName, atts);
+        //DTD augmentation
+        var pattern = this.elements[localName];
+        if (pattern) {
+            SAXParser.augmentAttributes(this.currentElementNode, pattern.pattern);
+        }
     }
     return this.parent.contentHandler.startElement.call(this.parent.contentHandler, namespaceURI, localName, qName, atts);
 };
@@ -818,26 +845,32 @@ SAXParser.prototype.endDocument_validating = function() {
 };
 
 SAXParser.loadFile = function(fname) {
-	var xmlhttp = null;
-	if (window.XMLHttpRequest) {// code for Firefox, Opera, IE7, etc.
-		xmlhttp = new XMLHttpRequest();
-	} else if (window.ActiveXObject) {// code for IE6, IE5
-		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-	}
-	if (xmlhttp !== null) {
-		xmlhttp.open("GET", fname, false);
-		xmlhttp.send(null);
-		if (xmlhttp.readyState === 4) {
-			return xmlhttp.responseText;
-		}
-	} else {
-		throw new SAXException("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved");
-	}
+    var xmlhttp = null;
+    if (window.XMLHttpRequest) {// code for Firefox, Opera, IE7, etc.
+        xmlhttp = new XMLHttpRequest();
+    } else if (window.ActiveXObject) {// code for IE6, IE5
+        xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    if (xmlhttp !== null) {
+        xmlhttp.open("GET", fname, false);
+        xmlhttp.send(null);
+        if (xmlhttp.readyState === 4) {
+            return xmlhttp.responseText;
+        }
+    } else {
+        throw new SAXException("Your browser does not support XMLHTTP, the external entity with URL : [" + fname + "] will not be resolved");
+    }
     return false;
 };
 
 SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, systemId) {
-    var txt = SAXParser.loadFile(baseURI + systemId);
+    var txt;
+    if (baseURI) {
+        txt = SAXParser.loadFile(baseURI + systemId);
+    //new version of method
+    } else {
+        txt = SAXParser.loadFile(systemId);
+    }
     if (txt) {
         return txt;
     }
@@ -858,6 +891,7 @@ SAXParser.prototype.warning = function(message, saxScanner) {
 
 SAXParser.prototype.error = function(message, saxScanner) {
     var saxParseException = SAXParser.getSAXParseException(message, this.parent.contentHandler.locator, saxScanner);
+
     if (this.parent && this.parent.errorHandler) {
 
         this.parent.errorHandler.error.call(this.parent.errorHandler, saxParseException);

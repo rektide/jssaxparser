@@ -65,7 +65,11 @@ Serializer.prototype.startElement = function(namespaceURI, localName, qName, att
     }
     this.currentPrefixMapping = {};
     for (i = 0 ; i < atts.getLength() ; i++) {
-        this.string += ' ' + atts.getQName(i) + '="' + atts.getValue(i) + '"'; // .toLowerCase()
+        var value = atts.getValue(i);
+        value = value.replace(/\n/g, "&#10;");
+        value = value.replace(/\r/g, "&#13;");
+        value = value.replace(/\t/g, "&#9;");
+        this.string += ' ' + atts.getQName(i) + '="' + value + '"'; // .toLowerCase()
     }
     this.string += '>';
 };
@@ -81,12 +85,11 @@ Serializer.prototype.startPrefixMapping = function(prefix, uri) {
 Serializer.prototype.endPrefixMapping = function(prefix) {};
 
 Serializer.prototype.processingInstruction = function(target, data) {
+    data = data.replace(/\r\n/g, "\n");
     this.string += '<?' + target + ' ' + data + '?>';
 };
 
 Serializer.prototype.ignorableWhitespace = function(ch, start, length) {
-    //in output test suite of W3C, space characters inside document are &#10;
-    ch = ch.replace(/\r\n/g, "\n");
     for (var i = 0; i < ch.length; i++) {
         var charCode = ch.charCodeAt(i);
         if (charCode !== 32) {
@@ -99,15 +102,10 @@ Serializer.prototype.ignorableWhitespace = function(ch, start, length) {
 };
 
 Serializer.prototype.characters = function(ch, start, length) {
-    if (this.cdata) {
-        this.string += this.entify(ch);
-    } else {
-    //in output test suite of W3C, space characters inside document are &#10;
-        ch = ch.replace(/\r\n/g, "&#10;");
-        ch = ch.replace(/\n/g, "&#10;");
-        ch = ch.replace(/\r/g, "&#13;");
-        this.string += this.entify(ch);
-    }
+    ch = ch.replace(/\n/g, "&#10;");
+    ch = ch.replace(/\r/g, "&#13;");
+    ch = ch.replace(/\t/g, "&#9;");
+    this.string += this.entify(ch);
 };
 
 Serializer.prototype.skippedEntity = function(name) {};
