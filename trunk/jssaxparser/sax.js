@@ -478,28 +478,30 @@ SAXParser.prototype.startDTD_augmenting = function(name, publicId, systemId) {
 			| '(' S? '#PCDATA' S? ')'
 */
 SAXParser.getPatternFromMixed = function(model, xmlFilter) {
-    var textNode = new Text();
-    var pattern;
     // if other elements
-    var splitOr = model.split("|");
-    //from the last to the second
-    for (var i = splitOr.length - 1 ; i > 0 ; i--) {
-        //trim whitespaces
-        var name = splitOr[i].replace(/^ ?/, "").replace(/ ?$/, "");
-        if (!xmlFilter.elements[name]) {
-            xmlFilter.elements[name] = new Element(new Name(null, name));
+    var pattern, mixed = /^\( ?#PCDATA ?(\|.*) ?\)\*$/.exec(model);
+    if (mixed !== null) {
+        //remove whitespaces
+        var elements = mixed[1].replace(/ /g, "");
+        var splitOr = elements.split("|");
+        //from the last to the second
+        for (var i = splitOr.length - 1 ; i > 0 ; i--) {
+            //trim whitespaces
+            var elemName = splitOr[i];
+            if (!xmlFilter.elements[elemName]) {
+                xmlFilter.elements[elemName] = new Element(new Name(null, elemName));
+            }
+            //adds it to the current pattern
+            if (pattern) {
+                pattern = new Group(xmlFilter.elements[elemName], pattern);
+            } else {
+                pattern = xmlFilter.elements[elemName];
+            }
         }
-        //adds it to the current pattern
-        if (pattern) {
-            pattern = new Group(xmlFilter.elements[name], pattern);
-        } else {
-            pattern = xmlFilter.elements[name];
-        }
+        // it is a zero or more
+        return new Choice(new Empty(), new OneOrMore(new Choice(new Text(), pattern)));
     }
-    if (!pattern) {
-        return textNode;
-    }
-    return new Group(textNode, pattern);
+    return new Text();
 };
 
 /*
@@ -872,6 +874,8 @@ SAXParser.prototype.resolveEntity = function(entityName, publicId, baseURI, syst
         txt = SAXParser.loadFile(systemId);
     }
     if (txt) {
+        //http://www.w3.org/TR/xml/#sec-line-ends replace \r\n and \r by \n
+        txt = txt.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
         return txt;
     }
     return "";

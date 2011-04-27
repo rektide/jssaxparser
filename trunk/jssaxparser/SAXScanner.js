@@ -451,8 +451,7 @@ SAXScanner.prototype.includeEntity = function(entityName, replacement) {
         try {
             //it seems externalEntity does not take in account xml:base, see xmlconf.xml
             var externalEntity = this.saxEvents.resolveEntity(entityName, replacement.publicId, this.saxParser.baseURI, replacement.systemId);
-            //if not only whitespace
-            if (externalEntity !== undefined && externalEntity.search(NON_WS) !== -1) {
+            if (externalEntity !== undefined) {
                 //check for no recursion
                 if (externalEntity.search(new RegExp("&" + entityName + ";")) !== -1) {
                     this.saxEvents.fatalError("Recursion detected : [" + entityName + "] contains a reference to itself", this);
@@ -818,7 +817,6 @@ SAXScanner.prototype.scanPubIdLiteral = function(externalId) {
 /*
 Parameter entity references are recognized anywhere in the DTD (internal and external subsets and external parameter entities),
 except in literals, processing instructions, comments, and the contents of ignored conditional sections
-% is consumed
 When a parameter-entity reference is recognized in the DTD and included, its replacement text MUST be enlarged by the attachment
  of one leading and one following space (#x20) character
 */
@@ -869,7 +867,7 @@ SAXScanner.prototype.scanDoctypeDeclIntSubset = function() {
                         !this.scanAttlistDecl() && !this.scanNotationDecl()) {
                     //no present support for other declarations
                     this.reader.nextCharWhileNot(">");
-                    this.reader.nextChar();
+                    this.reader.nextChar(true);
                 }
             } else {
                 //if comment, must go over the whitespaces as they are not significative in doctype internal subset declaration
@@ -932,7 +930,7 @@ SAXScanner.prototype.scanEntityDecl = function() {
                     var ndataName = this.scanName();
                     this.saxEvents.unparsedEntityDecl(entityName, externalId.publicId, externalId.systemId, ndataName);
                 }
-                if (typeof this.externalEntities[entityName] === "undefined") {
+                if (this.externalEntities[entityName] === undefined) {
                     this.externalEntities[entityName] = externalId;
                 } else {
                     //an XML processor MAY issue a warning if entities are declared multiple times.
@@ -940,7 +938,7 @@ SAXScanner.prototype.scanEntityDecl = function() {
                 }
             } else {
                 entityValue = this.scanEntityValue();
-                if (typeof this.entities[entityName] === "undefined") {
+                if (this.entities[entityName] === undefined) {
                     if (this.isEntityReferencingItself(entityName, entityValue)) {
                         this.saxEvents.error("circular entity declaration, entity : [" + entityName + "] is referencing itself directly or indirectly", this);
                     } else {
@@ -953,7 +951,7 @@ SAXScanner.prototype.scanEntityDecl = function() {
                 }
             }
         }
-        this.reader.nextChar();
+        this.reader.nextChar(true);
         return true;
     }
     return false;
@@ -996,7 +994,12 @@ SAXScanner.prototype.scanEntityValue = function() {
         //if found a "%" must replace it, EntityRef are not replaced here, but char ref are replaced, see XML spec 4.4.8
         while (true) {
             if (this.reader.matchChar("%")) {
-                entityValue += this.scanPeRef() + this.reader.nextCharRegExp(regexp);
+                var peRef = this.scanPeRef();
+                //in this case replace externalId by its content but does not parse anything
+                if (peRef instanceof ExternalId) {
+                    peRef = this.saxEvents.resolveEntity(null, peRef.publicId, null, this.saxParser.baseURI + peRef.systemId);
+                }
+                entityValue += peRef + this.reader.nextCharRegExp(regexp);
             } else if (this.reader.matchChar("&")) {
                 if (this.reader.matchChar("#")) {
                     var charRef = this.scanCharRef();
@@ -1022,6 +1025,7 @@ SAXScanner.prototype.scanEntityValue = function() {
 /*
 [69]   	PEReference	   ::=   	'%' Name ';'
 for use in scanDoctypeDeclIntSubset where we need the original entityName, it may have already been parsed
+may return an ExternalId
 */
 SAXScanner.prototype.scanPeRef = function(entityName) {
     try {
@@ -1029,7 +1033,7 @@ SAXScanner.prototype.scanPeRef = function(entityName) {
         this.reader.nextChar(true);
         //tries to replace it by its value if declared internally in doctype declaration
         var replacement = this.parameterEntities[entityName];
-        if (replacement) {
+        if (replacement !== undefined) {
             return replacement;
         }
         this.saxEvents.fatalError("parameter entity reference : [" + entityName + "] has not been declared, no replacement found", this);
@@ -1057,17 +1061,29 @@ SAXScanner.prototype.scanElementDecl = function() {
         this.reader.skipWhiteSpaces();
         var name = this.scanName();
         this.reader.skipWhiteSpaces();
-        /*
-TODO specs :
-        The content model will consist of the string "EMPTY", the string "ANY", or a parenthesised group, optionally followed by an occurrence indicator. The model will be normalized so that all parameter entities are fully resolved and all whitespace is removed,and will include the enclosing parentheses. Other normalization (such as removing redundant parentheses or simplifying occurrence indicators) is at the discretion of the parser.
-        */
-        var model = this.reader.nextCharWhileNot(">");
-        this.reader.nextChar();
+        var model = this.scanContentModelDecl();
+        //current char must be ending >
+        this.reader.nextChar(true);
         this.saxEvents.elementDecl(name, model);
         return true;
     }
     return false;
 };
+
+/*
+does not remove whitespace as "|" is a valid name character
+collapse only whitespace to single space
+*/
+SAXScanner.prototype.scanContentModelDecl = function() {
+    var regexp = new RegExp("[%>]");
+    var model = this.reader.nextCharRegExp(regexp);
+    while (this.reader.matchChar("%")) {
+        this.includeParameterEntity();
+        model += this.reader.nextCharRegExp(regexp);
+    }
+    return model.replace(new RegExp(WS_CHAR + "+", "g"), " ");
+};
+
 
 /*
 [52]   	AttlistDecl	   ::=   	'<!ATTLIST' S  Name  AttDef* S? '>'
@@ -1086,7 +1102,7 @@ SAXScanner.prototype.scanAttlistDecl = function() {
         while (this.reader.unequals(">")) {
             this.scanAttDef(eName);
         }
-        this.reader.nextChar();
+        this.reader.nextChar(true);
         return true;
     }
     return false;
@@ -1101,6 +1117,10 @@ SAXScanner.prototype.scanAttlistDecl = function() {
 ending char is the one before '>'
 */
 SAXScanner.prototype.scanAttDef = function(eName) {
+    if (this.reader.matchChar("%")) {
+        this.includeParameterEntity();
+        this.reader.skipWhiteSpaces();
+    }
     var aName = this.scanName();
     this.reader.skipWhiteSpaces();
     var type = this.scanAttType();
@@ -1179,7 +1199,7 @@ SAXScanner.prototype.scanAttType = function() {
         } else {
             this.saxEvents.error("Invalid NOTATION, must be followed by '('", this);
             this.reader.nextCharWhileNot(">");
-            this.reader.nextChar();
+            this.reader.nextChar(true);
         }
         type = "NOTATION (" + type + ")";
     // StringType | TokenizedType
@@ -1189,6 +1209,7 @@ SAXScanner.prototype.scanAttType = function() {
         //if found a "%" must replace it, EntityRef are not replaced here, but char ref are replaced
         while (this.reader.matchChar("%")) {
             this.includeParameterEntity();
+            //does not skip WS here, may be significative of end of type
             type += this.reader.nextCharRegExp(regexp);
         }
         if (!/^CDATA$|^ID$|^IDREF$|^IDREFS$|^ENTITY$|^ENTITIES$|^NMTOKEN$|^NMTOKENS$/.test(type)) {
@@ -1220,7 +1241,7 @@ SAXScanner.prototype.scanNotationDecl = function() {
         } else {
             this.scanExternalId(externalId);
         }
-        this.reader.nextChar();
+        this.reader.nextChar(true);
         this.saxEvents.notationDecl(name, externalId.publicId, externalId.systemId);
         return true;
     }
