@@ -1,0 +1,145 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <title>W3C Tests</title>
+    <script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+    <script type="text/javascript" src="../jssaxparser/InputSource.js"></script>
+    <script type="text/javascript" src="../jssaxparser/sax.js"></script>
+    <script type="text/javascript" src="../jssaxparser/LocatorImpls.js"></script>
+    <script type="text/javascript" src="../jssaxparser/DomContentHandler.js"></script>
+    <script type="text/javascript" src="../jssaxparser/DefaultHandlers.js"></script>
+    <script type="text/javascript" src="../jssaxparser/Serializer.js"></script>
+    <script type="text/javascript" src="../jssaxparser/validation_common/validator_functions.js"></script>
+    <script type="text/javascript" src="../jssaxparser/validation_common/validator_objects.js"></script>
+    <script type="text/javascript" src="../jssaxparser/jsdatatypelibrary-0.4/datatype_library.js"></script>
+    <script type="text/javascript" src="../examples/xml_samples.js"></script>
+    <script type="text/javascript" src="manageWhiteSpace.js"></script>
+    <script type="text/javascript" src="dom_utils.js"></script>
+    <script type="text/javascript" src="jsxmlunit.js"></script>
+    <script type="text/javascript" src="applyXslt.js"></script>
+    <script type="text/javascript" src="jsdiff.js"></script>
+    <script type="text/javascript" src="w3c_tests.js"></script>
+    <script type="text/javascript"><!--//--><![CDATA[//><!--
+
+    /*global document, alert, assertTrue, DomContentHandler, JsUnitException , DefaultHandler2, SAXException, textContent, InputSource, Serializer, XMLReaderFactory, diffString, loadFile */
+	// (Note: change reference to SAXParser above if change name)
+    var output, testResultSummary;
+    //keeps it global, used in all tests
+    var xmlConf;
+    
+    // Keep track of total test errors
+    var notSupportedCt = 0;
+    var failedCt = 0;
+    var testCt = 0;
+    
+    function setUp() {
+        output = document.getElementById("output");
+    }
+    
+    function isAssumedNotConformant(uri) {
+        switch (uri) {
+            case "valid/sa/012.xml":
+                return "test is obsolete";
+            case "valid/sa/064.xml":
+                return "management of utf-8 char is dependent on javascript";
+            case "valid/sa/089.xml":
+                return "got \uFFFF when decoding char ref, which is illegal";
+            case "valid/sa/103.xml":
+                return "Test demonstrates that an attribute can pass a less than sign as its value. but it is a text content : <doc>&#60;doc></doc>";
+            case "valid/sa/110.xml":
+                return "not coherent with 108 where CRLF is normalized to a single space, character reference should behave same way than character in entity";
+            case "valid/not-sa/009.xml":
+                return "order of attributes is not correct : If both the external and internal subsets are used, the internal subset MUST be considered to occur before the external subset";
+            case "valid/not-sa/013.xml":
+            case "valid/not-sa/014.xml":
+            case "valid/not-sa/015.xml":
+            case "valid/not-sa/016.xml":
+            case "valid/not-sa/028.xml":
+            case "valid/not-sa/029.xml":
+            case "valid/not-sa/030.xml":
+                return "does not support conditional sections";
+            case "invalid/002.xml":
+            case "invalid/005.xml":
+                return "laxist about parameter entities in markup declarations";
+            default:
+                return false;
+        }
+    }
+    
+    function testForStrictCharacterData(uri) {
+        //no test on text data as http://www.w3.org/TR/REC-xml/#NT-Char
+        switch (uri) {
+            case "not-wf/sa/030.xml":
+            case "not-wf/sa/031.xml":
+            case "not-wf/sa/032.xml":
+            case "not-wf/sa/033.xml":
+            case "not-wf/sa/142.xml":
+            case "not-wf/sa/143.xml":
+            case "not-wf/sa/144.xml":
+            case "not-wf/sa/145.xml":
+            case "not-wf/sa/146.xml":
+            case "not-wf/sa/166.xml":
+            case "not-wf/sa/167.xml":
+            case "not-wf/sa/168.xml": // 168-170 are loaded by XMLHttpRequest as a valid string while they are not; might need to implement ByteStream to test these three
+            case "not-wf/sa/169.xml":
+            case "not-wf/sa/170.xml":
+            case "not-wf/sa/177.xml":
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    function testParseIndividual() {
+        //var contentHandler = new DomContentHandler();
+        var serializer = new Serializer();
+        serializer.setDocumentLocator(new Locator2Impl());
+        var saxParser = XMLReaderFactory.createXMLReader();
+        //saxParser.setHandler(contentHandler);
+        saxParser.setHandler(serializer);
+        saxParser.setFeature('http://xml.org/sax/features/validation', true);
+        saxParser.setFeature('http://debeissat.nicolas.free.fr/ns/attribute-whitespace-normalization', true);
+        saxParser.setFeature('http://debeissat.nicolas.free.fr/ns/instance-augmentation', true);
+        saxParser.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', true);
+        try {
+            saxParser.parse(new InputSource("xmlconf/xmltest/valid/not-sa/020.xml"));
+            throwNotFatalException(saxParser.errorHandler);
+            var expected = loadFile("xmlconf/xmltest/valid/not-sa/out/020.xml");
+            var result = serializer.string;
+        } catch(e) {
+            assertTrue(e.message, true);
+        }
+        //for breakpoint
+        var a = "A";
+    }
+
+    function runAllTests () {
+        setUp();
+        //testParseIndividual();
+        
+        testParse(0);
+
+        print_total_errs();
+        
+        alert('Done! '+testResultSummary);
+        
+    }
+    
+    // Brett added to be able to show something in console when error is thrown
+    JsUnitException.prototype.toString = function () {
+        return this.jsUnitMessage;
+    };
+    
+    //--><!]]></script>
+  </head>
+  <body onload="runAllTests()">
+    <p>This is a Test Page for sax.js</p>
+    <div id="outputDiv" style="font-size:xx-small;">
+        <table id="output">
+            <tr><th>uri</th><th>test label</th><th>result message</th></tr>
+            
+            
+        </table>
+    </div>
+  </body>
+</html>
