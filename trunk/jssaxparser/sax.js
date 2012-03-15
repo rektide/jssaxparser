@@ -297,43 +297,45 @@ SAXParser.prototype.parse = function (inputOrSystemId, noCache) { // (InputSourc
         var charStream = inputOrSystemId.getCharacterStream();
         var byteStream = inputOrSystemId.getByteStream();
         // Priority for the parser is characterStream, byteStream, then URI, but we only really implemented the systemId (URI), so we automatically go with that
-        systemId = inputOrSystemId.getSystemId();
+        this.systemId = inputOrSystemId.getSystemId();
+        this.encoding = inputOrSystemId.getEncoding(); // To be used during XML Declaration checking
         if (charStream) {
-            if (charStream instanceof StringReader) { // Fix: This if-else is just a hack, until the parser may support Reader's methods like read()
-                xmlAsString = charStream.s;
+            if (charStream instanceof Reader) {
+                this.parseReader(charStream);
             } else {
-                throw "A character stream InputSource is not implemented at present unless it is a StringReader character stream (and that only if it is our own version which has the string on the 's' property)";
+                throw "character stream must be an instance of Reader";
             }
-        } else if (byteStream || systemId) {
-            this.encoding = inputOrSystemId.getEncoding(); // To be used during XML Declaration checking
-            if (byteStream) {
-                throw "A byte stream InputSource is not implemented at present in SAXParser's parse() method";
-            }
-        }
-        if (!systemId && !xmlAsString) {
-            throw "The SAXParser parse() method must, at present, take an InputSource with a systemId or with a StringReader character stream";
+        } else if (byteStream) {
+            throw "A byte stream InputSource is not implemented at present in SAXParser's parse() method";
+        } else if (this.systemId) {
+            this.parseSystemId(this.systemId, noCache);
         }
     } else if (typeof inputOrSystemId === "string") {
-        systemId = inputOrSystemId;
+        this.parseSystemId(inputOrSystemId);
     } else {
         throw "The argument supplied to SAXParser's parse() method was invalid";
     }
+};
+
+SAXParser.prototype.parseSystemId = function (systemId, noCache) {
     this.systemId = systemId;
-    if (!xmlAsString) { // If not set above
-        // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
-        if (noCache) {
-            systemId += ((systemId.indexOf('?') === -1) ? '?' : '&') + '_saxQuertyTime=' + new Date().getTime();
-        }
-        xmlAsString = SAXParser.loadFile(systemId);
-        //get the path to the file
-        path = systemId.substring(0, systemId.lastIndexOf("/") + 1);
-        this.baseURI = path;
+    // Fix: According to the specification for parse() (and InputSource's systemId constructor), the URL should be fully resolved (not relative)
+    if (noCache) {
+        this.systemId += ((systemId.indexOf('?') === -1) ? '?' : '&') + '_saxQuertyTime=' + new Date().getTime();
     }
+    var xmlAsString = SAXParser.loadFile(this.systemId);
+    //get the path to the file
+    path = this.systemId.substring(0, this.systemId.lastIndexOf("/") + 1);
+    this.baseURI = path;
     this.parseString(xmlAsString);
 };
 
 SAXParser.prototype.parseString = function (xmlAsString) {
     var reader = new StringReader(xmlAsString);
+    this.parseReader(reader);
+};
+
+SAXParser.prototype.parseReader = function (reader) {
     var readerWrapper = new ReaderWrapper(reader);
     this.initReaders(readerWrapper, reader);
     this.saxScanner.parse(readerWrapper);
