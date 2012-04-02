@@ -551,6 +551,10 @@ SAXScanner.prototype.scanXMLDeclOrTextDeclAttribute = function (allowableAtts, a
         return this.saxEvents.fatalError('The XML Declaration or Text Declaration must possess a space between the version/encoding/standalone information.', this);
     }
     this.reader.skipWhiteSpaces();
+    // there may be a space before end of xml declaration
+    if (this.reader.equals("?")) {
+        return false;
+    }
     var attName = this.scanName();
     var attPos = allowableAtts.indexOf(attName);
     if (attPos === -1) {
