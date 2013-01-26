@@ -1,0 +1,17 @@
+{
+	"name": "jssaxparser",
+	"description": "cobbled together recompile of jssaxparser",
+	"version": "1.0.0",
+	"keywords": ["sax", "streaming", "xml"]
+	"maintainers": [{
+		"name": "Matthew 'rektide' Fowle",
+		"email": "rektide@voodoowarez.com",
+		"web": "http://voodoowarez.com"
+	}],
+	"homepage": "http://voodoowarez.com/jssaxparser",
+	"main": "caminus",
+	"implements": ["CommonJS/Modules/1.0"],
+	"engines": { "node": ">=0.6.0"},
+	"repository": {"type": "git", "url": "http://git.voodoowarez.com/jssaxparser.git"},
+	"directories": {"lib": "jssaxparser"}
+}
