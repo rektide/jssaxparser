@@ -77,10 +77,10 @@ SAXNotRecognizedException.constructor = SAXNotRecognizedException;
 //This constructor is more complex and not presently implemented;
 //  see Java API to implement additional arguments correctly
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXParseException.html
-function SAXParseException (msg, locator) { // java.lang.Exception //
-    this.message = msg || '';
-    this.locator = locator;
-}
+//function SAXParseException (msg, locator) { // java.lang.Exception //
+//    this.message = msg || '';
+//    this.locator = locator;
+//}
 SAXParseException.prototype = new SAXException();
 SAXParseException.constructor = SAXParseException;
 SAXParseException.prototype.getColumnNumber = function () {
@@ -1075,6 +1075,6 @@ this.SAXParseException = SAXParseException;
 // Could put on org.xml.sax.helpers.
 this.XMLReaderFactory = XMLReaderFactory;
 
-//XMLReaderFactory.checkDependencies();
+XMLReaderFactory.checkDependencies();
 
 }()); // end namespace
