@@ -1,0 +1,2 @@
+#!/bin/sh
+cat files|xargs cat|dos2unix> comp.js

@@ -42,7 +42,7 @@ knowledge of the CeCILL license and that you accept its terms.
 var that = this; // probably window object
 
 /* Private static variables (constant) */
-
+for(var i in that) console.log("!!",i)
 
 // http://www.saxproject.org/apidoc/org/xml/sax/SAXException.html
 function SAXException(message, exception) { // java.lang.Exception
@@ -1049,14 +1049,14 @@ XMLReaderFactory.checkDependencies = function() {
     if (typeof that.Reader !== 'function') {
         try {
             this.importJS("Reader.js");
-        } catch(e4) {
+        } catch(e5) {
             throw new SAXException("implementation of Reader, like Reader.js, not provided and could not be dynamically loaded because of exception", e5);
         }
     }
     if (typeof that.ReaderWrapper !== 'function') {
         try {
             this.importJS("ReaderWrapper.js");
-        } catch(e4) {
+        } catch(e6) {
             throw new SAXException("implementation of ReaderWrapper.js, like ReaderWrapper.js, not provided and could not be dynamically loaded because of exception", e6);
         }
     }
@@ -1075,6 +1075,6 @@ this.SAXParseException = SAXParseException;
 // Could put on org.xml.sax.helpers.
 this.XMLReaderFactory = XMLReaderFactory;
 
-XMLReaderFactory.checkDependencies();
+//XMLReaderFactory.checkDependencies();
 
 }()); // end namespace
